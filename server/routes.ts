@@ -210,8 +210,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/events", authenticateToken, async (req, res) => {
     try {
-      const data = insertEventSchema.parse(req.body);
-      const event = await storage.createEvent(data);
+      const parsedData = insertEventSchema.parse({
+        ...req.body,
+        date: new Date(req.body.date),
+      });
+      const event = await storage.createEvent(parsedData);
       res.status(201).json(event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar evento" });
@@ -220,7 +223,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/events/:id", authenticateToken, async (req, res) => {
     try {
-      const data = insertEventSchema.partial().parse(req.body);
+      const bodyData = { ...req.body };
+      if (bodyData.date) {
+        bodyData.date = new Date(bodyData.date);
+      }
+      const data = insertEventSchema.partial().parse(bodyData);
       const event = await storage.updateEvent(req.params.id, data);
       res.json(event);
     } catch (error: any) {
@@ -288,7 +295,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/financial/transactions", authenticateToken, async (req, res) => {
     try {
-      const data = insertFinancialTransactionSchema.parse(req.body);
+      const bodyData = { ...req.body };
+      if (bodyData.dueDate) bodyData.dueDate = new Date(bodyData.dueDate);
+      if (bodyData.paidDate) bodyData.paidDate = new Date(bodyData.paidDate);
+      const data = insertFinancialTransactionSchema.parse(bodyData);
       const transaction = await storage.createTransaction(data);
       res.status(201).json(transaction);
     } catch (error: any) {
@@ -298,7 +308,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/financial/transactions/:id", authenticateToken, async (req, res) => {
     try {
-      const data = insertFinancialTransactionSchema.partial().parse(req.body);
+      const bodyData = { ...req.body };
+      if (bodyData.dueDate) bodyData.dueDate = new Date(bodyData.dueDate);
+      if (bodyData.paidDate) bodyData.paidDate = new Date(bodyData.paidDate);
+      const data = insertFinancialTransactionSchema.partial().parse(bodyData);
       const transaction = await storage.updateTransaction(req.params.id, data);
       res.json(transaction);
     } catch (error: any) {
@@ -327,7 +340,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/purchases", authenticateToken, async (req, res) => {
     try {
-      const data = insertPurchaseSchema.parse(req.body);
+      const bodyData = { ...req.body };
+      if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
+      const data = insertPurchaseSchema.parse(bodyData);
       const purchase = await storage.createPurchase(data);
       res.status(201).json(purchase);
     } catch (error: any) {
@@ -337,7 +352,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/purchases/:id", authenticateToken, async (req, res) => {
     try {
-      const data = insertPurchaseSchema.partial().parse(req.body);
+      const bodyData = { ...req.body };
+      if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
+      const data = insertPurchaseSchema.partial().parse(bodyData);
       const purchase = await storage.updatePurchase(req.params.id, data);
       res.json(purchase);
     } catch (error: any) {
