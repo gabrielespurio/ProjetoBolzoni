@@ -57,6 +57,8 @@ export const inventoryItems = pgTable("inventory_items", {
   quantity: integer("quantity").notNull().default(0),
   minQuantity: integer("min_quantity").notNull().default(0),
   unit: text("unit"),
+  costPrice: decimal("cost_price", { precision: 10, scale: 2 }),
+  salePrice: decimal("sale_price", { precision: 10, scale: 2 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

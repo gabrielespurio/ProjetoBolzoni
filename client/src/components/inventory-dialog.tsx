@@ -21,6 +21,8 @@ import { Loader2 } from "lucide-react";
 
 const inventoryFormSchema = insertInventoryItemSchema.extend({
   unit: z.string().optional(),
+  costPrice: z.string().optional(),
+  salePrice: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -44,9 +46,13 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
       quantity: item?.quantity || 0,
       minQuantity: item?.minQuantity || 0,
       unit: item?.unit || "",
+      costPrice: item?.costPrice || "",
+      salePrice: item?.salePrice || "",
       notes: item?.notes || "",
     },
   });
+
+  const selectedType = form.watch("type");
 
   const mutation = useMutation({
     mutationFn: async (data: InventoryForm) => {
@@ -179,6 +185,36 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                   </FormItem>
                 )}
               />
+              {selectedType === "character" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="costPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor de Custo</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-cost-price" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="salePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor de Venda</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-sale-price" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
             </div>
             <FormField
               control={form.control}
