@@ -21,6 +21,7 @@ import { Loader2 } from "lucide-react";
 
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
+  date: z.string(),
 });
 
 type EventForm = z.infer<typeof eventFormSchema>;
@@ -82,7 +83,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const onSubmit = (data: EventForm) => {
-    mutation.mutate(data);
+    // Convert date string to Date object
+    const eventData = {
+      ...data,
+      date: new Date(data.date),
+    };
+    mutation.mutate(eventData as any);
   };
 
   const handleClose = () => {

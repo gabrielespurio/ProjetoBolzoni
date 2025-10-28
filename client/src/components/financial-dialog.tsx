@@ -23,6 +23,7 @@ import { Loader2 } from "lucide-react";
 const financialFormSchema = insertFinancialTransactionSchema.extend({
   notes: z.string().optional(),
   eventId: z.string().optional().or(z.literal("")),
+  dueDate: z.string(),
   paidDate: z.string().optional().or(z.literal("")),
 });
 
@@ -79,7 +80,14 @@ export function FinancialDialog({ open, onClose, transaction }: FinancialDialogP
   });
 
   const onSubmit = (data: FinancialForm) => {
-    mutation.mutate(data);
+    // Convert date strings to Date objects
+    const transactionData = {
+      ...data,
+      dueDate: new Date(data.dueDate),
+      paidDate: data.paidDate ? new Date(data.paidDate) : undefined,
+      eventId: data.eventId || undefined,
+    };
+    mutation.mutate(transactionData as any);
   };
 
   const handleClose = () => {

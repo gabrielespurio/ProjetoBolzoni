@@ -22,6 +22,7 @@ import { Loader2 } from "lucide-react";
 const purchaseFormSchema = insertPurchaseSchema.extend({
   notes: z.string().optional(),
   itemId: z.string().optional().or(z.literal("")),
+  purchaseDate: z.string(),
 });
 
 type PurchaseForm = z.infer<typeof purchaseFormSchema>;
@@ -81,7 +82,13 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
   });
 
   const onSubmit = (data: PurchaseForm) => {
-    mutation.mutate(data);
+    // Convert date string to Date object
+    const purchaseData = {
+      ...data,
+      purchaseDate: new Date(data.purchaseDate),
+      itemId: data.itemId || undefined,
+    };
+    mutation.mutate(purchaseData as any);
   };
 
   const handleClose = () => {
