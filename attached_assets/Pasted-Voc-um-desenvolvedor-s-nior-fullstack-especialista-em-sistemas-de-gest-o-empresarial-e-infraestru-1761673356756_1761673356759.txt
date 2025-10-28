@@ -1,0 +1,108 @@
+Você é um desenvolvedor sênior fullstack especialista em sistemas de gestão empresarial e infraestrutura em nuvem.  
+Sua tarefa é desenvolver um sistema web completo chamado **Sistema Bolzoni**, desenvolvido pela empresa **HAVR Tecnologia** para a **Bolzoni Produções**, empresa especializada em recreação infantil e personagens para eventos.
+
+---
+
+## 🎯 OBJETIVO DO SISTEMA
+Desenvolver uma plataforma completa para centralizar a gestão administrativa e operacional da Bolzoni Produções, com controle de:
+- Finanças (contas, fluxo de caixa e contratos)
+- Estoque (materiais e personagens)
+- Clientes
+- Funcionários
+- Compras
+- Eventos
+
+O sistema deve ser seguro, escalável e otimizado para rodar em **servidores da Contabo (Ubuntu 22.04 LTS)**.
+
+---
+
+## ⚙️ STACK TECNOLÓGICA
+- **Frontend:** React + Vite + TypeScript + TailwindCSS
+- **Backend:** Node.js + Express + TypeScript
+- **Banco de Dados:** PostgreSQL (usando Prisma ORM)
+- **Autenticação:** JWT (login de administrador e funcionários)
+- **Relatórios:** PDFKit ou jsPDF para geração de relatórios
+- **Infraestrutura de Deploy:** Servidor VPS da **Contabo**
+- **Builds:** 
+  - Frontend via `vite build`
+  - Backend empacotado via `esbuild`
+- **Ambiente:** Projeto monorepo (`/frontend` e `/backend`)
+
+---
+
+## 🧩 MÓDULOS E FUNCIONALIDADES
+
+### 1. Módulo Financeiro
+- Controle de contas a pagar e a receber.
+- Registro de lançamentos manuais.
+- Fluxo de caixa consolidado (com filtros por período).
+- Integração com contratos de eventos (financeiro vinculado a cada evento).
+- Relatórios exportáveis (PDF e Excel).
+
+### 2. Módulo de Estoque
+- Controle de produtos consumíveis (balões, tintas, fantasias, etc.).
+- Controle de personagens (Homem-Aranha, Frozen, Mickey etc.) com disponibilidade por data.
+- Registro de entradas e saídas.
+- Relatórios de consumo por evento.
+
+### 3. Módulo de Clientes
+- Cadastro de clientes com dados básicos (nome, telefone, e-mail, cidade, observações).
+- Histórico de eventos realizados.
+- Busca e filtro de clientes.
+
+### 4. Módulo de Funcionários
+- Cadastro de funcionários com função e contato.
+- Histórico de participação em eventos.
+- Gestão de disponibilidade.
+
+### 5. Módulo de Compras
+- Registro de compras (produtos e serviços).
+- Associação automática ao estoque.
+- Relatórios de gastos por fornecedor e período.
+
+### 6. Módulo de Gestão de Eventos
+- Cadastro de eventos com:
+  - Cliente associado
+  - Data, hora e local
+  - Personagens e funcionários alocados
+  - Valor total do contrato
+- Status do evento: **Agendado, Concluído, Cancelado**
+- Relatórios de eventos por período, tipo e cliente.
+
+---
+
+## 📊 DASHBOARD E RELATÓRIOS
+O sistema deve conter um **Dashboard principal** com:
+- Próximos eventos
+- Saldo de caixa
+- Faturamento mensal
+- Consumo de estoque
+- Indicadores visuais (gráficos e métricas)
+
+Relatórios exportáveis (PDF e CSV):
+- Financeiro
+- Estoque
+- Eventos
+- Funcionários
+
+---
+
+## 🔒 AUTENTICAÇÃO E PERMISSÕES
+- Login com JWT.
+- Perfis:
+  - **Administrador:** acesso total.
+  - **Funcionário:** acesso restrito (eventos e estoque).
+- Proteção de rotas no frontend.
+- Middleware de autenticação no backend.
+
+---
+
+## 🎨 INTERFACE
+- Layout administrativo moderno (sidebar fixa + header superior).
+- Painel de controle com visual tipo dashboard.
+- Paleta com tons profissionais (ex: azul, cinza e branco).
+- Totalmente responsivo (mobile e tablet).
+
+---
+
+## 🧾 ESTRUTURA DO PROJETO (SUGESTÃO)
