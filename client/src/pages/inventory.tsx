@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Package, AlertTriangle } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Plus, Search, AlertTriangle, Edit } from "lucide-react";
 import { InventoryDialog } from "@/components/inventory-dialog";
 import type { InventoryItem } from "@shared/schema";
 
@@ -43,6 +51,14 @@ export default function Inventory() {
   };
 
   const lowStockCount = items?.filter(isLowStock).length || 0;
+
+  const formatCurrency = (value: string | null) => {
+    if (!value) return "-";
+    return new Intl.NumberFormat('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    }).format(parseFloat(value));
+  };
 
   return (
     <div className="space-y-6">
@@ -90,63 +106,102 @@ export default function Inventory() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="grid gap-6 p-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2 p-6">
               {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-40 w-full" />
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
           ) : filteredItems && filteredItems.length > 0 ? (
-            <div className="grid gap-6 p-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredItems.map((item) => (
-                <Card
-                  key={item.id}
-                  className={`hover-elevate active-elevate-2 cursor-pointer border-card-border ${
-                    isLowStock(item) ? "border-destructive/50" : ""
-                  }`}
-                  onClick={() => handleEdit(item)}
-                  data-testid={`inventory-item-${item.id}`}
-                >
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10">
-                            <Package className="h-6 w-6 text-primary" />
-                          </div>
-                          <div className="space-y-1">
-                            <h3 className="text-base font-semibold text-foreground line-clamp-1">
-                              {item.name}
-                            </h3>
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {item.type === "consumable" ? "Consumível" : "Personagem"}
-                            </Badge>
-                          </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Nome</TableHead>
+                    <TableHead className="w-[120px]">Tipo</TableHead>
+                    <TableHead className="text-right w-[100px]">Quantidade</TableHead>
+                    <TableHead className="text-right w-[120px]">Estoque Mín.</TableHead>
+                    <TableHead className="text-right w-[120px]">Valor Custo</TableHead>
+                    <TableHead className="text-right w-[120px]">Valor Venda</TableHead>
+                    <TableHead className="w-[100px]">Status</TableHead>
+                    <TableHead className="text-right w-[80px]">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      className={`cursor-pointer ${
+                        isLowStock(item) ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/50"
+                      }`}
+                      data-testid={`inventory-item-${item.id}`}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span className="text-foreground">{item.name}</span>
+                          {item.unit && (
+                            <span className="text-xs text-muted-foreground">Unidade: {item.unit}</span>
+                          )}
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Quantidade:</span>
-                          <span className={`font-bold font-mono ${isLowStock(item) ? "text-destructive" : "text-foreground"}`}>
-                            {item.quantity} {item.unit || "un"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {item.type === "consumable" ? "Consumível" : "Personagem"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={`font-mono font-semibold ${
+                          isLowStock(item) ? "text-destructive" : "text-foreground"
+                        }`}>
+                          {item.quantity}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-mono text-muted-foreground">
+                          {item.minQuantity}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.type === "character" ? (
+                          <span className="font-mono text-sm">
+                            {formatCurrency(item.costPrice)}
                           </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Estoque Mín:</span>
-                          <span className="font-mono text-muted-foreground">
-                            {item.minQuantity} {item.unit || "un"}
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.type === "character" ? (
+                          <span className="font-mono text-sm">
+                            {formatCurrency(item.salePrice)}
                           </span>
-                        </div>
-                      </div>
-                      {isLowStock(item) && (
-                        <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-2">
-                          <AlertTriangle className="h-4 w-4 text-destructive" />
-                          <span className="text-xs font-medium text-destructive">Estoque baixo</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isLowStock(item) ? (
+                          <div className="flex items-center gap-1.5">
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
+                            <span className="text-xs font-medium text-destructive">Baixo</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Normal</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          data-testid={`button-edit-${item.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <div className="p-12 text-center">
