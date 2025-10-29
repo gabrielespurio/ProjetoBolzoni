@@ -73,9 +73,12 @@ export function AppSidebar() {
     <Sidebar className="border-none">
       <div className="flex h-full flex-col bg-gradient-to-b from-[#6C5584] via-[#5d4872] to-[#4d3b5f] relative overflow-hidden">
         {/* Top curved section */}
-        <div className="relative pb-8">
-          {/* White curved background */}
-          <div className="absolute top-0 left-0 right-0 h-20 bg-white rounded-br-[40px]"></div>
+        <div className="relative pb-4">
+          {/* White background with concave curve */}
+          <div className="absolute top-0 left-0 right-0 h-24 bg-white"></div>
+          
+          {/* Purple circle to create concave effect in bottom-right */}
+          <div className="absolute bottom-0 right-0 w-12 h-12 bg-gradient-to-b from-[#6C5584] via-[#5d4872] to-[#4d3b5f] rounded-tl-[40px]"></div>
           
           {/* Header content */}
           <SidebarHeader className="relative z-10 px-5 pt-4 pb-2">
