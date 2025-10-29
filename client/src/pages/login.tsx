@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import bolzoniLogo from "@assets/LOGO BOLZONI.pdf 2.pdf_1761698427211.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Usuário é obrigatório"),
@@ -62,8 +63,13 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md border-card-border shadow-lg">
         <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="font-mono text-3xl font-bold">B</span>
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            <img 
+              src={bolzoniLogo} 
+              alt="Bolzoni Produções" 
+              className="h-24 w-auto"
+              data-testid="img-logo"
+            />
           </div>
           <CardTitle className="text-2xl font-semibold">Sistema Bolzoni</CardTitle>
           <CardDescription className="text-sm">
