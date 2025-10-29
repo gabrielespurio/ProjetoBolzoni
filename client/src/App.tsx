@@ -15,6 +15,7 @@ import Events from "@/pages/events";
 import Financial from "@/pages/financial";
 import Inventory from "@/pages/inventory";
 import Purchases from "@/pages/purchases";
+import Settings from "@/pages/settings";
 
 function Router() {
   const [location] = useLocation();
@@ -50,6 +51,7 @@ function Router() {
                   <Route path="/financial" component={Financial} />
                   <Route path="/inventory" component={Inventory} />
                   <Route path="/purchases" component={Purchases} />
+                  <Route path="/settings" component={Settings} />
                   <Route component={NotFound} />
                 </Switch>
               </div>
