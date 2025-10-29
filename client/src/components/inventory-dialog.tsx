@@ -154,37 +154,41 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="minQuantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estoque Mínimo *</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        data-testid="input-item-min-quantity"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="unit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unidade</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Ex: un, kg, L" data-testid="input-item-unit" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {selectedType !== "character" && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="minQuantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estoque Mínimo *</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            data-testid="input-item-min-quantity"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unidade</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Ex: un, kg, L" data-testid="input-item-unit" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
               {selectedType === "character" && (
                 <>
                   <FormField
