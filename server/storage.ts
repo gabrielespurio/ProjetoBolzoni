@@ -10,6 +10,8 @@ import {
   purchases,
   eventEmployees,
   eventCharacters,
+  eventCategories,
+  employeeRoles,
   type User,
   type InsertUser,
   type Client,
@@ -30,6 +32,10 @@ import {
   type InsertEventEmployee,
   type EventCharacter,
   type InsertEventCharacter,
+  type EventCategory,
+  type InsertEventCategory,
+  type EmployeeRole,
+  type InsertEmployeeRole,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -89,6 +95,20 @@ export interface IStorage {
   
   // Dashboard
   getDashboardMetrics(): Promise<any>;
+  
+  // Settings - Event Categories
+  getAllEventCategories(): Promise<EventCategory[]>;
+  getEventCategory(id: string): Promise<EventCategory | undefined>;
+  createEventCategory(category: InsertEventCategory): Promise<EventCategory>;
+  updateEventCategory(id: string, category: Partial<InsertEventCategory>): Promise<EventCategory>;
+  deleteEventCategory(id: string): Promise<void>;
+  
+  // Settings - Employee Roles
+  getAllEmployeeRoles(): Promise<EmployeeRole[]>;
+  getEmployeeRole(id: string): Promise<EmployeeRole | undefined>;
+  createEmployeeRole(role: InsertEmployeeRole): Promise<EmployeeRole>;
+  updateEmployeeRole(id: string, role: Partial<InsertEmployeeRole>): Promise<EmployeeRole>;
+  deleteEmployeeRole(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -398,6 +418,54 @@ export class DatabaseStorage implements IStorage {
       monthlyRevenueChart,
       cashFlowChart,
     };
+  }
+  
+  // Event Categories
+  async getAllEventCategories(): Promise<EventCategory[]> {
+    return await db.select().from(eventCategories).orderBy(eventCategories.name);
+  }
+  
+  async getEventCategory(id: string): Promise<EventCategory | undefined> {
+    const [category] = await db.select().from(eventCategories).where(eq(eventCategories.id, id));
+    return category || undefined;
+  }
+  
+  async createEventCategory(category: InsertEventCategory): Promise<EventCategory> {
+    const [newCategory] = await db.insert(eventCategories).values(category).returning();
+    return newCategory;
+  }
+  
+  async updateEventCategory(id: string, category: Partial<InsertEventCategory>): Promise<EventCategory> {
+    const [updated] = await db.update(eventCategories).set(category).where(eq(eventCategories.id, id)).returning();
+    return updated;
+  }
+  
+  async deleteEventCategory(id: string): Promise<void> {
+    await db.delete(eventCategories).where(eq(eventCategories.id, id));
+  }
+  
+  // Employee Roles
+  async getAllEmployeeRoles(): Promise<EmployeeRole[]> {
+    return await db.select().from(employeeRoles).orderBy(employeeRoles.name);
+  }
+  
+  async getEmployeeRole(id: string): Promise<EmployeeRole | undefined> {
+    const [role] = await db.select().from(employeeRoles).where(eq(employeeRoles.id, id));
+    return role || undefined;
+  }
+  
+  async createEmployeeRole(role: InsertEmployeeRole): Promise<EmployeeRole> {
+    const [newRole] = await db.insert(employeeRoles).values(role).returning();
+    return newRole;
+  }
+  
+  async updateEmployeeRole(id: string, role: Partial<InsertEmployeeRole>): Promise<EmployeeRole> {
+    const [updated] = await db.update(employeeRoles).set(role).where(eq(employeeRoles.id, id)).returning();
+    return updated;
+  }
+  
+  async deleteEmployeeRole(id: string): Promise<void> {
+    await db.delete(employeeRoles).where(eq(employeeRoles.id, id));
   }
 }
 
