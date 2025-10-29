@@ -109,6 +109,20 @@ export const eventCharacters = pgTable("event_characters", {
   characterId: varchar("character_id").notNull().references(() => inventoryItems.id),
 });
 
+export const eventCategories = pgTable("event_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const employeeRoles = pgTable("employee_roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const eventsRelations = relations(events, ({ one, many }) => ({
   client: one(clients, {
     fields: [events.clientId],
@@ -204,6 +218,16 @@ export const insertEventCharacterSchema = createInsertSchema(eventCharacters).om
   id: true,
 });
 
+export const insertEventCategorySchema = createInsertSchema(eventCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEmployeeRoleSchema = createInsertSchema(employeeRoles).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -233,3 +257,9 @@ export type InsertEventEmployee = z.infer<typeof insertEventEmployeeSchema>;
 
 export type EventCharacter = typeof eventCharacters.$inferSelect;
 export type InsertEventCharacter = z.infer<typeof insertEventCharacterSchema>;
+
+export type EventCategory = typeof eventCategories.$inferSelect;
+export type InsertEventCategory = z.infer<typeof insertEventCategorySchema>;
+
+export type EmployeeRole = typeof employeeRoles.$inferSelect;
+export type InsertEmployeeRole = z.infer<typeof insertEmployeeRoleSchema>;
