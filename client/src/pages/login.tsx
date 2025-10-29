@@ -71,7 +71,7 @@ export default function Login() {
               data-testid="img-logo"
             />
           </div>
-          <CardTitle className="text-2xl font-semibold">Sistema Bolzoni</CardTitle>
+          <CardTitle className="text-2xl font-semibold">HAVR Tecnologia</CardTitle>
           <CardDescription className="text-sm">
             Faça login para acessar a plataforma de gestão
           </CardDescription>

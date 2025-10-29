@@ -73,12 +73,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <span className="font-mono text-lg font-bold">B</span>
-          </div>
           <div>
-            <h2 className="text-base font-semibold text-sidebar-foreground">Sistema Bolzoni</h2>
-            <p className="text-xs text-sidebar-foreground/70">HAVR Tecnologia</p>
+            <h2 className="text-base font-semibold text-sidebar-foreground">HAVR Tecnologia</h2>
           </div>
         </div>
       </SidebarHeader>
