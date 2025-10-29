@@ -41,6 +41,7 @@ export const employees = pgTable("employees", {
 export const events = pgTable("events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull().references(() => clients.id),
+  categoryId: varchar("category_id").references(() => eventCategories.id),
   title: text("title").notNull(),
   date: timestamp("date").notNull(),
   location: text("location").notNull(),
@@ -128,6 +129,10 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
     fields: [events.clientId],
     references: [clients.id],
   }),
+  category: one(eventCategories, {
+    fields: [events.categoryId],
+    references: [eventCategories.id],
+  }),
   eventEmployees: many(eventEmployees),
   eventCharacters: many(eventCharacters),
   transactions: many(financialTransactions),
@@ -168,6 +173,10 @@ export const eventCharactersRelations = relations(eventCharacters, ({ one }) => 
     fields: [eventCharacters.characterId],
     references: [inventoryItems.id],
   }),
+}));
+
+export const eventCategoriesRelations = relations(eventCategories, ({ many }) => ({
+  events: many(events),
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({

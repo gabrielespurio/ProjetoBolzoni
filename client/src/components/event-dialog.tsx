@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { insertEventSchema, type Event, type Client, type Employee, type InventoryItem } from "@shared/schema";
+import { insertEventSchema, type Event, type Client, type Employee, type InventoryItem, type EventCategory } from "@shared/schema";
 import { z } from "zod";
 import {
   Dialog,
@@ -41,11 +41,17 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     enabled: open,
   });
 
+  const { data: categories } = useQuery<EventCategory[]>({
+    queryKey: ["/api/settings/event-categories"],
+    enabled: open,
+  });
+
   const form = useForm<EventForm>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
       title: event?.title || "",
       clientId: event?.clientId || "",
+      categoryId: event?.categoryId || undefined,
       date: event?.date ? new Date(event.date).toISOString().slice(0, 16) : "",
       location: event?.location || "",
       contractValue: event?.contractValue || "0",
@@ -83,10 +89,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const onSubmit = (data: EventForm) => {
-    // Convert date string to Date object
+    // Convert date string to Date object and handle empty categoryId
     const eventData = {
       ...data,
       date: new Date(data.date),
+      categoryId: data.categoryId || undefined,
     };
     mutation.mutate(eventData as any);
   };
@@ -137,6 +144,30 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                         {clients?.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoria</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-event-category">
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories?.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
