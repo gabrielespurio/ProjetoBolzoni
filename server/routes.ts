@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "bolzoni-secret-key-2024";
 
@@ -387,6 +387,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(events);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao buscar eventos" });
+    }
+  });
+  
+  // Event Categories routes
+  app.get("/api/settings/event-categories", authenticateToken, async (req, res) => {
+    try {
+      const categories = await storage.getAllEventCategories();
+      res.json(categories);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar categorias" });
+    }
+  });
+  
+  app.post("/api/settings/event-categories", authenticateToken, async (req, res) => {
+    try {
+      const data = insertEventCategorySchema.parse(req.body);
+      const category = await storage.createEventCategory(data);
+      res.status(201).json(category);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar categoria" });
+    }
+  });
+  
+  app.patch("/api/settings/event-categories/:id", authenticateToken, async (req, res) => {
+    try {
+      const data = insertEventCategorySchema.partial().parse(req.body);
+      const category = await storage.updateEventCategory(req.params.id, data);
+      res.json(category);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar categoria" });
+    }
+  });
+  
+  app.delete("/api/settings/event-categories/:id", authenticateToken, async (req, res) => {
+    try {
+      await storage.deleteEventCategory(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar categoria" });
+    }
+  });
+  
+  // Employee Roles routes
+  app.get("/api/settings/employee-roles", authenticateToken, async (req, res) => {
+    try {
+      const roles = await storage.getAllEmployeeRoles();
+      res.json(roles);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar funções" });
+    }
+  });
+  
+  app.post("/api/settings/employee-roles", authenticateToken, async (req, res) => {
+    try {
+      const data = insertEmployeeRoleSchema.parse(req.body);
+      const role = await storage.createEmployeeRole(data);
+      res.status(201).json(role);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar função" });
+    }
+  });
+  
+  app.patch("/api/settings/employee-roles/:id", authenticateToken, async (req, res) => {
+    try {
+      const data = insertEmployeeRoleSchema.partial().parse(req.body);
+      const role = await storage.updateEmployeeRole(req.params.id, data);
+      res.json(role);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar função" });
+    }
+  });
+  
+  app.delete("/api/settings/employee-roles/:id", authenticateToken, async (req, res) => {
+    try {
+      await storage.deleteEmployeeRole(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar função" });
     }
   });
 
