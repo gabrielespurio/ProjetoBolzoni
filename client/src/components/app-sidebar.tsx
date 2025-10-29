@@ -71,23 +71,17 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-none">
-      <div className="flex h-full flex-col bg-gradient-to-b from-[#6C5584] via-[#5d4872] to-[#4d3b5f] relative overflow-hidden">
-        {/* Top curved section with concave curve */}
-        <div className="relative bg-white">
-          <div className="pt-4 pb-8 px-5">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6C5584] shadow-sm">
-                <Building2 className="h-4.5 w-4.5 text-white" />
-              </div>
-              <h2 className="text-base font-bold text-gray-800 tracking-tight">HAVR Tecnologia</h2>
+      <div className="flex h-full flex-col bg-gradient-to-b from-[#6C5584] via-[#5d4872] to-[#4d3b5f]">
+        <SidebarHeader className="px-5 pt-5 pb-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 shadow-sm">
+              <Building2 className="h-5 w-5 text-white" />
             </div>
+            <h2 className="text-lg font-bold text-white tracking-tight">HAVR Tecnologia</h2>
           </div>
-          
-          {/* Purple circle overlay to create the concave curve in bottom-right corner */}
-          <div className="absolute -bottom-8 -right-8 w-16 h-16 bg-[#6C5584] rounded-full"></div>
-        </div>
+        </SidebarHeader>
 
-        <SidebarContent className="px-4 pt-4">
+        <SidebarContent className="px-4">
 
           <SidebarGroup>
             <SidebarGroupContent>
