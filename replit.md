@@ -95,6 +95,7 @@ The system manages nine core entities:
 - Stock movements track inventory changes
 
 **Recent Changes (October 2025):**
+- **Database Connection:** Successfully configured external Neon PostgreSQL database connection. The system is now connected to the production Neon database instance hosted at sa-east-1 (South America region) via secure SSL connection with channel binding.
 - Added event category field to events table - events can now be categorized using categories configured in the settings module
 - Database schema updated with categoryId field (nullable) in events table referencing event_categories
 - Event creation/edit form enhanced with category selector pulling from settings
@@ -122,6 +123,8 @@ The system manages nine core entities:
 - No third-party authentication service - custom implementation
 
 **Deployment Configuration:**
-- Environment variables required: `DATABASE_URL`, `SESSION_SECRET`
+- Environment variables required: `DATABASE_URL` (configured with Neon PostgreSQL connection), `SESSION_SECRET`
+- DATABASE_URL is configured as a Replit secret for secure credential management
 - Production build creates static assets and bundled server
 - Single process Node.js server serves both API and static files in production
+- Database connection uses SSL with channel binding for enhanced security
