@@ -1,4 +1,4 @@
-import { Home, Users, UserCircle, Calendar, DollarSign, Package, ShoppingCart, Settings, LogOut, Building2, Plus } from "lucide-react";
+import { Home, Users, UserCircle, Calendar, DollarSign, Package, ShoppingCart, Settings, LogOut, Building2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -75,7 +75,7 @@ export function AppSidebar() {
         {/* Top curved section */}
         <div className="relative pb-8">
           {/* White curved background */}
-          <div className="absolute top-0 left-0 right-0 h-20 bg-white rounded-br-[40px]"></div>
+          <div className="absolute top-0 left-0 right-0 h-20 bg-white rounded-bl-[40px]"></div>
           
           {/* Header content */}
           <SidebarHeader className="relative z-10 px-5 pt-4 pb-2">
@@ -89,18 +89,6 @@ export function AppSidebar() {
         </div>
 
         <SidebarContent className="px-4 -mt-4">
-          <div className="mb-5">
-            <Button
-              className="w-full h-11 bg-white hover:bg-white/95 text-[#6C5584] font-semibold shadow-md hover:shadow-lg transition-all rounded-full"
-              data-testid="button-new-event"
-              asChild
-            >
-              <Link href="/events">
-                <Plus className="h-5 w-5 mr-2" />
-                Novo Evento
-              </Link>
-            </Button>
-          </div>
 
           <SidebarGroup>
             <SidebarGroupContent>
