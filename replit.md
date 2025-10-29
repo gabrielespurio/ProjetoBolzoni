@@ -76,7 +76,7 @@ Preferred communication style: Simple, everyday language.
 - Shared schema types between frontend and backend
 
 **Data Model:**
-The system manages seven core entities:
+The system manages nine core entities:
 - **Users** - Admin and employee authentication with role-based access
 - **Clients** - Customer contact information and relationship tracking
 - **Employees** - Staff management with availability tracking
@@ -84,6 +84,8 @@ The system manages seven core entities:
 - **Inventory Items** - Stock management for consumables and character costumes
 - **Financial Transactions** - Accounts payable/receivable with payment tracking
 - **Purchases** - Procurement records with supplier information
+- **Event Categories** - System configuration for event classification
+- **Employee Roles** - System configuration for employee function definitions
 
 **Relationships:**
 - Events linked to clients and can have multiple employees and characters assigned
