@@ -85,7 +85,7 @@ export function AppSidebar() {
           </div>
           
           {/* Purple circle to create concave curve effect */}
-          <div className="absolute bottom-0 right-0 w-10 h-10 bg-gradient-to-b from-[#6C5584] via-[#5d4872] to-[#4d3b5f] rounded-tl-full"></div>
+          <div className="absolute bottom-0 right-0 w-16 h-16 bg-[#6C5584] rounded-tl-full"></div>
         </div>
 
         <SidebarContent className="px-4 pt-4">
