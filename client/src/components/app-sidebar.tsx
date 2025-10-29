@@ -75,7 +75,7 @@ export function AppSidebar() {
         {/* Top curved section */}
         <div className="relative pb-8">
           {/* White curved background */}
-          <div className="absolute top-0 left-0 right-0 h-20 bg-white rounded-bl-[40px]"></div>
+          <div className="absolute top-0 left-0 right-0 h-20 bg-white rounded-br-[40px]"></div>
           
           {/* Header content */}
           <SidebarHeader className="relative z-10 px-5 pt-4 pb-2">
