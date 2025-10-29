@@ -70,38 +70,26 @@ export function AppSidebar() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   return (
-    <Sidebar className="border-none overflow-visible">
-      <div className="flex h-full flex-col bg-gradient-to-b from-[#6C5584] via-[#5d4872] to-[#4d3b5f] relative">
-        {/* Curved top section */}
-        <div className="relative">
-          <div className="h-24 bg-gradient-to-b from-[#6C5584] to-[#6C5584]">
-            {/* SVG Wave at bottom */}
-            <svg 
-              className="absolute bottom-0 left-0 w-full" 
-              viewBox="0 0 256 40" 
-              preserveAspectRatio="none"
-              style={{ height: '40px' }}
-            >
-              <path 
-                d="M0,0 L0,20 Q128,40 256,20 L256,0 Z" 
-                fill="#6C5584"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {/* Header with logo - positioned to extend outside */}
-        <div className="absolute top-4 left-4 right-0 z-10">
-          <div className="flex items-center gap-2.5 bg-white rounded-l-xl py-3 px-4 shadow-lg" style={{ width: 'calc(100% + 48px)' }}>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#6C5584] to-[#5d4872]">
-              <Building2 className="h-4 w-4 text-white" />
+    <Sidebar className="border-none">
+      <div className="flex h-full flex-col bg-gradient-to-b from-[#6C5584] via-[#5d4872] to-[#4d3b5f] relative overflow-hidden">
+        {/* Top curved section */}
+        <div className="relative pb-8">
+          {/* White curved background */}
+          <div className="absolute top-0 left-0 right-0 h-20 bg-white rounded-br-[40px]"></div>
+          
+          {/* Header content */}
+          <SidebarHeader className="relative z-10 px-5 pt-4 pb-2">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6C5584] shadow-sm">
+                <Building2 className="h-4.5 w-4.5 text-white" />
+              </div>
+              <h2 className="text-base font-bold text-gray-800 tracking-tight">HAVR Tecnologia</h2>
             </div>
-            <h2 className="text-base font-bold text-gray-800 tracking-tight">HAVR Tecnologia</h2>
-          </div>
+          </SidebarHeader>
         </div>
 
-        <SidebarContent className="px-3 pt-16 pb-4">
-          <div className="mb-4 px-2">
+        <SidebarContent className="px-4 -mt-4">
+          <div className="mb-5">
             <Button
               className="w-full h-11 bg-white hover:bg-white/95 text-[#6C5584] font-semibold shadow-md hover:shadow-lg transition-all rounded-full"
               data-testid="button-new-event"
@@ -116,13 +104,13 @@ export function AppSidebar() {
 
           <SidebarGroup>
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-0.5">
+              <SidebarMenu className="space-y-1">
                 {menuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
                       isActive={location === item.url}
-                      className="h-10 px-3 text-white/90 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/20 data-[active=true]:text-white rounded-lg font-medium transition-all"
+                      className="h-10 px-3 text-white/90 hover:bg-white/15 hover:text-white data-[active=true]:bg-white/25 data-[active=true]:text-white rounded-lg font-medium transition-all"
                       data-testid={`link-${item.title.toLowerCase()}`}
                     >
                       <Link href={item.url}>
@@ -136,20 +124,23 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <div className="mt-6 px-2">
-            <SidebarGroupLabel className="px-3 mb-3 text-[10px] font-bold uppercase tracking-wider text-white/60">
+          <div className="mt-8 mb-4">
+            <SidebarGroupLabel className="px-3 mb-3 text-[11px] font-bold uppercase tracking-wider text-white/50">
               Informações do Sistema
             </SidebarGroupLabel>
-            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/80 font-medium">Usuário Ativo</span>
-                  <span className="text-white font-semibold">{user?.name || "Carregando..."}</span>
+            <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-white/70 font-medium">Usuário Ativo</span>
+                  <span className="text-xs text-white font-semibold truncate ml-2 max-w-[120px]">
+                    {user?.name || "Carregando..."}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/80 font-medium">Perfil</span>
-                  <span className="text-white font-semibold capitalize">
-                    {user?.role === 'admin' ? 'Administrador' : 'Funcionário'}
+                <div className="w-full h-px bg-white/10"></div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-white/70 font-medium">Perfil</span>
+                  <span className="text-xs text-white font-semibold">
+                    {user?.role === 'admin' ? 'Admin' : 'Funcionário'}
                   </span>
                 </div>
               </div>
@@ -159,7 +150,7 @@ export function AppSidebar() {
 
         <SidebarFooter className="p-4 mt-auto border-t border-white/10">
           <div className="flex items-center gap-3 px-2">
-            <Avatar className="h-9 w-9 border-2 border-white/30 shadow-md">
+            <Avatar className="h-9 w-9 border-2 border-white/20 shadow-md">
               <AvatarFallback className="bg-white text-[#6C5584] text-sm font-bold">
                 {user?.name?.charAt(0)?.toUpperCase() || "U"}
               </AvatarFallback>
@@ -168,7 +159,7 @@ export function AppSidebar() {
               <p className="text-sm font-semibold text-white truncate">
                 {user?.name || "Usuário"}
               </p>
-              <p className="text-xs text-white/70 truncate">
+              <p className="text-xs text-white/60 truncate">
                 {user?.role === 'admin' ? 'Administrador' : 'Funcionário'}
               </p>
             </div>
