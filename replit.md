@@ -89,9 +89,15 @@ The system manages nine core entities:
 
 **Relationships:**
 - Events linked to clients and can have multiple employees and characters assigned
+- Events can optionally be associated with an event category
 - Financial transactions can be associated with events
 - Purchases can reference inventory items
 - Stock movements track inventory changes
+
+**Recent Changes (October 2025):**
+- Added event category field to events table - events can now be categorized using categories configured in the settings module
+- Database schema updated with categoryId field (nullable) in events table referencing event_categories
+- Event creation/edit form enhanced with category selector pulling from settings
 
 ### External Dependencies
 
