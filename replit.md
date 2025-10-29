@@ -98,6 +98,7 @@ The system manages nine core entities:
 - Added event category field to events table - events can now be categorized using categories configured in the settings module
 - Database schema updated with categoryId field (nullable) in events table referencing event_categories
 - Event creation/edit form enhanced with category selector pulling from settings
+- Updated color scheme: Primary button color changed to match sidebar color (#6C5584), background color changed to white (#FFFFFF) for a cleaner, more cohesive design
 
 ### External Dependencies
 
