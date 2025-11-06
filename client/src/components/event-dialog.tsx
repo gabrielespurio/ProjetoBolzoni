@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertEventSchema, type Event, type Client, type Employee, type InventoryItem, type EventCategory } from "@shared/schema";
 import { z } from "zod";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,12 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
   date: z.string(),
+  characterIds: z.array(z.string()).optional(),
 });
 
 type EventForm = z.infer<typeof eventFormSchema>;
@@ -35,6 +38,7 @@ interface EventDialogProps {
 export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const { toast } = useToast();
   const isEdit = !!event;
+  const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -45,6 +49,13 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     queryKey: ["/api/settings/event-categories"],
     enabled: open,
   });
+
+  const { data: inventoryItems } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/inventory"],
+    enabled: open,
+  });
+
+  const characters = inventoryItems?.filter(item => item.type === "character") || [];
 
   const form = useForm<EventForm>({
     resolver: zodResolver(eventFormSchema),
@@ -57,15 +68,31 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       contractValue: event?.contractValue || "0",
       status: event?.status || "scheduled",
       notes: event?.notes || "",
+      characterIds: [],
     },
   });
 
+  useEffect(() => {
+    if (selectedCharacters.length > 0 && characters.length > 0) {
+      const total = selectedCharacters.reduce((sum, characterId) => {
+        const character = characters.find(c => c.id === characterId);
+        const price = character?.salePrice ? parseFloat(character.salePrice) : 0;
+        return sum + price;
+      }, 0);
+      form.setValue("contractValue", total.toFixed(2));
+    }
+  }, [selectedCharacters, characters, form]);
+
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
+      const payload = {
+        ...data,
+        characterIds: selectedCharacters,
+      };
       if (isEdit) {
-        return apiRequest("PATCH", `/api/events/${event.id}`, data);
+        return apiRequest("PATCH", `/api/events/${event.id}`, payload);
       } else {
-        return apiRequest("POST", "/api/events", data);
+        return apiRequest("POST", "/api/events", payload);
       }
     },
     onSuccess: () => {
@@ -76,6 +103,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         title: isEdit ? "Evento atualizado" : "Evento criado",
         description: isEdit ? "Evento atualizado com sucesso." : "Novo evento cadastrado com sucesso.",
       });
+      setSelectedCharacters([]);
       onClose();
       form.reset();
     },
@@ -89,7 +117,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const onSubmit = (data: EventForm) => {
-    // Convert date string to Date object and handle empty categoryId
     const eventData = {
       ...data,
       date: new Date(data.date),
@@ -100,7 +127,22 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   const handleClose = () => {
     form.reset();
+    setSelectedCharacters([]);
     onClose();
+  };
+
+  const toggleCharacter = (characterId: string) => {
+    setSelectedCharacters(prev => {
+      if (prev.includes(characterId)) {
+        return prev.filter(id => id !== characterId);
+      } else {
+        return [...prev, characterId];
+      }
+    });
+  };
+
+  const removeCharacter = (characterId: string) => {
+    setSelectedCharacters(prev => prev.filter(id => id !== characterId));
   };
 
   return (
@@ -238,6 +280,76 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 )}
               />
             </div>
+
+            <div className="space-y-4">
+              <div>
+                <FormLabel>Personagens</FormLabel>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Selecione os personagens que serão utilizados neste evento
+                </p>
+                
+                {selectedCharacters.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    <p className="text-sm font-medium">Personagens selecionados:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCharacters.map(characterId => {
+                        const character = characters.find(c => c.id === characterId);
+                        return character ? (
+                          <div
+                            key={characterId}
+                            className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm"
+                            data-testid={`selected-character-${characterId}`}
+                          >
+                            <span>{character.name}</span>
+                            <span className="text-xs opacity-75">
+                              R$ {parseFloat(character.salePrice || "0").toFixed(2)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeCharacter(characterId)}
+                              className="hover:bg-primary/20 rounded-full p-0.5"
+                              data-testid={`remove-character-${characterId}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border rounded-md p-4 max-h-48 overflow-y-auto">
+                  {characters.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Nenhum personagem cadastrado no estoque
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {characters.map(character => (
+                        <div
+                          key={character.id}
+                          className="flex items-center space-x-3 hover:bg-accent p-2 rounded-md"
+                        >
+                          <Checkbox
+                            checked={selectedCharacters.includes(character.id)}
+                            onCheckedChange={() => toggleCharacter(character.id)}
+                            data-testid={`checkbox-character-${character.id}`}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{character.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Valor: R$ {parseFloat(character.salePrice || "0").toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <FormField
               control={form.control}
               name="notes"
