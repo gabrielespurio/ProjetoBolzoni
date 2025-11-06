@@ -73,7 +73,15 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   useEffect(() => {
-    if (selectedCharacters.length > 0 && characters.length > 0) {
+    if (event && (event as any).characterIds) {
+      setSelectedCharacters((event as any).characterIds);
+    } else {
+      setSelectedCharacters([]);
+    }
+  }, [event]);
+
+  useEffect(() => {
+    if (characters.length > 0) {
       const total = selectedCharacters.reduce((sum, characterId) => {
         const character = characters.find(c => c.id === characterId);
         const price = character?.salePrice ? parseFloat(character.salePrice) : 0;

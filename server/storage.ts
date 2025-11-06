@@ -186,6 +186,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: events.id,
         clientId: events.clientId,
+        categoryId: events.categoryId,
         title: events.title,
         date: events.date,
         location: events.location,
@@ -199,12 +200,36 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(clients, eq(events.clientId, clients.id))
       .orderBy(desc(events.date));
     
-    return allEvents;
+    const eventsWithCharacters = await Promise.all(
+      allEvents.map(async (event) => {
+        const characters = await db
+          .select({ characterId: eventCharacters.characterId })
+          .from(eventCharacters)
+          .where(eq(eventCharacters.eventId, event.id));
+        
+        return {
+          ...event,
+          characterIds: characters.map(c => c.characterId),
+        };
+      })
+    );
+    
+    return eventsWithCharacters;
   }
   
-  async getEvent(id: string): Promise<Event | undefined> {
+  async getEvent(id: string): Promise<any> {
     const [event] = await db.select().from(events).where(eq(events.id, id));
-    return event || undefined;
+    if (!event) return undefined;
+    
+    const characters = await db
+      .select({ characterId: eventCharacters.characterId })
+      .from(eventCharacters)
+      .where(eq(eventCharacters.eventId, id));
+    
+    return {
+      ...event,
+      characterIds: characters.map(c => c.characterId),
+    };
   }
   
   async createEvent(event: InsertEvent, characterIds?: string[]): Promise<Event> {
