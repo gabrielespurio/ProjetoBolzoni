@@ -63,10 +63,14 @@ export interface IStorage {
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>): Promise<Event>;
+  createEvent(event: InsertEvent, characterIds?: string[]): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[]): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
+  
+  // Event Characters
+  addEventCharacters(eventId: string, characterIds: string[]): Promise<void>;
+  removeEventCharacters(eventId: string): Promise<void>;
   
   // Inventory
   getAllInventoryItems(): Promise<InventoryItem[]>;
@@ -203,18 +207,44 @@ export class DatabaseStorage implements IStorage {
     return event || undefined;
   }
   
-  async createEvent(event: InsertEvent): Promise<Event> {
+  async createEvent(event: InsertEvent, characterIds?: string[]): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
+    
+    if (characterIds && characterIds.length > 0) {
+      await this.addEventCharacters(newEvent.id, characterIds);
+    }
+    
     return newEvent;
   }
   
-  async updateEvent(id: string, event: Partial<InsertEvent>): Promise<Event> {
+  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[]): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
+    
+    if (characterIds !== undefined) {
+      await this.removeEventCharacters(id);
+      if (characterIds.length > 0) {
+        await this.addEventCharacters(id, characterIds);
+      }
+    }
+    
     return updated;
   }
   
   async deleteEvent(id: string): Promise<void> {
+    await this.removeEventCharacters(id);
     await db.delete(events).where(eq(events.id, id));
+  }
+  
+  async addEventCharacters(eventId: string, characterIds: string[]): Promise<void> {
+    const values = characterIds.map(characterId => ({
+      eventId,
+      characterId,
+    }));
+    await db.insert(eventCharacters).values(values);
+  }
+  
+  async removeEventCharacters(eventId: string): Promise<void> {
+    await db.delete(eventCharacters).where(eq(eventCharacters.eventId, eventId));
   }
   
   async getUpcomingEvents(limit: number = 10): Promise<any[]> {

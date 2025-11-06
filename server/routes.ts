@@ -210,11 +210,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/events", authenticateToken, async (req, res) => {
     try {
+      const { characterIds, ...eventData } = req.body;
       const parsedData = insertEventSchema.parse({
-        ...req.body,
-        date: new Date(req.body.date),
+        ...eventData,
+        date: new Date(eventData.date),
       });
-      const event = await storage.createEvent(parsedData);
+      const event = await storage.createEvent(parsedData, characterIds);
       res.status(201).json(event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar evento" });
@@ -223,12 +224,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/events/:id", authenticateToken, async (req, res) => {
     try {
-      const bodyData = { ...req.body };
+      const { characterIds, ...eventData } = req.body;
+      const bodyData = { ...eventData };
       if (bodyData.date) {
         bodyData.date = new Date(bodyData.date);
       }
       const data = insertEventSchema.partial().parse(bodyData);
-      const event = await storage.updateEvent(req.params.id, data);
+      const event = await storage.updateEvent(req.params.id, data, characterIds);
       res.json(event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao atualizar evento" });
