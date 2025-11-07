@@ -124,6 +124,15 @@ export const employeeRoles = pgTable("employee_roles", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const eventExpenses = pgTable("event_expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").notNull().references(() => events.id),
+  title: text("title").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const eventsRelations = relations(events, ({ one, many }) => ({
   client: one(clients, {
     fields: [events.clientId],
@@ -135,6 +144,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   }),
   eventEmployees: many(eventEmployees),
   eventCharacters: many(eventCharacters),
+  eventExpenses: many(eventExpenses),
   transactions: many(financialTransactions),
   stockMovements: many(stockMovements),
 }));
@@ -177,6 +187,13 @@ export const eventCharactersRelations = relations(eventCharacters, ({ one }) => 
 
 export const eventCategoriesRelations = relations(eventCategories, ({ many }) => ({
   events: many(events),
+}));
+
+export const eventExpensesRelations = relations(eventExpenses, ({ one }) => ({
+  event: one(events, {
+    fields: [eventExpenses.eventId],
+    references: [events.id],
+  }),
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -237,6 +254,11 @@ export const insertEmployeeRoleSchema = createInsertSchema(employeeRoles).omit({
   createdAt: true,
 });
 
+export const insertEventExpenseSchema = createInsertSchema(eventExpenses).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -272,3 +294,6 @@ export type InsertEventCategory = z.infer<typeof insertEventCategorySchema>;
 
 export type EmployeeRole = typeof employeeRoles.$inferSelect;
 export type InsertEmployeeRole = z.infer<typeof insertEmployeeRoleSchema>;
+
+export type EventExpense = typeof eventExpenses.$inferSelect;
+export type InsertEventExpense = z.infer<typeof insertEventExpenseSchema>;

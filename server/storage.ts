@@ -12,6 +12,7 @@ import {
   eventCharacters,
   eventCategories,
   employeeRoles,
+  eventExpenses,
   type User,
   type InsertUser,
   type Client,
@@ -36,6 +37,8 @@ import {
   type InsertEventCategory,
   type EmployeeRole,
   type InsertEmployeeRole,
+  type EventExpense,
+  type InsertEventExpense,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -63,14 +66,19 @@ export interface IStorage {
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent, characterIds?: string[]): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[]): Promise<Event>;
+  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
   
   // Event Characters
   addEventCharacters(eventId: string, characterIds: string[]): Promise<void>;
   removeEventCharacters(eventId: string): Promise<void>;
+  
+  // Event Expenses
+  getEventExpenses(eventId: string): Promise<EventExpense[]>;
+  addEventExpenses(eventId: string, expenses: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<void>;
+  removeEventExpenses(eventId: string): Promise<void>;
   
   // Inventory
   getAllInventoryItems(): Promise<InventoryItem[]>;
@@ -226,23 +234,30 @@ export class DatabaseStorage implements IStorage {
       .from(eventCharacters)
       .where(eq(eventCharacters.eventId, id));
     
+    const expenses = await this.getEventExpenses(id);
+    
     return {
       ...event,
       characterIds: characters.map(c => c.characterId),
+      expenses,
     };
   }
   
-  async createEvent(event: InsertEvent, characterIds?: string[]): Promise<Event> {
+  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
     
     if (characterIds && characterIds.length > 0) {
       await this.addEventCharacters(newEvent.id, characterIds);
     }
     
+    if (expenses && expenses.length > 0) {
+      await this.addEventExpenses(newEvent.id, expenses);
+    }
+    
     return newEvent;
   }
   
-  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[]): Promise<Event> {
+  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
     
     if (characterIds !== undefined) {
@@ -252,11 +267,19 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    if (expenses !== undefined) {
+      await this.removeEventExpenses(id);
+      if (expenses.length > 0) {
+        await this.addEventExpenses(id, expenses);
+      }
+    }
+    
     return updated;
   }
   
   async deleteEvent(id: string): Promise<void> {
     await this.removeEventCharacters(id);
+    await this.removeEventExpenses(id);
     await db.delete(events).where(eq(events.id, id));
   }
   
@@ -521,6 +544,24 @@ export class DatabaseStorage implements IStorage {
   
   async deleteEmployeeRole(id: string): Promise<void> {
     await db.delete(employeeRoles).where(eq(employeeRoles.id, id));
+  }
+  
+  // Event Expenses
+  async getEventExpenses(eventId: string): Promise<EventExpense[]> {
+    return await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, eventId));
+  }
+  
+  async addEventExpenses(eventId: string, expenses: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<void> {
+    if (expenses.length === 0) return;
+    const values = expenses.map(expense => ({
+      ...expense,
+      eventId,
+    }));
+    await db.insert(eventExpenses).values(values);
+  }
+  
+  async removeEventExpenses(eventId: string): Promise<void> {
+    await db.delete(eventExpenses).where(eq(eventExpenses.eventId, eventId));
   }
 }
 

@@ -25,9 +25,20 @@ const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
   date: z.string(),
   characterIds: z.array(z.string()).optional(),
+  expenses: z.array(z.object({
+    title: z.string(),
+    amount: z.string(),
+    description: z.string().optional(),
+  })).optional(),
 });
 
 type EventForm = z.infer<typeof eventFormSchema>;
+
+type EventExpense = {
+  title: string;
+  amount: string;
+  description?: string;
+};
 
 interface EventDialogProps {
   open: boolean;
@@ -40,6 +51,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const isEdit = !!event;
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [expenses, setExpenses] = useState<EventExpense[]>([]);
+  const [newExpense, setNewExpense] = useState<EventExpense>({ title: "", amount: "", description: "" });
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -97,6 +110,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         characterIds: [],
       });
       setSelectedCharacters((event as any).characterIds || []);
+      setExpenses((event as any).expenses || []);
     } else if (open && !event) {
       form.reset({
         title: "",
@@ -110,25 +124,32 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         characterIds: [],
       });
       setSelectedCharacters([]);
+      setExpenses([]);
     }
   }, [open, event]);
 
   useEffect(() => {
-    if (characters.length > 0 && selectedCharacters.length > 0) {
-      const total = selectedCharacters.reduce((sum, characterId) => {
-        const character = characters.find(c => c.id === characterId);
-        const price = character?.salePrice ? parseFloat(character.salePrice) : 0;
-        return sum + price;
-      }, 0);
-      form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
-    }
-  }, [selectedCharacters, characters]);
+    const charactersTotal = selectedCharacters.reduce((sum, characterId) => {
+      const character = characters.find(c => c.id === characterId);
+      const price = character?.salePrice ? parseFloat(character.salePrice) : 0;
+      return sum + price;
+    }, 0);
+    
+    const expensesTotal = expenses.reduce((sum, expense) => {
+      const amount = expense.amount ? parseFloat(expense.amount) : 0;
+      return sum + amount;
+    }, 0);
+    
+    const total = charactersTotal + expensesTotal;
+    form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
+  }, [selectedCharacters, characters, expenses]);
 
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
       const payload = {
         ...data,
         characterIds: selectedCharacters,
+        expenses: expenses,
       };
       if (isEdit) {
         return apiRequest("PATCH", `/api/events/${event.id}`, payload);
@@ -170,6 +191,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     form.reset();
     setSelectedCharacters([]);
     setSearchTerm("");
+    setExpenses([]);
+    setNewExpense({ title: "", amount: "", description: "" });
     onClose();
   };
 
@@ -185,6 +208,23 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   const removeCharacter = useCallback((characterId: string) => {
     setSelectedCharacters(prev => prev.filter(id => id !== characterId));
+  }, []);
+  
+  const addExpense = useCallback(() => {
+    if (!newExpense.title || !newExpense.amount) {
+      toast({
+        title: "Erro",
+        description: "Título e valor são obrigatórios para adicionar uma despesa.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setExpenses(prev => [...prev, newExpense]);
+    setNewExpense({ title: "", amount: "", description: "" });
+  }, [newExpense, toast]);
+  
+  const removeExpense = useCallback((index: number) => {
+    setExpenses(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   return (
@@ -454,6 +494,93 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       Mostrando {filteredCharacters.length} de {characters.length} personagens
                     </p>
                   )}
+                </div>
+              </div>
+
+              <div>
+                <FormLabel>Despesas Adicionais</FormLabel>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Adicione despesas extras relacionadas a este evento
+                </p>
+                
+                {expenses.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    <p className="text-sm font-medium">
+                      Despesas cadastradas ({expenses.length}):
+                    </p>
+                    <div className="space-y-2">
+                      {expenses.map((expense, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start justify-between gap-2 bg-accent/50 p-3 rounded-md"
+                          data-testid={`expense-item-${index}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{expense.title}</p>
+                            <p className="text-sm text-primary font-semibold">
+                              R$ {parseFloat(expense.amount).toFixed(2)}
+                            </p>
+                            {expense.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{expense.description}</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExpense(index)}
+                            className="hover:bg-destructive/20 text-destructive rounded-full p-1.5 transition-colors"
+                            data-testid={`remove-expense-${index}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border rounded-md p-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Título da Despesa *</label>
+                      <Input
+                        value={newExpense.title}
+                        onChange={(e) => setNewExpense(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Ex: Transporte, Decoração"
+                        data-testid="input-expense-title"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Valor *</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={newExpense.amount}
+                        onChange={(e) => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
+                        placeholder="0.00"
+                        data-testid="input-expense-amount"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Descrição</label>
+                    <Input
+                      value={newExpense.description || ""}
+                      onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Breve descrição da despesa (opcional)"
+                      data-testid="input-expense-description"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addExpense}
+                    className="w-full"
+                    data-testid="button-add-expense"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Despesa
+                  </Button>
                 </div>
               </div>
             </div>
