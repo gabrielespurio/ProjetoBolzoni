@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertEventSchema, type Event, type Client, type Employee, type InventoryItem, type EventCategory } from "@shared/schema";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -56,10 +56,16 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     enabled: open,
   });
 
-  const characters = inventoryItems?.filter(item => item.type === "character") || [];
+  const characters = useMemo(() => 
+    inventoryItems?.filter(item => item.type === "character") || [],
+    [inventoryItems]
+  );
   
-  const filteredCharacters = characters.filter(character =>
-    character.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCharacters = useMemo(() =>
+    characters.filter(character =>
+      character.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [characters, searchTerm]
   );
 
   const form = useForm<EventForm>({
@@ -145,7 +151,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     onClose();
   };
 
-  const toggleCharacter = (characterId: string) => {
+  const toggleCharacter = useCallback((characterId: string) => {
     setSelectedCharacters(prev => {
       if (prev.includes(characterId)) {
         return prev.filter(id => id !== characterId);
@@ -153,11 +159,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         return [...prev, characterId];
       }
     });
-  };
+  }, []);
 
-  const removeCharacter = (characterId: string) => {
+  const removeCharacter = useCallback((characterId: string) => {
     setSelectedCharacters(prev => prev.filter(id => id !== characterId));
-  };
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -379,10 +385,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                           return (
                             <div
                               key={character.id}
-                              className={`flex items-center justify-between p-3 hover:bg-accent transition-colors cursor-pointer ${
+                              className={`flex items-center justify-between p-3 hover:bg-accent transition-colors ${
                                 isSelected ? 'bg-accent/50' : ''
                               }`}
-                              onClick={() => toggleCharacter(character.id)}
                             >
                               <div className="flex items-center space-x-3 flex-1">
                                 <Checkbox
@@ -390,24 +395,25 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                                   onCheckedChange={() => toggleCharacter(character.id)}
                                   data-testid={`checkbox-character-${character.id}`}
                                 />
-                                <div className="flex-1 min-w-0">
+                                <label 
+                                  htmlFor={`char-${character.id}`}
+                                  className="flex-1 min-w-0 cursor-pointer"
+                                  onClick={() => toggleCharacter(character.id)}
+                                >
                                   <p className="text-sm font-medium truncate">{character.name}</p>
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <span>R$ {parseFloat(character.salePrice || "0").toFixed(2)}</span>
                                     <span>•</span>
                                     <span>Qtd: {character.quantity}</span>
                                   </div>
-                                </div>
+                                </label>
                               </div>
                               {!isSelected && (
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleCharacter(character.id);
-                                  }}
+                                  onClick={() => toggleCharacter(character.id)}
                                   className="ml-2"
                                   data-testid={`add-character-${character.id}`}
                                 >
