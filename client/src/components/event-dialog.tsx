@@ -86,15 +86,15 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   }, [event]);
 
   useEffect(() => {
-    if (characters.length > 0) {
+    if (characters.length > 0 && selectedCharacters.length > 0) {
       const total = selectedCharacters.reduce((sum, characterId) => {
         const character = characters.find(c => c.id === characterId);
         const price = character?.salePrice ? parseFloat(character.salePrice) : 0;
         return sum + price;
       }, 0);
-      form.setValue("contractValue", total.toFixed(2));
+      form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
     }
-  }, [selectedCharacters, characters, form]);
+  }, [selectedCharacters, characters]);
 
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
