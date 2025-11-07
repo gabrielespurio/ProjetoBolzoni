@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Search, Plus } from "lucide-react";
 
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
@@ -39,6 +39,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const { toast } = useToast();
   const isEdit = !!event;
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -56,6 +57,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const characters = inventoryItems?.filter(item => item.type === "character") || [];
+  
+  const filteredCharacters = characters.filter(character =>
+    character.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const form = useForm<EventForm>({
     resolver: zodResolver(eventFormSchema),
@@ -136,6 +141,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const handleClose = () => {
     form.reset();
     setSelectedCharacters([]);
+    setSearchTerm("");
     onClose();
   };
 
@@ -293,19 +299,21 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               <div>
                 <FormLabel>Personagens</FormLabel>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Selecione os personagens que serão utilizados neste evento
+                  Busque e selecione os personagens que serão utilizados neste evento
                 </p>
                 
                 {selectedCharacters.length > 0 && (
                   <div className="mb-4 space-y-2">
-                    <p className="text-sm font-medium">Personagens selecionados:</p>
+                    <p className="text-sm font-medium">
+                      Personagens selecionados ({selectedCharacters.length}):
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {selectedCharacters.map(characterId => {
                         const character = characters.find(c => c.id === characterId);
                         return character ? (
                           <div
                             key={characterId}
-                            className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm"
+                            className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm"
                             data-testid={`selected-character-${characterId}`}
                           >
                             <span>{character.name}</span>
@@ -315,7 +323,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                             <button
                               type="button"
                               onClick={() => removeCharacter(characterId)}
-                              className="hover:bg-primary/20 rounded-full p-0.5"
+                              className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
                               data-testid={`remove-character-${characterId}`}
                             >
                               <X className="h-3 w-3" />
@@ -327,32 +335,96 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </div>
                 )}
 
-                <div className="border rounded-md p-4 max-h-48 overflow-y-auto">
-                  {characters.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Nenhum personagem cadastrado no estoque
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {characters.map(character => (
-                        <div
-                          key={character.id}
-                          className="flex items-center space-x-3 hover:bg-accent p-2 rounded-md"
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar personagens por nome..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                      data-testid="input-search-characters"
+                    />
+                  </div>
+
+                  <div className="border rounded-md max-h-64 overflow-y-auto">
+                    {characters.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Nenhum personagem cadastrado no estoque
+                        </p>
+                      </div>
+                    ) : filteredCharacters.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Search className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground">
+                          Nenhum personagem encontrado para "{searchTerm}"
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSearchTerm("")}
+                          className="mt-2"
+                          data-testid="button-clear-search"
                         >
-                          <Checkbox
-                            checked={selectedCharacters.includes(character.id)}
-                            onCheckedChange={() => toggleCharacter(character.id)}
-                            data-testid={`checkbox-character-${character.id}`}
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{character.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Valor: R$ {parseFloat(character.salePrice || "0").toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                          Limpar busca
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {filteredCharacters.map(character => {
+                          const isSelected = selectedCharacters.includes(character.id);
+                          return (
+                            <div
+                              key={character.id}
+                              className={`flex items-center justify-between p-3 hover:bg-accent transition-colors cursor-pointer ${
+                                isSelected ? 'bg-accent/50' : ''
+                              }`}
+                              onClick={() => toggleCharacter(character.id)}
+                            >
+                              <div className="flex items-center space-x-3 flex-1">
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleCharacter(character.id)}
+                                  data-testid={`checkbox-character-${character.id}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{character.name}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>R$ {parseFloat(character.salePrice || "0").toFixed(2)}</span>
+                                    <span>•</span>
+                                    <span>Qtd: {character.quantity}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {!isSelected && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleCharacter(character.id);
+                                  }}
+                                  className="ml-2"
+                                  data-testid={`add-character-${character.id}`}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {filteredCharacters.length > 0 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Mostrando {filteredCharacters.length} de {characters.length} personagens
+                    </p>
                   )}
                 </div>
               </div>
