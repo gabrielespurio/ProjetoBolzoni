@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
 import Employees from "@/pages/employees";
 import Events from "@/pages/events";
+import Agenda from "@/pages/agenda";
 import Financial from "@/pages/financial";
 import Inventory from "@/pages/inventory";
 import Purchases from "@/pages/purchases";
@@ -48,6 +49,7 @@ function Router() {
                   <Route path="/clients" component={Clients} />
                   <Route path="/employees" component={Employees} />
                   <Route path="/events" component={Events} />
+                  <Route path="/agenda" component={Agenda} />
                   <Route path="/financial" component={Financial} />
                   <Route path="/inventory" component={Inventory} />
                   <Route path="/purchases" component={Purchases} />

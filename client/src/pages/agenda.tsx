@@ -1,0 +1,326 @@
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { type Event } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addMonths,
+  addWeeks,
+  addYears,
+  format,
+  isSameMonth,
+  isSameDay,
+  parseISO,
+  startOfYear,
+  endOfYear,
+  eachDayOfInterval,
+  eachWeekOfInterval,
+  eachMonthOfInterval,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+export default function Agenda() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<"month" | "week" | "year">("month");
+
+  const { data: events = [], isLoading } = useQuery<Event[]>({
+    queryKey: ["/api/events"],
+  });
+
+  const eventsWithDates = useMemo(() => {
+    return events.map(event => ({
+      ...event,
+      dateObj: parseISO(event.date as any),
+    }));
+  }, [events]);
+
+  const getEventsForDate = (date: Date) => {
+    return eventsWithDates.filter(event =>
+      isSameDay(event.dateObj, date)
+    );
+  };
+
+  const navigateDate = (direction: "prev" | "next") => {
+    if (view === "month") {
+      setCurrentDate(prev => addMonths(prev, direction === "next" ? 1 : -1));
+    } else if (view === "week") {
+      setCurrentDate(prev => addWeeks(prev, direction === "next" ? 1 : -1));
+    } else {
+      setCurrentDate(prev => addYears(prev, direction === "next" ? 1 : -1));
+    }
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-agenda-title">Agenda</h1>
+          <p className="text-muted-foreground">
+            Visualize seus eventos organizados por semana, mês ou ano
+          </p>
+        </div>
+        <Button onClick={goToToday} variant="outline" data-testid="button-today">
+          <CalendarIcon className="h-4 w-4 mr-2" />
+          Hoje
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => navigateDate("prev")}
+                data-testid="button-prev-period"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="min-w-[200px] text-center">
+                <CardTitle data-testid="text-current-period">
+                  {view === "month" && format(currentDate, "MMMM yyyy", { locale: ptBR })}
+                  {view === "week" && `Semana de ${format(startOfWeek(currentDate, { locale: ptBR }), "dd MMM", { locale: ptBR })} - ${format(endOfWeek(currentDate, { locale: ptBR }), "dd MMM yyyy", { locale: ptBR })}`}
+                  {view === "year" && format(currentDate, "yyyy")}
+                </CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => navigateDate("next")}
+                data-testid="button-next-period"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <CardDescription>
+            {eventsWithDates.length} eventos cadastrados
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+            <TabsList className="grid w-full grid-cols-3" data-testid="tabs-view-selector">
+              <TabsTrigger value="month" data-testid="tab-month">Mês</TabsTrigger>
+              <TabsTrigger value="week" data-testid="tab-week">Semana</TabsTrigger>
+              <TabsTrigger value="year" data-testid="tab-year">Ano</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="month" className="mt-6">
+              <MonthView currentDate={currentDate} getEventsForDate={getEventsForDate} />
+            </TabsContent>
+
+            <TabsContent value="week" className="mt-6">
+              <WeekView currentDate={currentDate} getEventsForDate={getEventsForDate} />
+            </TabsContent>
+
+            <TabsContent value="year" className="mt-6">
+              <YearView currentDate={currentDate} eventsWithDates={eventsWithDates} />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MonthView({ currentDate, getEventsForDate }: any) {
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const calendarStart = startOfWeek(monthStart, { locale: ptBR });
+  const calendarEnd = endOfWeek(monthEnd, { locale: ptBR });
+
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-7 gap-2 mb-2">
+        {weekDays.map(day => (
+          <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((day, idx) => {
+          const dayEvents = getEventsForDate(day);
+          const isCurrentMonth = isSameMonth(day, currentDate);
+          const isToday = isSameDay(day, new Date());
+
+          return (
+            <div
+              key={idx}
+              className={`min-h-[100px] border rounded-lg p-2 ${
+                !isCurrentMonth ? "bg-muted/50 text-muted-foreground" : "bg-background"
+              } ${isToday ? "ring-2 ring-primary" : ""}`}
+              data-testid={`day-${format(day, "yyyy-MM-dd")}`}
+            >
+              <div className={`text-sm font-medium mb-1 ${isToday ? "text-primary" : ""}`}>
+                {format(day, "d")}
+              </div>
+              <div className="space-y-1">
+                {dayEvents.slice(0, 3).map((event: any) => (
+                  <div
+                    key={event.id}
+                    className="text-xs p-1 rounded bg-primary/10 text-primary truncate"
+                    title={event.title}
+                    data-testid={`event-${event.id}`}
+                  >
+                    {format(event.dateObj, "HH:mm")} {event.title}
+                  </div>
+                ))}
+                {dayEvents.length > 3 && (
+                  <div className="text-xs text-muted-foreground">
+                    +{dayEvents.length - 3} mais
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WeekView({ currentDate, getEventsForDate }: any) {
+  const weekStart = startOfWeek(currentDate, { locale: ptBR });
+  const weekEnd = endOfWeek(currentDate, { locale: ptBR });
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[800px]">
+        <div className="grid grid-cols-8 gap-2 mb-2">
+          <div className="text-sm font-medium text-muted-foreground p-2">Hora</div>
+          {days.map(day => {
+            const isToday = isSameDay(day, new Date());
+            return (
+              <div
+                key={day.toISOString()}
+                className={`text-center p-2 rounded ${isToday ? "bg-primary text-primary-foreground" : ""}`}
+              >
+                <div className="text-sm font-medium">
+                  {format(day, "EEE", { locale: ptBR })}
+                </div>
+                <div className="text-xs">{format(day, "dd/MM")}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="border rounded-lg overflow-hidden">
+          {hours.map(hour => (
+            <div key={hour} className="grid grid-cols-8 gap-2 border-b last:border-b-0">
+              <div className="text-xs text-muted-foreground p-2 border-r">
+                {String(hour).padStart(2, "0")}:00
+              </div>
+              {days.map(day => {
+                const dayEvents = getEventsForDate(day).filter((event: any) => {
+                  const eventHour = event.dateObj.getHours();
+                  return eventHour === hour;
+                });
+
+                return (
+                  <div key={day.toISOString()} className="p-1 min-h-[60px] border-r last:border-r-0">
+                    {dayEvents.map((event: any) => (
+                      <div
+                        key={event.id}
+                        className="text-xs p-1 rounded bg-primary/10 text-primary mb-1"
+                        title={`${event.title} - ${event.location}`}
+                        data-testid={`event-${event.id}`}
+                      >
+                        <div className="font-medium truncate">{event.title}</div>
+                        <div className="text-[10px] opacity-75 truncate">{event.location}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function YearView({ currentDate, eventsWithDates }: any) {
+  const yearStart = startOfYear(currentDate);
+  const yearEnd = endOfYear(currentDate);
+  const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
+
+  const getEventsForMonth = (month: Date) => {
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+    return eventsWithDates.filter((event: any) =>
+      event.dateObj >= monthStart && event.dateObj <= monthEnd
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {months.map(month => {
+        const monthEvents = getEventsForMonth(month);
+        const monthStart = startOfMonth(month);
+        const monthEnd = endOfMonth(month);
+        const calendarStart = startOfWeek(monthStart, { locale: ptBR });
+        const calendarEnd = endOfWeek(monthEnd, { locale: ptBR });
+        const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+        return (
+          <Card key={month.toISOString()} className="overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {format(month, "MMMM", { locale: ptBR })}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {monthEvents.length} eventos
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-3">
+              <div className="grid grid-cols-7 gap-1">
+                {["D", "S", "T", "Q", "Q", "S", "S"].map((day, idx) => (
+                  <div key={idx} className="text-center text-[10px] font-medium text-muted-foreground">
+                    {day}
+                  </div>
+                ))}
+                {days.map((day, idx) => {
+                  const isCurrentMonth = isSameMonth(day, month);
+                  const hasEvents = eventsWithDates.some((event: any) => isSameDay(event.dateObj, day));
+                  const isToday = isSameDay(day, new Date());
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`text-center text-xs p-1 rounded ${
+                        !isCurrentMonth ? "text-muted-foreground/50" : ""
+                      } ${isToday ? "bg-primary text-primary-foreground" : ""} ${
+                        hasEvents && !isToday ? "bg-primary/20 font-medium" : ""
+                      }`}
+                    >
+                      {format(day, "d")}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
