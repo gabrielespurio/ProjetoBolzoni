@@ -128,21 +128,25 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     }
   }, [open, event]);
 
-  useEffect(() => {
-    const charactersTotal = selectedCharacters.reduce((sum, characterId) => {
+  const charactersTotal = useMemo(() => {
+    return selectedCharacters.reduce((sum, characterId) => {
       const character = characters.find(c => c.id === characterId);
       const price = character?.salePrice ? parseFloat(character.salePrice) : 0;
       return sum + price;
     }, 0);
-    
-    const expensesTotal = expenses.reduce((sum, expense) => {
+  }, [selectedCharacters, characters]);
+  
+  const expensesTotal = useMemo(() => {
+    return expenses.reduce((sum, expense) => {
       const amount = expense.amount ? parseFloat(expense.amount) : 0;
       return sum + amount;
     }, 0);
-    
+  }, [expenses]);
+
+  useEffect(() => {
     const total = charactersTotal + expensesTotal;
     form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
-  }, [selectedCharacters, characters, expenses]);
+  }, [charactersTotal, expensesTotal, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
@@ -321,19 +325,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     <FormLabel>Local *</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder="Endereço do evento" data-testid="input-event-location" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="contractValue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor do Contrato *</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-event-value" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -598,6 +589,51 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 </FormItem>
               )}
             />
+
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold mb-4">Resumo do Contrato</h3>
+              <div className="space-y-3 bg-muted/50 rounded-lg p-4">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Personagens ({selectedCharacters.length})</span>
+                  <span className="font-medium">R$ {charactersTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Despesas ({expenses.length})</span>
+                  <span className="font-medium">R$ {expensesTotal.toFixed(2)}</span>
+                </div>
+                <div className="border-t pt-3 mt-3">
+                  <FormField
+                    control={form.control}
+                    name="contractValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex justify-between items-center gap-4">
+                          <FormLabel className="text-base font-semibold mb-0">Valor Total do Contrato *</FormLabel>
+                          <FormControl>
+                            <div className="relative w-48">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium">R$</span>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="0.00" 
+                                className="pl-10 text-right font-semibold text-lg"
+                                data-testid="input-event-value" 
+                              />
+                            </div>
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  O valor é calculado automaticamente, mas você pode ajustá-lo se necessário.
+                </p>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
                 Cancelar
