@@ -71,25 +71,47 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const form = useForm<EventForm>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
-      title: event?.title || "",
-      clientId: event?.clientId || "",
-      categoryId: event?.categoryId || undefined,
-      date: event?.date ? new Date(event.date).toISOString().slice(0, 16) : "",
-      location: event?.location || "",
-      contractValue: event?.contractValue || "0",
-      status: event?.status || "scheduled",
-      notes: event?.notes || "",
+      title: "",
+      clientId: "",
+      categoryId: undefined,
+      date: "",
+      location: "",
+      contractValue: "0",
+      status: "scheduled",
+      notes: "",
       characterIds: [],
     },
   });
 
   useEffect(() => {
-    if (event && (event as any).characterIds) {
-      setSelectedCharacters((event as any).characterIds);
-    } else {
+    if (open && event) {
+      form.reset({
+        title: event.title || "",
+        clientId: event.clientId || "",
+        categoryId: event.categoryId || undefined,
+        date: event.date ? new Date(event.date).toISOString().slice(0, 16) : "",
+        location: event.location || "",
+        contractValue: event.contractValue || "0",
+        status: event.status || "scheduled",
+        notes: event.notes || "",
+        characterIds: [],
+      });
+      setSelectedCharacters((event as any).characterIds || []);
+    } else if (open && !event) {
+      form.reset({
+        title: "",
+        clientId: "",
+        categoryId: undefined,
+        date: "",
+        location: "",
+        contractValue: "0",
+        status: "scheduled",
+        notes: "",
+        characterIds: [],
+      });
       setSelectedCharacters([]);
     }
-  }, [event]);
+  }, [open, event]);
 
   useEffect(() => {
     if (characters.length > 0 && selectedCharacters.length > 0) {
