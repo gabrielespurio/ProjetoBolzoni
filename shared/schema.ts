@@ -49,6 +49,7 @@ export const events = pgTable("events", {
   cidade: text("cidade"),
   bairro: text("bairro"),
   rua: text("rua"),
+  kmDistance: decimal("km_distance", { precision: 10, scale: 2 }),
   contractValue: decimal("contract_value", { precision: 10, scale: 2 }).notNull(),
   status: eventStatusEnum("status").notNull().default("scheduled"),
   notes: text("notes"),

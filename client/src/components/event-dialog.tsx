@@ -29,6 +29,7 @@ const eventFormSchema = insertEventSchema.extend({
   cidade: z.string().optional(),
   bairro: z.string().optional(),
   rua: z.string().optional(),
+  kmDistance: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
   expenses: z.array(z.object({
     title: z.string(),
@@ -60,9 +61,28 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [newExpense, setNewExpense] = useState<EventExpense>({ title: "", amount: "", description: "" });
   const [loadingCep, setLoadingCep] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [kmDistance, setKmDistance] = useState<string>("");
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+    enabled: open,
+  });
+
+  const { data: kmSetting } = useQuery({
+    queryKey: ["/api/settings/system", "km_value"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/settings/system/km_value", {
+          headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` },
+        });
+        if (response.status === 404) {
+          return null;
+        }
+        return response.json();
+      } catch {
+        return null;
+      }
+    },
     enabled: open,
   });
 
@@ -100,6 +120,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       cidade: "",
       bairro: "",
       rua: "",
+      kmDistance: "",
       contractValue: "0",
       status: "scheduled",
       notes: "",
@@ -119,6 +140,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cidade: (event as any).cidade || "",
         bairro: (event as any).bairro || "",
         rua: (event as any).rua || "",
+        kmDistance: (event as any).kmDistance || "",
         contractValue: event.contractValue || "0",
         status: event.status || "scheduled",
         notes: event.notes || "",
@@ -126,6 +148,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       });
       setSelectedCharacters((event as any).characterIds || []);
       setExpenses((event as any).expenses || []);
+      setKmDistance((event as any).kmDistance || "");
     } else if (open && !event) {
       form.reset({
         title: "",
@@ -137,6 +160,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cidade: "",
         bairro: "",
         rua: "",
+        kmDistance: "",
         contractValue: "0",
         status: "scheduled",
         notes: "",
@@ -144,6 +168,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       });
       setSelectedCharacters([]);
       setExpenses([]);
+      setKmDistance("");
     }
   }, [open, event]);
 
@@ -162,10 +187,16 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     }, 0);
   }, [expenses]);
 
+  const kmTotal = useMemo(() => {
+    const km = kmDistance ? parseFloat(kmDistance) : 0;
+    const kmValue = kmSetting?.value ? parseFloat(kmSetting.value) : 0;
+    return km * kmValue;
+  }, [kmDistance, kmSetting]);
+
   useEffect(() => {
-    const total = charactersTotal + expensesTotal;
+    const total = charactersTotal + expensesTotal + kmTotal;
     form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
-  }, [charactersTotal, expensesTotal, form]);
+  }, [charactersTotal, expensesTotal, kmTotal, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
@@ -217,6 +248,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     setExpenses([]);
     setNewExpense({ title: "", amount: "", description: "" });
     setShowExpenseForm(false);
+    setKmDistance("");
     onClose();
   };
 
@@ -485,6 +517,29 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </FormItem>
                 )}
               />
+              <div>
+                <FormLabel>Distância (km)</FormLabel>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Informe a distância em quilômetros do trajeto
+                </p>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={kmDistance}
+                  onChange={(e) => {
+                    setKmDistance(e.target.value);
+                    form.setValue("kmDistance", e.target.value);
+                  }}
+                  placeholder="0.00"
+                  data-testid="input-km-distance"
+                />
+                {kmTotal > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Valor calculado: R$ {kmTotal.toFixed(2)} ({kmDistance} km × R$ {kmSetting?.value || "0.00"}/km)
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -762,6 +817,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Despesas ({expenses.length})</span>
                   <span className="font-medium">R$ {expensesTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Deslocamento ({kmDistance || 0} km)</span>
+                  <span className="font-medium">R$ {kmTotal.toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-3 mt-3">
                   <FormField
