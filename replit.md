@@ -94,8 +94,15 @@ The system manages nine core entities:
 - Purchases can reference inventory items
 - Stock movements track inventory changes
 
-**Recent Changes (October 2025):**
+**Recent Changes (November 2025):**
 - **Database Connection:** Successfully configured external Neon PostgreSQL database connection. The system is now connected to the production Neon database instance hosted at sa-east-1 (South America region) via secure SSL connection with channel binding.
+- **Agenda Module:** Implemented comprehensive agenda/calendar module with three visualization modes:
+  - Monthly view: Full calendar grid showing all events for the month with event counts per day
+  - Weekly view: Detailed hour-by-hour schedule showing events organized by day and time
+  - Yearly view: Overview of all 12 months with event indicators and counts
+  - Automatic integration with events - new events appear in agenda automatically based on their date/time
+  - Navigation controls to move between periods (prev/next) and quick "Today" button
+  - Event search improvements: Added real-time search with autocomplete for character selection in event forms to handle large inventories efficiently
 - Added event category field to events table - events can now be categorized using categories configured in the settings module
 - Database schema updated with categoryId field (nullable) in events table referencing event_categories
 - Event creation/edit form enhanced with category selector pulling from settings
