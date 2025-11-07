@@ -237,6 +237,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       ...data,
       date: new Date(data.date),
       categoryId: data.categoryId || undefined,
+      kmDistance: data.kmDistance && data.kmDistance !== "" ? data.kmDistance : null,
     };
     mutation.mutate(eventData as any);
   };
