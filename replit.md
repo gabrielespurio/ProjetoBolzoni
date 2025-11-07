@@ -107,6 +107,12 @@ The system manages nine core entities:
 - Database schema updated with categoryId field (nullable) in events table referencing event_categories
 - Event creation/edit form enhanced with category selector pulling from settings
 - Updated color scheme: Primary button color changed to match sidebar color (#6C5584), background color changed to white (#FFFFFF) for a cleaner, more cohesive design
+- **Enhanced Address Management (November 2025):** Improved event location system with granular address fields:
+  - Replaced single "location" field with structured address components (CEP, Estado, Cidade, Bairro, Rua)
+  - Integrated ViaCEP API for automatic address completion when CEP is entered
+  - Real-time address validation with user feedback via toast notifications
+  - Updated event forms to display organized address sections with proper field grouping
+  - Event listing now shows formatted addresses combining all address components
 
 ### External Dependencies
 
@@ -119,6 +125,9 @@ The system manages nine core entities:
 - Lucide React - Icon library
 - date-fns - Date formatting and manipulation with Portuguese (Brazil) locale support
 - Recharts - Chart components for data visualization
+
+**Third-Party APIs:**
+- ViaCEP - Free Brazilian postal code (CEP) lookup API for automatic address completion
 
 **Development Tools:**
 - Replit-specific plugins for development environment integration
