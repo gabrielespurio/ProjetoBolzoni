@@ -29,7 +29,9 @@ export default function Events() {
   const filteredEvents = events?.filter((event) =>
     event.title.toLowerCase().includes(search.toLowerCase()) ||
     event.clientName?.toLowerCase().includes(search.toLowerCase()) ||
-    event.location.toLowerCase().includes(search.toLowerCase())
+    event.cidade?.toLowerCase().includes(search.toLowerCase()) ||
+    event.bairro?.toLowerCase().includes(search.toLowerCase()) ||
+    event.rua?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleEdit = (event: EventWithDetails) => {
@@ -136,7 +138,11 @@ export default function Events() {
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
-                        <span>{event.location}</span>
+                        <span>
+                          {[event.rua, event.bairro, event.cidade, event.estado]
+                            .filter(Boolean)
+                            .join(", ") || "Endereço não informado"}
+                        </span>
                       </div>
                     </div>
                     {event.characterNames && event.characterNames.length > 0 && (

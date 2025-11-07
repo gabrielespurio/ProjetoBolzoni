@@ -24,6 +24,11 @@ import { Loader2, X, Search, Plus } from "lucide-react";
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
   date: z.string(),
+  cep: z.string().optional(),
+  estado: z.string().optional(),
+  cidade: z.string().optional(),
+  bairro: z.string().optional(),
+  rua: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
   expenses: z.array(z.object({
     title: z.string(),
@@ -53,6 +58,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [expenses, setExpenses] = useState<EventExpense[]>([]);
   const [newExpense, setNewExpense] = useState<EventExpense>({ title: "", amount: "", description: "" });
+  const [loadingCep, setLoadingCep] = useState(false);
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -88,7 +94,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       clientId: "",
       categoryId: undefined,
       date: "",
-      location: "",
+      cep: "",
+      estado: "",
+      cidade: "",
+      bairro: "",
+      rua: "",
       contractValue: "0",
       status: "scheduled",
       notes: "",
@@ -103,7 +113,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         clientId: event.clientId || "",
         categoryId: event.categoryId || undefined,
         date: event.date ? new Date(event.date).toISOString().slice(0, 16) : "",
-        location: event.location || "",
+        cep: (event as any).cep || "",
+        estado: (event as any).estado || "",
+        cidade: (event as any).cidade || "",
+        bairro: (event as any).bairro || "",
+        rua: (event as any).rua || "",
         contractValue: event.contractValue || "0",
         status: event.status || "scheduled",
         notes: event.notes || "",
@@ -117,7 +131,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         clientId: "",
         categoryId: undefined,
         date: "",
-        location: "",
+        cep: "",
+        estado: "",
+        cidade: "",
+        bairro: "",
+        rua: "",
         contractValue: "0",
         status: "scheduled",
         notes: "",
@@ -231,6 +249,44 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     setExpenses(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  const handleCepChange = useCallback(async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    form.setValue('cep', cleanCep);
+    
+    if (cleanCep.length === 8) {
+      setLoadingCep(true);
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+        
+        if (!data.erro) {
+          form.setValue('estado', data.uf || '');
+          form.setValue('cidade', data.localidade || '');
+          form.setValue('bairro', data.bairro || '');
+          form.setValue('rua', data.logradouro || '');
+          toast({
+            title: "CEP encontrado",
+            description: "Endereço preenchido automaticamente!",
+          });
+        } else {
+          toast({
+            title: "CEP não encontrado",
+            description: "Verifique o CEP digitado e tente novamente.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Erro ao buscar CEP",
+          description: "Não foi possível consultar o CEP. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingCep(false);
+      }
+    }
+  }, [form, toast]);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -317,19 +373,93 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Local *</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Endereço do evento" data-testid="input-event-location" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Endereço do Evento</h3>
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="cep"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            {...field} 
+                            placeholder="00000-000" 
+                            maxLength={8}
+                            onChange={(e) => handleCepChange(e.target.value)}
+                            data-testid="input-event-cep" 
+                          />
+                          {loadingCep && (
+                            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="estado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="UF" maxLength={2} data-testid="input-event-estado" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="cidade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cidade</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Nome da cidade" data-testid="input-event-cidade" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="bairro"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bairro</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Nome do bairro" data-testid="input-event-bairro" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="rua"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rua</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Nome da rua" data-testid="input-event-rua" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="status"
