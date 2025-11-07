@@ -59,6 +59,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [expenses, setExpenses] = useState<EventExpense[]>([]);
   const [newExpense, setNewExpense] = useState<EventExpense>({ title: "", amount: "", description: "" });
   const [loadingCep, setLoadingCep] = useState(false);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -215,6 +216,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     setSearchTerm("");
     setExpenses([]);
     setNewExpense({ title: "", amount: "", description: "" });
+    setShowExpenseForm(false);
     onClose();
   };
 
@@ -243,6 +245,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     }
     setExpenses(prev => [...prev, newExpense]);
     setNewExpense({ title: "", amount: "", description: "" });
+    setShowExpenseForm(false);
   }, [newExpense, toast]);
   
   const removeExpense = useCallback((index: number) => {
@@ -659,50 +662,79 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </div>
                 )}
 
-                <div className="border rounded-md p-4 space-y-3">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium mb-1.5 block">Título da Despesa *</label>
-                      <Input
-                        value={newExpense.title}
-                        onChange={(e) => setNewExpense(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Ex: Transporte, Decoração"
-                        data-testid="input-expense-title"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1.5 block">Valor *</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={newExpense.amount}
-                        onChange={(e) => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
-                        placeholder="0.00"
-                        data-testid="input-expense-amount"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Descrição</label>
-                    <Input
-                      value={newExpense.description || ""}
-                      onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Breve descrição da despesa (opcional)"
-                      data-testid="input-expense-description"
-                    />
-                  </div>
+                {!showExpenseForm ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={addExpense}
+                    onClick={() => setShowExpenseForm(true)}
                     className="w-full"
-                    data-testid="button-add-expense"
+                    data-testid="button-show-expense-form"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Despesa
                   </Button>
-                </div>
+                ) : (
+                  <div className="border rounded-md p-4 space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Título da Despesa *</label>
+                        <Input
+                          value={newExpense.title}
+                          onChange={(e) => setNewExpense(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Ex: Transporte, Decoração"
+                          data-testid="input-expense-title"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Valor *</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={newExpense.amount}
+                          onChange={(e) => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
+                          placeholder="0.00"
+                          data-testid="input-expense-amount"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Descrição</label>
+                      <Input
+                        value={newExpense.description || ""}
+                        onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Breve descrição da despesa (opcional)"
+                        data-testid="input-expense-description"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowExpenseForm(false);
+                          setNewExpense({ title: "", amount: "", description: "" });
+                        }}
+                        className="flex-1"
+                        data-testid="button-cancel-expense"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={addExpense}
+                        className="flex-1"
+                        data-testid="button-add-expense"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
