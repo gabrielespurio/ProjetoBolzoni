@@ -65,11 +65,11 @@ export default function Settings() {
     },
   });
 
-  useState(() => {
+  useEffect(() => {
     if (kmSetting?.value) {
       setKmValue(kmSetting.value);
     }
-  });
+  }, [kmSetting]);
 
   const saveKmMutation = useMutation({
     mutationFn: async (value: string) => {
@@ -236,6 +236,7 @@ export default function Settings() {
           <TabsList>
             <TabsTrigger value="categories" className="flex-1" data-testid="tab-categories">Categorias de Eventos</TabsTrigger>
             <TabsTrigger value="roles" className="flex-1" data-testid="tab-roles">Funções de Funcionários</TabsTrigger>
+            <TabsTrigger value="km-value" className="flex-1" data-testid="tab-km-value">Valor por km</TabsTrigger>
           </TabsList>
 
           <TabsContent value="categories" className="mt-6">
@@ -362,6 +363,64 @@ export default function Settings() {
                     </TableBody>
                   </Table>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="km-value" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Valor por Quilômetro</CardTitle>
+                <CardDescription>
+                  Configure o valor cobrado por quilômetro para eventos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 max-w-md">
+                  <div className="space-y-2">
+                    <label htmlFor="km-value" className="text-sm font-medium">
+                      Valor por km (R$)
+                    </label>
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                          R$
+                        </span>
+                        <Input
+                          id="km-value"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={kmValue}
+                          onChange={(e) => setKmValue(e.target.value)}
+                          placeholder="0.00"
+                          className="pl-10"
+                          data-testid="input-km-value"
+                        />
+                      </div>
+                      <Button
+                        onClick={() => saveKmMutation.mutate(kmValue)}
+                        disabled={saveKmMutation.isPending || !kmValue}
+                        data-testid="button-save-km-value"
+                      >
+                        {saveKmMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Salvar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Este valor será usado para calcular o custo de deslocamento nos eventos
+                    </p>
+                  </div>
+
+                  {kmSetting?.value && (
+                    <div className="bg-muted/50 rounded-lg p-4 border">
+                      <p className="text-sm font-medium mb-1">Valor atual configurado</p>
+                      <p className="text-2xl font-bold text-primary">
+                        R$ {parseFloat(kmSetting.value).toFixed(2)} <span className="text-sm font-normal text-muted-foreground">/ km</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
