@@ -13,6 +13,7 @@ import {
   eventCategories,
   employeeRoles,
   eventExpenses,
+  systemSettings,
   type User,
   type InsertUser,
   type Client,
@@ -39,6 +40,8 @@ import {
   type InsertEmployeeRole,
   type EventExpense,
   type InsertEventExpense,
+  type SystemSetting,
+  type InsertSystemSetting,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -121,6 +124,11 @@ export interface IStorage {
   createEmployeeRole(role: InsertEmployeeRole): Promise<EmployeeRole>;
   updateEmployeeRole(id: string, role: Partial<InsertEmployeeRole>): Promise<EmployeeRole>;
   deleteEmployeeRole(id: string): Promise<void>;
+  
+  // Settings - System Settings
+  getSystemSetting(key: string): Promise<SystemSetting | undefined>;
+  upsertSystemSetting(key: string, value: string): Promise<SystemSetting>;
+  getAllSystemSettings(): Promise<SystemSetting[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -570,6 +578,34 @@ export class DatabaseStorage implements IStorage {
   
   async removeEventExpenses(eventId: string): Promise<void> {
     await db.delete(eventExpenses).where(eq(eventExpenses.eventId, eventId));
+  }
+  
+  // System Settings
+  async getSystemSetting(key: string): Promise<SystemSetting | undefined> {
+    const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+    return setting || undefined;
+  }
+  
+  async upsertSystemSetting(key: string, value: string): Promise<SystemSetting> {
+    const existing = await this.getSystemSetting(key);
+    if (existing) {
+      const [updated] = await db
+        .update(systemSettings)
+        .set({ value, updatedAt: new Date() })
+        .where(eq(systemSettings.key, key))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(systemSettings)
+        .values({ key, value })
+        .returning();
+      return created;
+    }
+  }
+  
+  async getAllSystemSettings(): Promise<SystemSetting[]> {
+    return await db.select().from(systemSettings);
   }
 }
 

@@ -469,6 +469,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message || "Erro ao deletar função" });
     }
   });
+  
+  // System Settings
+  app.get("/api/settings/system", authenticateToken, async (req, res) => {
+    try {
+      const settings = await storage.getAllSystemSettings();
+      res.json(settings);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar configurações" });
+    }
+  });
+  
+  app.get("/api/settings/system/:key", authenticateToken, async (req, res) => {
+    try {
+      const setting = await storage.getSystemSetting(req.params.key);
+      if (!setting) {
+        return res.status(404).json({ message: "Configuração não encontrada" });
+      }
+      res.json(setting);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar configuração" });
+    }
+  });
+  
+  app.post("/api/settings/system", authenticateToken, async (req, res) => {
+    try {
+      const { key, value } = req.body;
+      if (!key || !value) {
+        return res.status(400).json({ message: "Key e value são obrigatórios" });
+      }
+      const setting = await storage.upsertSystemSetting(key, value);
+      res.json(setting);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao salvar configuração" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

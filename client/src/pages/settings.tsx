@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +35,7 @@ export default function Settings() {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<EventCategory | null>(null);
   const [editingRole, setEditingRole] = useState<EmployeeRole | null>(null);
+  const [kmValue, setKmValue] = useState<string>("");
 
   // Event Categories
   const { data: categories = [], isLoading: loadingCategories } = useQuery<EventCategory[]>({
@@ -44,6 +45,50 @@ export default function Settings() {
   // Employee Roles
   const { data: roles = [], isLoading: loadingRoles } = useQuery<EmployeeRole[]>({
     queryKey: ["/api/settings/employee-roles"],
+  });
+
+  // System Settings - Kilometragem
+  const { data: kmSetting } = useQuery({
+    queryKey: ["/api/settings/system", "km_value"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/settings/system/km_value", {
+          headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` },
+        });
+        if (response.status === 404) {
+          return null;
+        }
+        return response.json();
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  useState(() => {
+    if (kmSetting?.value) {
+      setKmValue(kmSetting.value);
+    }
+  });
+
+  const saveKmMutation = useMutation({
+    mutationFn: async (value: string) => {
+      return apiRequest("POST", "/api/settings/system", { key: "km_value", value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/system", "km_value"] });
+      toast({
+        title: "Configuração salva",
+        description: "Valor de quilometragem atualizado com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar configuração.",
+        variant: "destructive",
+      });
+    },
   });
 
   const categoryForm = useForm<CategoryForm>({
