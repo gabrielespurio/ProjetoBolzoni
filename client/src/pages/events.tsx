@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, MapPin, Calendar as CalendarIcon } from "lucide-react";
 import { EventDialog } from "@/components/event-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Event } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface EventWithDetails extends Event {
   clientName?: string;
@@ -21,9 +24,30 @@ export default function Events() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventWithDetails | null>(null);
+  const { toast } = useToast();
 
   const { data: events, isLoading } = useQuery<EventWithDetails[]>({
     queryKey: ["/api/events"],
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return await apiRequest("PATCH", `/api/events/${id}`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      toast({
+        title: "Status atualizado",
+        description: "O status do evento foi atualizado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao atualizar status",
+        description: "Ocorreu um erro ao atualizar o status do evento.",
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredEvents = events?.filter((event) =>
@@ -49,18 +73,61 @@ export default function Events() {
     setSelectedEvent(null);
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      scheduled: "default",
-      completed: "secondary",
-      cancelled: "destructive",
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      scheduled: "bg-blue-500 text-white",
+      completed: "bg-green-500 text-white",
+      cancelled: "bg-red-500 text-white",
     };
+    return colors[status] || "bg-gray-500 text-white";
+  };
+
+  const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       scheduled: "Agendado",
       completed: "Concluído",
       cancelled: "Cancelado",
     };
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
+    return labels[status] || status;
+  };
+
+  const renderStatusSelect = (event: EventWithDetails) => {
+    return (
+      <Select
+        value={event.status}
+        onValueChange={(newStatus) => {
+          updateStatusMutation.mutate({ id: event.id, status: newStatus });
+        }}
+      >
+        <SelectTrigger
+          className={`w-[140px] ${getStatusColor(event.status)} border-0 font-semibold`}
+          onClick={(e) => e.stopPropagation()}
+          data-testid={`select-status-${event.id}`}
+        >
+          <SelectValue>{getStatusLabel(event.status)}</SelectValue>
+        </SelectTrigger>
+        <SelectContent onClick={(e) => e.stopPropagation()}>
+          <SelectItem value="scheduled" data-testid="status-scheduled">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              Agendado
+            </div>
+          </SelectItem>
+          <SelectItem value="completed" data-testid="status-completed">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500" />
+              Concluído
+            </div>
+          </SelectItem>
+          <SelectItem value="cancelled" data-testid="status-cancelled">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500" />
+              Cancelado
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    );
   };
 
   const formatCurrency = (value: string) => {
@@ -128,7 +195,7 @@ export default function Events() {
                             {formatCurrency(event.contractValue)}
                           </p>
                         </div>
-                        {getStatusBadge(event.status)}
+                        {renderStatusSelect(event)}
                       </div>
                     </div>
                     <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
