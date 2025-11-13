@@ -113,6 +113,7 @@ export const eventEmployees = pgTable("event_employees", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").notNull().references(() => events.id),
   employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  cacheValue: decimal("cache_value", { precision: 10, scale: 2 }).notNull().default("0"),
 });
 
 export const eventCharacters = pgTable("event_characters", {

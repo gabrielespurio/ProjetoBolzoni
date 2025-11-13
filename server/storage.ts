@@ -69,8 +69,8 @@ export interface IStorage {
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event>;
+  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
   
@@ -82,6 +82,10 @@ export interface IStorage {
   getEventExpenses(eventId: string): Promise<EventExpense[]>;
   addEventExpenses(eventId: string, expenses: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<void>;
   removeEventExpenses(eventId: string): Promise<void>;
+  
+  // Event Employees
+  addEventEmployees(eventId: string, employees: Array<{employeeId: string, cacheValue: string}>): Promise<void>;
+  removeEventEmployees(eventId: string): Promise<void>;
   
   // Inventory
   getAllInventoryItems(): Promise<InventoryItem[]>;

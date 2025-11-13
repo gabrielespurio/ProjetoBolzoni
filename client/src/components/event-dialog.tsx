@@ -68,6 +68,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [loadingCep, setLoadingCep] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [kmDistance, setKmDistance] = useState<string>("");
+  const [selectedEmployees, setSelectedEmployees] = useState<Array<{ employeeId: string; cacheValue: string }>>([]);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
+  const [newEmployee, setNewEmployee] = useState<{ employeeId: string; cacheValue: string }>({ employeeId: "", cacheValue: "" });
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -99,6 +102,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   const { data: inventoryItems } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
+    enabled: open,
+  });
+
+  const { data: employees } = useQuery<Employee[]>({
+    queryKey: ["/api/employees"],
     enabled: open,
   });
 
@@ -167,6 +175,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       setSelectedCharacters((event as any).characterIds || []);
       setExpenses((event as any).expenses || []);
       setKmDistance((event as any).kmDistance || "");
+      setSelectedEmployees((event as any).eventEmployees?.map((ee: any) => ({
+        employeeId: ee.employeeId,
+        cacheValue: ee.cacheValue || "0"
+      })) || []);
     } else if (open && !event) {
       form.reset({
         title: "",
@@ -193,6 +205,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       setSelectedCharacters([]);
       setExpenses([]);
       setKmDistance("");
+      setSelectedEmployees([]);
     }
   }, [open, event]);
 
@@ -217,10 +230,17 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     return km * kmValue;
   }, [kmDistance, kmSetting]);
 
+  const employeeCacheTotal = useMemo(() => {
+    return selectedEmployees.reduce((sum, emp) => {
+      const cacheValue = emp.cacheValue ? parseFloat(emp.cacheValue) : 0;
+      return sum + cacheValue;
+    }, 0);
+  }, [selectedEmployees]);
+
   useEffect(() => {
-    const total = charactersTotal + expensesTotal + kmTotal;
+    const total = charactersTotal + expensesTotal + kmTotal + employeeCacheTotal;
     form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
-  }, [charactersTotal, expensesTotal, kmTotal, form]);
+  }, [charactersTotal, expensesTotal, kmTotal, employeeCacheTotal, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
@@ -228,6 +248,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         ...data,
         characterIds: selectedCharacters,
         expenses: expenses,
+        eventEmployees: selectedEmployees.map(emp => ({
+          employeeId: emp.employeeId,
+          cacheValue: emp.cacheValue,
+        })),
       };
       if (isEdit) {
         return apiRequest("PATCH", `/api/events/${event.id}`, payload);
@@ -280,6 +304,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     setNewExpense({ title: "", amount: "", description: "" });
     setShowExpenseForm(false);
     setKmDistance("");
+    setSelectedEmployees([]);
+    setNewEmployee({ employeeId: "", cacheValue: "" });
+    setShowEmployeeForm(false);
     onClose();
   };
 
@@ -313,6 +340,24 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   
   const removeExpense = useCallback((index: number) => {
     setExpenses(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const addEmployee = useCallback(() => {
+    if (!newEmployee.employeeId || !newEmployee.cacheValue) {
+      toast({
+        title: "Erro",
+        description: "Selecione um funcionário e informe o valor do cachê.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSelectedEmployees(prev => [...prev, newEmployee]);
+    setNewEmployee({ employeeId: "", cacheValue: "" });
+    setShowEmployeeForm(false);
+  }, [newEmployee, toast]);
+
+  const removeEmployee = useCallback((index: number) => {
+    setSelectedEmployees(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleCepChange = useCallback(async (cep: string) => {
@@ -941,6 +986,129 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               )}
             />
 
+            <div className="space-y-4">
+              <div>
+                <FormLabel>Funcionários</FormLabel>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Selecione os funcionários que trabalharão neste evento e informe o cachê
+                </p>
+                
+                {selectedEmployees.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    <p className="text-sm font-medium">
+                      Funcionários selecionados ({selectedEmployees.length}):
+                    </p>
+                    <div className="space-y-2">
+                      {selectedEmployees.map((emp, index) => {
+                        const employee = employees?.find(e => e.id === emp.employeeId);
+                        return employee ? (
+                          <div
+                            key={index}
+                            className="flex items-start justify-between gap-2 bg-accent/50 p-3 rounded-md"
+                            data-testid={`employee-item-${index}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">{employee.name}</p>
+                              <p className="text-xs text-muted-foreground">{employee.role}</p>
+                              <p className="text-sm text-primary font-semibold mt-1">
+                                Cachê: R$ {parseFloat(emp.cacheValue).toFixed(2)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeEmployee(index)}
+                              className="hover:bg-destructive/20 text-destructive rounded-full p-1.5 transition-colors"
+                              data-testid={`remove-employee-${index}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {!showEmployeeForm ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowEmployeeForm(true)}
+                    className="w-full"
+                    data-testid="button-show-employee-form"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Funcionário
+                  </Button>
+                ) : (
+                  <div className="border rounded-md p-4 space-y-3">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Funcionário *</label>
+                        <Select
+                          value={newEmployee.employeeId}
+                          onValueChange={(value) => setNewEmployee(prev => ({ ...prev, employeeId: value }))}
+                        >
+                          <SelectTrigger data-testid="select-employee">
+                            <SelectValue placeholder="Selecione o funcionário" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {employees?.filter(e => !selectedEmployees.some(se => se.employeeId === e.id)).map(employee => (
+                              <SelectItem key={employee.id} value={employee.id}>
+                                {employee.name} - {employee.role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Valor do Cachê *</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={newEmployee.cacheValue}
+                            onChange={(e) => setNewEmployee(prev => ({ ...prev, cacheValue: e.target.value }))}
+                            placeholder="0.00"
+                            className="pl-10"
+                            data-testid="input-employee-cache"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowEmployeeForm(false);
+                          setNewEmployee({ employeeId: "", cacheValue: "" });
+                        }}
+                        className="flex-1"
+                        data-testid="button-cancel-employee"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={addEmployee}
+                        className="flex-1"
+                        data-testid="button-add-employee"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold mb-4">Resumo do Contrato</h3>
               <div className="space-y-3 bg-muted/50 rounded-lg p-4">
@@ -951,6 +1119,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Despesas ({expenses.length})</span>
                   <span className="font-medium">R$ {expensesTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Funcionários ({selectedEmployees.length})</span>
+                  <span className="font-medium">R$ {employeeCacheTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Deslocamento ({kmDistance || 0} km)</span>
