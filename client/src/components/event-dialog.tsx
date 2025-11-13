@@ -238,9 +238,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   }, [selectedEmployees]);
 
   useEffect(() => {
-    const total = charactersTotal + expensesTotal + kmTotal + employeeCacheTotal;
+    const total = charactersTotal + expensesTotal + kmTotal;
     form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
-  }, [charactersTotal, expensesTotal, kmTotal, employeeCacheTotal, form]);
+  }, [charactersTotal, expensesTotal, kmTotal, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
@@ -1122,8 +1122,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Funcionários ({selectedEmployees.length})</span>
-                  <span className="font-medium">R$ {employeeCacheTotal.toFixed(2)}</span>
+                  <span className="font-medium text-orange-600 dark:text-orange-400">R$ {employeeCacheTotal.toFixed(2)}</span>
                 </div>
+                <p className="text-xs text-muted-foreground italic">
+                  * Custo interno da empresa (não incluído no valor do contrato)
+                </p>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Deslocamento ({kmDistance || 0} km)</span>
                   <span className="font-medium">R$ {kmTotal.toFixed(2)}</span>
