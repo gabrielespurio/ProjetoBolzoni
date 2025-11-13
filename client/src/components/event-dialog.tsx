@@ -29,7 +29,13 @@ const eventFormSchema = insertEventSchema.extend({
   cidade: z.string().optional(),
   bairro: z.string().optional(),
   rua: z.string().optional(),
+  venueName: z.string().optional(),
+  venueNumber: z.string().optional(),
   kmDistance: z.string().optional(),
+  ticketValue: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  paymentDate: z.string().optional(),
+  package: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
   expenses: z.array(z.object({
     title: z.string(),
@@ -120,8 +126,14 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       cidade: "",
       bairro: "",
       rua: "",
+      venueName: "",
+      venueNumber: "",
       kmDistance: "",
       contractValue: "0",
+      ticketValue: "",
+      paymentMethod: "",
+      paymentDate: "",
+      package: "",
       status: "scheduled",
       notes: "",
       characterIds: [],
@@ -140,8 +152,14 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cidade: (event as any).cidade || "",
         bairro: (event as any).bairro || "",
         rua: (event as any).rua || "",
+        venueName: (event as any).venueName || "",
+        venueNumber: (event as any).venueNumber || "",
         kmDistance: (event as any).kmDistance || "",
         contractValue: event.contractValue || "0",
+        ticketValue: (event as any).ticketValue || "",
+        paymentMethod: (event as any).paymentMethod || "",
+        paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
+        package: (event as any).package || "",
         status: event.status || "scheduled",
         notes: event.notes || "",
         characterIds: [],
@@ -160,8 +178,14 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cidade: "",
         bairro: "",
         rua: "",
+        venueName: "",
+        venueNumber: "",
         kmDistance: "",
         contractValue: "0",
+        ticketValue: "",
+        paymentMethod: "",
+        paymentDate: "",
+        package: "",
         status: "scheduled",
         notes: "",
         characterIds: [],
@@ -238,6 +262,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       date: new Date(data.date),
       categoryId: data.categoryId || undefined,
       kmDistance: data.kmDistance && data.kmDistance !== "" ? data.kmDistance : null,
+      ticketValue: data.ticketValue && data.ticketValue !== "" ? data.ticketValue : null,
+      paymentDate: data.paymentDate && data.paymentDate !== "" ? new Date(data.paymentDate) : null,
+      paymentMethod: data.paymentMethod || null,
+      package: data.package || null,
+      venueName: data.venueName || null,
+      venueNumber: data.venueNumber || null,
     };
     mutation.mutate(eventData as any);
   };
@@ -493,6 +523,34 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   )}
                 />
               </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="venueName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome do Local</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Nome do local do evento" data-testid="input-event-venue-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="venueNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número do Local</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Número" data-testid="input-event-venue-number" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -541,6 +599,86 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Informações de Pagamento</h3>
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="ticketValue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor da Entrada</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            className="pl-10"
+                            data-testid="input-event-ticket-value" 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma de Pagamento</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || undefined}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-payment-method">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="pix">PIX</SelectItem>
+                          <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                          <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                          <SelectItem value="transferencia">Transferência</SelectItem>
+                          <SelectItem value="boleto">Boleto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="paymentDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data do Pagamento</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" data-testid="input-payment-date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="package"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pacote</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Descreva o pacote contratado" data-testid="input-event-package" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="space-y-4">
