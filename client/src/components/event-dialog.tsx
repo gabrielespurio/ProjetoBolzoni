@@ -576,7 +576,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </FormItem>
                 )}
               />
-              <div>
+              <div className="space-y-2">
                 <FormLabel>Distância (km)</FormLabel>
                 <Input
                   type="number"
