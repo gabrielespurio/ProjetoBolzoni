@@ -1,9 +1,11 @@
-import * as pdfMake from "pdfmake/build/pdfmake";
-import * as pdfFonts from "pdfmake/build/vfs_fonts";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-(pdfMake as any).vfs = (pdfFonts as any).pdfMake.vfs;
+if (pdfMake && pdfFonts) {
+  (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
+}
 
 interface ContractData {
   eventTitle: string;
