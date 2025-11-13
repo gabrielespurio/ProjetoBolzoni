@@ -6,6 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, Search, MapPin, Calendar as CalendarIcon } from "lucide-react";
 import { EventDialog } from "@/components/event-dialog";
 import { format } from "date-fns";
@@ -24,6 +34,8 @@ export default function Events() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventWithDetails | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; status: string } | null>(null);
   const { toast } = useToast();
 
   const { data: events, isLoading } = useQuery<EventWithDetails[]>({
@@ -78,6 +90,7 @@ export default function Events() {
       scheduled: "bg-blue-500 text-white",
       completed: "bg-green-500 text-white",
       cancelled: "bg-red-500 text-white",
+      deleted: "bg-gray-500 text-white",
     };
     return colors[status] || "bg-gray-500 text-white";
   };
@@ -87,17 +100,38 @@ export default function Events() {
       scheduled: "Agendado",
       completed: "Concluído",
       cancelled: "Cancelado",
+      deleted: "Excluído",
     };
     return labels[status] || status;
+  };
+
+  const handleStatusChange = (id: string, newStatus: string) => {
+    if (newStatus === "deleted") {
+      setPendingDelete({ id, status: newStatus });
+      setDeleteConfirmOpen(true);
+    } else {
+      updateStatusMutation.mutate({ id, status: newStatus });
+    }
+  };
+
+  const confirmDelete = () => {
+    if (pendingDelete) {
+      updateStatusMutation.mutate({ id: pendingDelete.id, status: pendingDelete.status });
+    }
+    setDeleteConfirmOpen(false);
+    setPendingDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setPendingDelete(null);
   };
 
   const renderStatusSelect = (event: EventWithDetails) => {
     return (
       <Select
         value={event.status}
-        onValueChange={(newStatus) => {
-          updateStatusMutation.mutate({ id: event.id, status: newStatus });
-        }}
+        onValueChange={(newStatus) => handleStatusChange(event.id, newStatus)}
       >
         <SelectTrigger
           className={`w-[140px] ${getStatusColor(event.status)} border-0 font-semibold`}
@@ -123,6 +157,12 @@ export default function Events() {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500" />
               Cancelado
+            </div>
+          </SelectItem>
+          <SelectItem value="deleted" data-testid="status-deleted">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-gray-500" />
+              Excluído
             </div>
           </SelectItem>
         </SelectContent>
@@ -240,6 +280,29 @@ export default function Events() {
         onClose={handleClose}
         event={selectedEvent}
       />
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent data-testid="alert-delete-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja marcar este evento como excluído? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete} data-testid="button-cancel-delete">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

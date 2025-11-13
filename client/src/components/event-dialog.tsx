@@ -615,6 +615,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                         <SelectItem value="scheduled">Agendado</SelectItem>
                         <SelectItem value="completed">Concluído</SelectItem>
                         <SelectItem value="cancelled">Cancelado</SelectItem>
+                        <SelectItem value="deleted">Excluído</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

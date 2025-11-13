@@ -5,7 +5,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["admin", "employee"]);
-export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled"]);
+export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "payable"]);
 export const inventoryTypeEnum = pgEnum("inventory_type", ["consumable", "character"]);
 
