@@ -641,8 +641,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                           <SelectItem value="pix">PIX</SelectItem>
                           <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
                           <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                          <SelectItem value="transferencia">Transferência</SelectItem>
-                          <SelectItem value="boleto">Boleto</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
