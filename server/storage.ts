@@ -259,7 +259,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
   
-  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event> {
+  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
     
     if (characterIds && characterIds.length > 0) {
@@ -270,10 +270,14 @@ export class DatabaseStorage implements IStorage {
       await this.addEventExpenses(newEvent.id, expenses);
     }
     
+    if (eventEmployees && eventEmployees.length > 0) {
+      await this.addEventEmployees(newEvent.id, eventEmployees);
+    }
+    
     return newEvent;
   }
   
-  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<Event> {
+  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
     
     if (characterIds !== undefined) {
@@ -290,12 +294,20 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
+    if (eventEmployees !== undefined) {
+      await this.removeEventEmployees(id);
+      if (eventEmployees.length > 0) {
+        await this.addEventEmployees(id, eventEmployees);
+      }
+    }
+    
     return updated;
   }
   
   async deleteEvent(id: string): Promise<void> {
     await this.removeEventCharacters(id);
     await this.removeEventExpenses(id);
+    await this.removeEventEmployees(id);
     await db.delete(events).where(eq(events.id, id));
   }
   
@@ -582,6 +594,21 @@ export class DatabaseStorage implements IStorage {
   
   async removeEventExpenses(eventId: string): Promise<void> {
     await db.delete(eventExpenses).where(eq(eventExpenses.eventId, eventId));
+  }
+  
+  // Event Employees
+  async addEventEmployees(eventId: string, employees: Array<{employeeId: string, cacheValue: string}>): Promise<void> {
+    if (employees.length === 0) return;
+    const values = employees.map(emp => ({
+      eventId,
+      employeeId: emp.employeeId,
+      cacheValue: emp.cacheValue,
+    }));
+    await db.insert(eventEmployees).values(values);
+  }
+  
+  async removeEventEmployees(eventId: string): Promise<void> {
+    await db.delete(eventEmployees).where(eq(eventEmployees.eventId, eventId));
   }
   
   // System Settings
