@@ -578,9 +578,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               />
               <div>
                 <FormLabel>Distância (km)</FormLabel>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Informe a distância em quilômetros do trajeto
-                </p>
                 <Input
                   type="number"
                   step="0.01"
