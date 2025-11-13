@@ -44,7 +44,7 @@ import {
   type InsertSystemSetting,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, ne } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -222,6 +222,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(events)
       .leftJoin(clients, eq(events.clientId, clients.id))
+      .where(ne(events.status, "deleted"))
       .orderBy(desc(events.date));
     
     const eventsWithCharacters = await Promise.all(
