@@ -214,7 +214,10 @@ export class DatabaseStorage implements IStorage {
         cidade: events.cidade,
         bairro: events.bairro,
         rua: events.rua,
+        venueName: events.venueName,
+        venueNumber: events.venueNumber,
         contractValue: events.contractValue,
+        package: events.package,
         status: events.status,
         notes: events.notes,
         createdAt: events.createdAt,
@@ -228,13 +231,18 @@ export class DatabaseStorage implements IStorage {
     const eventsWithCharacters = await Promise.all(
       allEvents.map(async (event) => {
         const characters = await db
-          .select({ characterId: eventCharacters.characterId })
+          .select({ 
+            characterId: eventCharacters.characterId,
+            characterName: inventoryItems.name
+          })
           .from(eventCharacters)
+          .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
           .where(eq(eventCharacters.eventId, event.id));
         
         return {
           ...event,
           characterIds: characters.map(c => c.characterId),
+          characterNames: characters.map(c => c.characterName).filter(Boolean),
         };
       })
     );

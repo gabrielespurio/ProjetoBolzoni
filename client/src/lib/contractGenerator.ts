@@ -3,7 +3,7 @@ import * as pdfFonts from "pdfmake/build/vfs_fonts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-(pdfMake as any).addVirtualFileSystem(pdfFonts);
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake.vfs;
 
 interface ContractData {
   eventTitle: string;

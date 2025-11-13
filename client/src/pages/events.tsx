@@ -16,13 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, MapPin, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Search, MapPin, Calendar as CalendarIcon, FileText } from "lucide-react";
 import { EventDialog } from "@/components/event-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Event } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { generateContract } from "@/lib/contractGenerator";
 
 interface EventWithDetails extends Event {
   clientName?: string;
@@ -177,6 +178,49 @@ export default function Events() {
     }).format(parseFloat(value));
   };
 
+  const handleGenerateContract = async (event: EventWithDetails, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const location = [
+        event.venueName,
+        event.rua,
+        event.bairro,
+        event.cidade,
+        event.estado
+      ].filter(Boolean).join(", ") || "Local não informado";
+
+      const eventDate = new Date(event.date);
+      const eventTime = format(eventDate, "HH:mm");
+
+      generateContract({
+        eventTitle: event.title,
+        clientName: event.clientName || "Cliente não informado",
+        eventDate: eventDate,
+        eventTime: eventTime,
+        location: location,
+        contractValue: formatCurrency(event.contractValue),
+        package: event.package || "Pacote Colors",
+        characters: event.characterNames && event.characterNames.length > 0 
+          ? event.characterNames 
+          : ["Personagem não especificado"],
+        estimatedChildren: 15,
+      });
+
+      toast({
+        title: "Contrato gerado",
+        description: "O contrato foi gerado com sucesso!",
+      });
+    } catch (error) {
+      console.error("Erro ao gerar contrato:", error);
+      toast({
+        title: "Erro ao gerar contrato",
+        description: "Ocorreu um erro ao gerar o contrato. Verifique o console para mais detalhes.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -235,7 +279,19 @@ export default function Events() {
                             {formatCurrency(event.contractValue)}
                           </p>
                         </div>
-                        {renderStatusSelect(event)}
+                        <div className="flex flex-col gap-2">
+                          {renderStatusSelect(event)}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => handleGenerateContract(event, e)}
+                            className="w-[140px]"
+                            data-testid={`button-generate-contract-${event.id}`}
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Gerar Contrato
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
