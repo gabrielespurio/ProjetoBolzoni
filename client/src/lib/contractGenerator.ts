@@ -145,8 +145,7 @@ export function generateContract(data: ContractData) {
           { text: 'Parágrafo único. ', bold: true },
           'O CONTRATANTE compromete-se a informar alterações no número de crianças com no mínimo 10 (dez) dias de antecedência. O não cumprimento poderá comprometer a qualidade dos serviços prestados.'
         ],
-        margin: [0, 0, 0, 20],
-        pageBreak: 'after'
+        margin: [0, 0, 0, 20]
       },
       {
         text: 'DAS OBRIGAÇÕES DO CONTRATANTE',
@@ -271,8 +270,7 @@ export function generateContract(data: ContractData) {
           { text: 'Parágrafo 4º. ', bold: true },
           'Caso o CONTRATANTE tenha contratado dois personagens e deseje reduzir para um, o valor originalmente contratado será mantido integralmente.'
         ],
-        margin: [0, 0, 0, 20],
-        pageBreak: 'after'
+        margin: [0, 0, 0, 20]
       },
       {
         text: 'REMARCAÇÃO E CANCELAMENTO',
