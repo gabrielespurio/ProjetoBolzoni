@@ -72,6 +72,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [selectedEmployees, setSelectedEmployees] = useState<Array<{ employeeId: string; cacheValue: string }>>([]);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [newEmployee, setNewEmployee] = useState<{ employeeId: string; cacheValue: string }>({ employeeId: "", cacheValue: "" });
+  const [feePercentage, setFeePercentage] = useState<number>(0);
+  const [calculatingFee, setCalculatingFee] = useState(false);
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -151,6 +153,48 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const paymentMethod = form.watch("paymentMethod");
+  const cardType = form.watch("cardType");
+  const installments = form.watch("installments");
+
+  // Calcular taxa automaticamente
+  useEffect(() => {
+    const calculateFee = async () => {
+      if (!paymentMethod || (paymentMethod !== "cartao_credito" && paymentMethod !== "cartao_debito")) {
+        setFeePercentage(0);
+        return;
+      }
+
+      setCalculatingFee(true);
+      try {
+        const response = await fetch("/api/settings/fees/calculate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            paymentMethod,
+            cardType,
+            installments,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setFeePercentage(data.feePercentage || 0);
+        } else {
+          setFeePercentage(0);
+        }
+      } catch (error) {
+        console.error("Erro ao calcular taxa:", error);
+        setFeePercentage(0);
+      } finally {
+        setCalculatingFee(false);
+      }
+    };
+
+    calculateFee();
+  }, [paymentMethod, cardType, installments]);
 
   useEffect(() => {
     if (open && event) {
@@ -1161,6 +1205,37 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   <span className="text-muted-foreground">Deslocamento ({kmDistance || 0} km)</span>
                   <span className="font-medium">R$ {kmTotal.toFixed(2)}</span>
                 </div>
+                {(() => {
+                  const contractValue = parseFloat(form.watch("contractValue") || "0");
+                  const ticketValue = parseFloat(form.watch("ticketValue") || "0");
+                  const remainingValue = Math.max(0, contractValue - ticketValue);
+                  const feeAmount = remainingValue * (feePercentage / 100);
+                  const totalWithFees = contractValue + feeAmount;
+
+                  if (feePercentage > 0 && (paymentMethod === "cartao_credito" || paymentMethod === "cartao_debito") && remainingValue > 0) {
+                    return (
+                      <>
+                        <div className="border-t pt-3 mt-3 space-y-2">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">
+                              Taxa de pagamento ({feePercentage.toFixed(2)}%)
+                              {calculatingFee && <span className="ml-2 text-xs">(calculando...)</span>}
+                            </span>
+                            <span className="font-medium text-orange-600 dark:text-orange-400">R$ {feeAmount.toFixed(2)}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground italic">
+                            * Taxa aplicada sobre o valor restante (R$ {remainingValue.toFixed(2)})
+                          </p>
+                          <div className="flex justify-between items-center text-sm pt-2 border-t">
+                            <span className="font-semibold">Valor Total com Taxas</span>
+                            <span className="font-semibold text-lg">R$ {totalWithFees.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="border-t pt-3 mt-3">
                   <FormField
                     control={form.control}

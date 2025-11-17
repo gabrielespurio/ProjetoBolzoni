@@ -687,6 +687,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Tier preferencial da Sumup
+  app.get("/api/settings/fees/sumup-tier", authenticateToken, async (req, res) => {
+    try {
+      const tier = await storage.getSystemSetting("sumup_tier");
+      res.json({ tier: tier?.value || "0" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar tier" });
+    }
+  });
+
+  app.post("/api/settings/fees/sumup-tier", authenticateToken, async (req, res) => {
+    try {
+      const { tier } = req.body;
+      if (tier === undefined || tier === null) {
+        return res.status(400).json({ message: "Tier é obrigatório" });
+      }
+      
+      await storage.upsertSystemSetting("sumup_tier", String(tier));
+      res.json({ success: true, tier });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao salvar tier" });
+    }
+  });
+
+  // Calcular taxa aplicável
+  app.post("/api/settings/fees/calculate", authenticateToken, async (req, res) => {
+    try {
+      const { paymentMethod, cardType, installments } = req.body;
+      
+      if (!paymentMethod) {
+        return res.status(400).json({ message: "Método de pagamento é obrigatório" });
+      }
+
+      // Se não for cartão, não há taxa
+      if (paymentMethod !== "cartao_credito" && paymentMethod !== "cartao_debito") {
+        return res.json({ feePercentage: 0, feeType: "none" });
+      }
+
+      // Buscar tipo de taxa configurado
+      const feeTypeSetting = await storage.getSystemSetting("fee_type");
+      const feeType = feeTypeSetting?.value || "sumup";
+
+      if (feeType === "custom") {
+        // Usar taxas personalizadas
+        const customFeesSetting = await storage.getSystemSetting("custom_fees");
+        if (!customFeesSetting) {
+          return res.status(404).json({ message: "Taxas personalizadas não configuradas" });
+        }
+
+        const customFees = JSON.parse(customFeesSetting.value);
+        
+        if (paymentMethod === "cartao_debito") {
+          const feeStr = customFees.debit || "0%";
+          const feePercentage = parseFloat(feeStr.replace("%", "").replace(",", "."));
+          return res.json({ feePercentage, feeType: "custom_debit" });
+        } else {
+          // Crédito
+          const feeStr = installments && parseInt(installments) > 1 
+            ? customFees.creditInstallments 
+            : customFees.creditCash;
+          const feePercentage = parseFloat((feeStr || "0%").replace("%", "").replace(",", "."));
+          return res.json({ feePercentage, feeType: installments && parseInt(installments) > 1 ? "custom_credit_installments" : "custom_credit_cash" });
+        }
+      } else {
+        // Usar taxas da Sumup
+        const tierSetting = await storage.getSystemSetting("sumup_tier");
+        const tierIndex = tierSetting?.value ? parseInt(tierSetting.value) : 0;
+
+        // Dados padrão das taxas Sumup (mesmo do endpoint sumup)
+        const sumupTiers = [
+          {
+            debit: { visa_master: "1,05%", others: "2,55%" },
+            credit_cash: { d1: "4,49%" },
+            credit_installments: { d30: "5,49%" }
+          },
+          {
+            debit: { visa_master: "1,05%", others: "2,55%" },
+            credit_cash: { d1: "4,09%" },
+            credit_installments: { d30: "5,09%" }
+          },
+          {
+            debit: { visa_master: "1,05%", others: "2,55%" },
+            credit_cash: { d1: "3,79%" },
+            credit_installments: { d30: "4,79%" }
+          },
+          {
+            debit: { visa_master: "1,05%", others: "2,55%" },
+            credit_cash: { d1: "3,49%" },
+            credit_installments: { d30: "4,49%" }
+          }
+        ];
+
+        const tier = sumupTiers[tierIndex] || sumupTiers[0];
+
+        if (paymentMethod === "cartao_debito") {
+          // Usar visa_master como padrão se cardType não for fornecido
+          const effectiveCardType = cardType || "visa_master";
+          const feeStr = effectiveCardType === "visa_master" ? tier.debit.visa_master : tier.debit.others;
+          const feePercentage = parseFloat(feeStr.replace("%", "").replace(",", "."));
+          return res.json({ feePercentage, feeType: `sumup_debit_${effectiveCardType}` });
+        } else {
+          // Crédito - considerar como parcelado se installments > 1, caso contrário à vista
+          const numInstallments = installments ? parseInt(String(installments)) : 1;
+          const isInstallment = numInstallments > 1;
+          const feeStr = isInstallment ? tier.credit_installments.d30 : tier.credit_cash.d1;
+          const feePercentage = parseFloat(feeStr.replace("%", "").replace(",", "."));
+          return res.json({ 
+            feePercentage, 
+            feeType: isInstallment ? "sumup_credit_installments" : "sumup_credit_cash" 
+          });
+        }
+      }
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao calcular taxa" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
