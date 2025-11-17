@@ -646,7 +646,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Informações de Pagamento</h3>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="ticketValue"
@@ -701,27 +701,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       <FormLabel>Data do Pagamento</FormLabel>
                       <FormControl>
                         <Input {...field} type="date" data-testid="input-payment-date" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="installments"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantidade de Parcelas</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field}
-                          value={field.value ?? ""}
-                          type="number" 
-                          min="1"
-                          max="12"
-                          placeholder="1" 
-                          data-testid="input-installments" 
-                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1183,6 +1162,51 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 <p className="text-xs text-muted-foreground mt-2">
                   O valor é calculado automaticamente, mas você pode ajustá-lo se necessário.
                 </p>
+                
+                <div className="border-t pt-3 mt-3">
+                  <FormField
+                    control={form.control}
+                    name="installments"
+                    render={({ field }) => {
+                      const contractValue = parseFloat(form.watch("contractValue") || "0");
+                      const ticketValue = parseFloat(form.watch("ticketValue") || "0");
+                      const installments = parseInt(field.value?.toString() || "1");
+                      const remainingValue = contractValue - ticketValue;
+                      const installmentValue = installments > 0 ? remainingValue / installments : 0;
+                      
+                      return (
+                        <FormItem>
+                          <div className="flex justify-between items-center gap-4">
+                            <FormLabel className="text-sm font-medium mb-0">Quantidade de Parcelas</FormLabel>
+                            <FormControl>
+                              <div className="w-32">
+                                <Input 
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  type="number" 
+                                  min="1"
+                                  max="12"
+                                  placeholder="1" 
+                                  className="text-right"
+                                  data-testid="input-installments" 
+                                />
+                              </div>
+                            </FormControl>
+                          </div>
+                          {installments > 0 && remainingValue > 0 && (
+                            <div className="mt-2 text-sm text-muted-foreground">
+                              <p>Valor restante: R$ {remainingValue.toFixed(2)}</p>
+                              <p className="font-medium text-foreground">
+                                {installments}x de R$ {installmentValue.toFixed(2)}
+                              </p>
+                            </div>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
