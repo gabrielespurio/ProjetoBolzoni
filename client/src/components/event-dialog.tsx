@@ -646,7 +646,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Informações de Pagamento</h3>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <FormField
                   control={form.control}
                   name="ticketValue"
@@ -701,6 +701,27 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       <FormLabel>Data do Pagamento</FormLabel>
                       <FormControl>
                         <Input {...field} type="date" data-testid="input-payment-date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="installments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade de Parcelas</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          value={field.value ?? ""}
+                          type="number" 
+                          min="1"
+                          max="12"
+                          placeholder="1" 
+                          data-testid="input-installments" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
