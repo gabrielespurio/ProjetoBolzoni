@@ -9,11 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon, RefreshCw, ExternalLink } from "lucide-react";
 import type { EventCategory, EmployeeRole } from "@shared/schema";
 
 const categorySchema = z.object({
@@ -28,6 +30,385 @@ const roleSchema = z.object({
 
 type CategoryForm = z.infer<typeof categorySchema>;
 type RoleForm = z.infer<typeof roleSchema>;
+
+// Tipos para Taxas e Juros
+interface SumupFeeData {
+  lastUpdated: string;
+  pix: { fee: string; description: string };
+  tiers: Array<{
+    name: string;
+    range: string;
+    debit: { visa_master: string; others: string };
+    credit_cash: { d1: string; instant: string; description: string };
+    credit_installments: { d30: string; instant: string; description: string };
+  }>;
+  promotional?: { description: string; credit_cash: string };
+  notes?: string[];
+}
+
+interface SumupResponse {
+  success: boolean;
+  source: string;
+  url?: string;
+  message?: string;
+  data: SumupFeeData;
+}
+
+interface CustomFeesData {
+  debit: string;
+  creditCash: string;
+  creditInstallments: string;
+}
+
+// Componente para Taxas e Juros
+function FeesSettings() {
+  const { toast } = useToast();
+  const [feeType, setFeeType] = useState<"sumup" | "custom">("sumup");
+  const [customFees, setCustomFees] = useState({
+    debit: "",
+    creditCash: "",
+    creditInstallments: "",
+  });
+
+  // Buscar tipo de taxa atual
+  const { data: feeTypeData, isLoading: loadingFeeType } = useQuery<{ type: string }>({
+    queryKey: ["/api/settings/fees/type"],
+  });
+
+  // Buscar taxas da Sumup
+  const { data: sumupData, isLoading: loadingSumup, refetch: refetchSumup } = useQuery<SumupResponse>({
+    queryKey: ["/api/settings/fees/sumup"],
+    enabled: feeType === "sumup",
+  });
+
+  // Buscar taxas personalizadas
+  const { data: customData, isLoading: loadingCustom } = useQuery<CustomFeesData | null>({
+    queryKey: ["/api/settings/fees/custom"],
+    enabled: feeType === "custom",
+  });
+
+  // Atualizar tipo de taxa quando os dados chegam
+  useEffect(() => {
+    if (feeTypeData?.type && (feeTypeData.type === "sumup" || feeTypeData.type === "custom")) {
+      setFeeType(feeTypeData.type as "sumup" | "custom");
+    }
+  }, [feeTypeData]);
+
+  // Atualizar taxas personalizadas quando os dados chegam
+  useEffect(() => {
+    if (customData) {
+      setCustomFees({
+        debit: customData.debit || "",
+        creditCash: customData.creditCash || "",
+        creditInstallments: customData.creditInstallments || "",
+      });
+    }
+  }, [customData]);
+
+  // Mutation para salvar tipo de taxa
+  const saveFeeTypeMutation = useMutation({
+    mutationFn: async (type: "sumup" | "custom") => {
+      return apiRequest("POST", "/api/settings/fees/type", { type });
+    },
+    onSuccess: (_, type) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/fees/type"] });
+      setFeeType(type);
+      toast({
+        title: "Tipo de taxa atualizado",
+        description: `Usando taxas ${type === "sumup" ? "da Sumup" : "personalizadas"}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar tipo de taxa",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para salvar taxas personalizadas
+  const saveCustomFeesMutation = useMutation({
+    mutationFn: async (fees: typeof customFees) => {
+      return apiRequest("POST", "/api/settings/fees/custom", { fees });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/fees/custom"] });
+      toast({
+        title: "Taxas personalizadas salvas",
+        description: "As taxas foram atualizadas com sucesso",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar taxas personalizadas",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveCustomFees = () => {
+    if (!customFees.debit || !customFees.creditCash || !customFees.creditInstallments) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todas as taxas antes de salvar",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveCustomFeesMutation.mutate(customFees);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Taxas e Juros</CardTitle>
+        <CardDescription>
+          Configure as taxas de processamento de pagamentos
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Seletor de tipo */}
+        <div className="space-y-3">
+          <label className="text-sm font-medium">Tipo de Taxas</label>
+          <Select 
+            value={feeType} 
+            onValueChange={(value) => saveFeeTypeMutation.mutate(value as "sumup" | "custom")}
+            disabled={loadingFeeType || saveFeeTypeMutation.isPending}
+          >
+            <SelectTrigger data-testid="select-fee-type">
+              <SelectValue placeholder="Selecione o tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sumup">Sumup (Web Scraping)</SelectItem>
+              <SelectItem value="custom">Personalizado</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Escolha entre usar as taxas oficiais da Sumup ou definir taxas personalizadas
+          </p>
+        </div>
+
+        {/* Exibir taxas da Sumup */}
+        {feeType === "sumup" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Taxas da Sumup</h3>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => refetchSumup()}
+                  disabled={loadingSumup}
+                  data-testid="button-refresh-sumup"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loadingSumup ? "animate-spin" : ""}`} />
+                  Atualizar
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open("https://www.sumup.com/pt-br/maquininhas/taxas/", "_blank")}
+                  data-testid="button-view-sumup"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ver no Site
+                </Button>
+              </div>
+            </div>
+
+            {loadingSumup ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : sumupData?.data ? (
+              <div className="space-y-4">
+                {/* PIX */}
+                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-green-900 dark:text-green-100">PIX</h4>
+                      <p className="text-sm text-green-700 dark:text-green-300">{sumupData.data.pix.description}</p>
+                    </div>
+                    <Badge className="bg-green-600 text-white">{sumupData.data.pix.fee}</Badge>
+                  </div>
+                </div>
+
+                {/* Faixas de faturamento */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold">Faixas de Faturamento</h4>
+                  {sumupData.data.tiers.map((tier: any, index: number) => (
+                    <Card key={index} className="overflow-hidden">
+                      <CardHeader className="bg-muted/50 pb-3">
+                        <CardTitle className="text-base">{tier.name}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-4 space-y-3">
+                        <div>
+                          <p className="text-sm font-medium mb-2">Débito</p>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="bg-muted/30 rounded px-3 py-2">
+                              <span className="text-muted-foreground">Visa/Master:</span>
+                              <span className="ml-2 font-medium">{tier.debit.visa_master}</span>
+                            </div>
+                            <div className="bg-muted/30 rounded px-3 py-2">
+                              <span className="text-muted-foreground">Outros:</span>
+                              <span className="ml-2 font-medium">{tier.debit.others}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-2">{tier.credit_cash.description}</p>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="bg-muted/30 rounded px-3 py-2">
+                              <span className="text-muted-foreground">D+1:</span>
+                              <span className="ml-2 font-medium">{tier.credit_cash.d1}</span>
+                            </div>
+                            <div className="bg-muted/30 rounded px-3 py-2">
+                              <span className="text-muted-foreground">Na hora:</span>
+                              <span className="ml-2 font-medium">{tier.credit_cash.instant}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-2">{tier.credit_installments.description}</p>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="bg-muted/30 rounded px-3 py-2">
+                              <span className="text-muted-foreground">D+30:</span>
+                              <span className="ml-2 font-medium">{tier.credit_installments.d30}</span>
+                            </div>
+                            <div className="bg-muted/30 rounded px-3 py-2">
+                              <span className="text-muted-foreground">Na hora:</span>
+                              <span className="ml-2 font-medium">{tier.credit_installments.instant}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Observações */}
+                {sumupData.data.notes && (
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold mb-2">Observações</h4>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      {sumupData.data.notes.map((note: string, i: number) => (
+                        <li key={i}>• {note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Fonte */}
+                <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+                  Fonte: {sumupData.source === "sumup_official" ? "Site oficial da Sumup" : "Dados baseados em informações oficiais"} • 
+                  Última atualização: {new Date(sumupData.data.lastUpdated).toLocaleDateString("pt-BR")}
+                </div>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                Não foi possível carregar as taxas da Sumup
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Formulário de taxas personalizadas */}
+        {feeType === "custom" && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">Taxas Personalizadas</h3>
+            
+            {loadingCustom ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="custom-debit" className="text-sm font-medium">
+                    Taxa de Débito (%)
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="custom-debit"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={customFees.debit}
+                      onChange={(e) => setCustomFees(prev => ({ ...prev, debit: e.target.value }))}
+                      placeholder="Ex: 1.99"
+                      className="pr-8"
+                      data-testid="input-custom-debit"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="custom-credit-cash" className="text-sm font-medium">
+                    Taxa de Crédito à Vista (%)
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="custom-credit-cash"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={customFees.creditCash}
+                      onChange={(e) => setCustomFees(prev => ({ ...prev, creditCash: e.target.value }))}
+                      placeholder="Ex: 3.99"
+                      className="pr-8"
+                      data-testid="input-custom-credit-cash"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="custom-credit-installments" className="text-sm font-medium">
+                    Taxa de Crédito Parcelado (%)
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="custom-credit-installments"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={customFees.creditInstallments}
+                      onChange={(e) => setCustomFees(prev => ({ ...prev, creditInstallments: e.target.value }))}
+                      placeholder="Ex: 4.99"
+                      className="pr-8"
+                      data-testid="input-custom-credit-installments"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleSaveCustomFees}
+                  disabled={saveCustomFeesMutation.isPending}
+                  className="w-full"
+                  data-testid="button-save-custom-fees"
+                >
+                  {saveCustomFeesMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar Taxas Personalizadas
+                </Button>
+
+                <p className="text-xs text-muted-foreground">
+                  Estas taxas serão usadas para calcular os custos de processamento de pagamentos nos eventos
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Settings() {
   const { toast } = useToast();
@@ -233,10 +614,11 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="categories" className="w-full">
-          <TabsList>
-            <TabsTrigger value="categories" className="flex-1" data-testid="tab-categories">Categorias de Eventos</TabsTrigger>
-            <TabsTrigger value="roles" className="flex-1" data-testid="tab-roles">Funções de Funcionários</TabsTrigger>
-            <TabsTrigger value="km-value" className="flex-1" data-testid="tab-km-value">Valor por km</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="categories" data-testid="tab-categories">Categorias de Eventos</TabsTrigger>
+            <TabsTrigger value="roles" data-testid="tab-roles">Funções de Funcionários</TabsTrigger>
+            <TabsTrigger value="km-value" data-testid="tab-km-value">Valor por km</TabsTrigger>
+            <TabsTrigger value="fees" data-testid="tab-fees">Taxas e Juros</TabsTrigger>
           </TabsList>
 
           <TabsContent value="categories" className="mt-6">
@@ -423,6 +805,10 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="fees" className="mt-6">
+            <FeesSettings />
           </TabsContent>
         </Tabs>
       </div>
