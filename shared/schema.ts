@@ -55,6 +55,7 @@ export const events = pgTable("events", {
   contractValue: decimal("contract_value", { precision: 10, scale: 2 }).notNull(),
   ticketValue: decimal("ticket_value", { precision: 10, scale: 2 }),
   paymentMethod: text("payment_method"),
+  cardType: text("card_type"),
   paymentDate: timestamp("payment_date"),
   installments: integer("installments"),
   package: text("package"),

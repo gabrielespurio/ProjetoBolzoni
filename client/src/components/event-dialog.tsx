@@ -34,6 +34,7 @@ const eventFormSchema = insertEventSchema.extend({
   kmDistance: z.string().optional(),
   ticketValue: z.string().optional(),
   paymentMethod: z.string().optional(),
+  cardType: z.string().optional(),
   paymentDate: z.string().optional(),
   package: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
@@ -140,6 +141,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       contractValue: "0",
       ticketValue: "",
       paymentMethod: "",
+      cardType: "",
       paymentDate: "",
       package: "",
       status: "scheduled",
@@ -147,6 +149,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       characterIds: [],
     },
   });
+
+  const paymentMethod = form.watch("paymentMethod");
 
   useEffect(() => {
     if (open && event) {
@@ -166,6 +170,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         contractValue: event.contractValue || "0",
         ticketValue: (event as any).ticketValue || "",
         paymentMethod: (event as any).paymentMethod || "",
+        cardType: (event as any).cardType || "",
         paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
         package: (event as any).package || "",
         status: event.status || "scheduled",
@@ -196,6 +201,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         contractValue: "0",
         ticketValue: "",
         paymentMethod: "",
+        cardType: "",
         paymentDate: "",
         package: "",
         status: "scheduled",
@@ -693,6 +699,29 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     </FormItem>
                   )}
                 />
+                {paymentMethod === "cartao_debito" && (
+                  <FormField
+                    control={form.control}
+                    name="cardType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de Cartão</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-card-type">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="visa_master">Visa/Master</SelectItem>
+                            <SelectItem value="outros">Outros</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="paymentDate"

@@ -113,6 +113,11 @@ The system manages nine core entities:
   - Real-time address validation with user feedback via toast notifications
   - Updated event forms to display organized address sections with proper field grouping
   - Event listing now shows formatted addresses combining all address components
+- **Payment Card Type Selection (November 17, 2025):** Enhanced payment information in event forms:
+  - Added conditional "Tipo de Cartão" (Card Type) field that appears when "Cartão de Débito" is selected as payment method
+  - Users can specify card type: "Visa/Master" or "Outros" (Others)
+  - Database schema updated with cardType field in events table
+  - Form validation and storage properly handle the new field
 
 ### External Dependencies
 
