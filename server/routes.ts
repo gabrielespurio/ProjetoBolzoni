@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -469,6 +469,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao deletar função" });
+    }
+  });
+  
+  // Packages routes
+  app.get("/api/settings/packages", authenticateToken, async (req, res) => {
+    try {
+      const packages = await storage.getAllPackages();
+      res.json(packages);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar pacotes" });
+    }
+  });
+  
+  app.post("/api/settings/packages", authenticateToken, async (req, res) => {
+    try {
+      const data = insertPackageSchema.parse(req.body);
+      const pkg = await storage.createPackage(data);
+      res.status(201).json(pkg);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar pacote" });
+    }
+  });
+  
+  app.patch("/api/settings/packages/:id", authenticateToken, async (req, res) => {
+    try {
+      const data = insertPackageSchema.partial().parse(req.body);
+      const pkg = await storage.updatePackage(req.params.id, data);
+      res.json(pkg);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar pacote" });
+    }
+  });
+  
+  app.delete("/api/settings/packages/:id", authenticateToken, async (req, res) => {
+    try {
+      await storage.deletePackage(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar pacote" });
     }
   });
   

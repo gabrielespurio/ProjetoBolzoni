@@ -138,6 +138,13 @@ export const employeeRoles = pgTable("employee_roles", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const packages = pgTable("packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   key: text("key").notNull().unique(),
@@ -275,6 +282,11 @@ export const insertEmployeeRoleSchema = createInsertSchema(employeeRoles).omit({
   createdAt: true,
 });
 
+export const insertPackageSchema = createInsertSchema(packages).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertEventExpenseSchema = createInsertSchema(eventExpenses).omit({
   id: true,
   createdAt: true,
@@ -320,6 +332,9 @@ export type InsertEventCategory = z.infer<typeof insertEventCategorySchema>;
 
 export type EmployeeRole = typeof employeeRoles.$inferSelect;
 export type InsertEmployeeRole = z.infer<typeof insertEmployeeRoleSchema>;
+
+export type Package = typeof packages.$inferSelect;
+export type InsertPackage = z.infer<typeof insertPackageSchema>;
 
 export type EventExpense = typeof eventExpenses.$inferSelect;
 export type InsertEventExpense = z.infer<typeof insertEventExpenseSchema>;

@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon, RefreshCw, ExternalLink } from "lucide-react";
-import type { EventCategory, EmployeeRole } from "@shared/schema";
+import type { EventCategory, EmployeeRole, Package } from "@shared/schema";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -28,8 +28,14 @@ const roleSchema = z.object({
   description: z.string().optional(),
 });
 
+const packageSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  description: z.string().optional(),
+});
+
 type CategoryForm = z.infer<typeof categorySchema>;
 type RoleForm = z.infer<typeof roleSchema>;
+type PackageForm = z.infer<typeof packageSchema>;
 
 // Tipos para Taxas e Juros
 interface SumupFeeData {
@@ -499,8 +505,10 @@ export default function Settings() {
   const { toast } = useToast();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<EventCategory | null>(null);
   const [editingRole, setEditingRole] = useState<EmployeeRole | null>(null);
+  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [kmValue, setKmValue] = useState<string>("");
 
   // Event Categories
@@ -511,6 +519,11 @@ export default function Settings() {
   // Employee Roles
   const { data: roles = [], isLoading: loadingRoles } = useQuery<EmployeeRole[]>({
     queryKey: ["/api/settings/employee-roles"],
+  });
+
+  // Packages
+  const { data: packages = [], isLoading: loadingPackages } = useQuery<Package[]>({
+    queryKey: ["/api/settings/packages"],
   });
 
   // System Settings - Kilometragem
@@ -564,6 +577,11 @@ export default function Settings() {
 
   const roleForm = useForm<RoleForm>({
     resolver: zodResolver(roleSchema),
+    defaultValues: { name: "", description: "" },
+  });
+
+  const packageForm = useForm<PackageForm>({
+    resolver: zodResolver(packageSchema),
     defaultValues: { name: "", description: "" },
   });
 
@@ -661,6 +679,53 @@ export default function Settings() {
     },
   });
 
+  // Package mutations
+  const packageMutation = useMutation({
+    mutationFn: async (data: PackageForm) => {
+      if (editingPackage) {
+        return apiRequest("PATCH", `/api/settings/packages/${editingPackage.id}`, data);
+      }
+      return apiRequest("POST", "/api/settings/packages", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/packages"] });
+      toast({
+        title: editingPackage ? "Pacote atualizado" : "Pacote criado",
+        description: "Operação realizada com sucesso.",
+      });
+      setPackageDialogOpen(false);
+      setEditingPackage(null);
+      packageForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Ocorreu um erro ao salvar o pacote.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePackageMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/settings/packages/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/packages"] });
+      toast({
+        title: "Pacote deletado",
+        description: "Pacote deletado com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao deletar pacote.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditCategory = (category: EventCategory) => {
     setEditingCategory(category);
     categoryForm.setValue("name", category.name);
@@ -687,6 +752,19 @@ export default function Settings() {
     roleForm.reset();
   };
 
+  const handleEditPackage = (pkg: Package) => {
+    setEditingPackage(pkg);
+    packageForm.setValue("name", pkg.name);
+    packageForm.setValue("description", pkg.description || "");
+    setPackageDialogOpen(true);
+  };
+
+  const handleClosePackageDialog = () => {
+    setPackageDialogOpen(false);
+    setEditingPackage(null);
+    packageForm.reset();
+  };
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-6xl space-y-8">
@@ -699,9 +777,10 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="categories" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="categories" data-testid="tab-categories">Categorias de Eventos</TabsTrigger>
             <TabsTrigger value="roles" data-testid="tab-roles">Funções de Funcionários</TabsTrigger>
+            <TabsTrigger value="packages" data-testid="tab-packages">Pacotes</TabsTrigger>
             <TabsTrigger value="km-value" data-testid="tab-km-value">Valor por km</TabsTrigger>
             <TabsTrigger value="fees" data-testid="tab-fees">Taxas e Juros</TabsTrigger>
           </TabsList>
@@ -820,6 +899,70 @@ export default function Settings() {
                                 size="icon"
                                 onClick={() => deleteRoleMutation.mutate(role.id)}
                                 data-testid={`button-delete-role-${role.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="packages" className="mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Pacotes</CardTitle>
+                    <CardDescription>Gerencie os pacotes disponíveis da empresa</CardDescription>
+                  </div>
+                  <Button onClick={() => setPackageDialogOpen(true)} data-testid="button-new-package">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo Pacote
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingPackages ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : packages.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum pacote cadastrado</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {packages.map((pkg) => (
+                        <TableRow key={pkg.id}>
+                          <TableCell className="font-medium">{pkg.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{pkg.description || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditPackage(pkg)}
+                                data-testid={`button-edit-package-${pkg.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deletePackageMutation.mutate(pkg.id)}
+                                data-testid={`button-delete-package-${pkg.id}`}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -993,6 +1136,57 @@ export default function Settings() {
                 <Button type="submit" disabled={roleMutation.isPending} data-testid="button-save-role">
                   {roleMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingRole ? "Atualizar" : "Cadastrar"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Package Dialog */}
+      <Dialog open={packageDialogOpen} onOpenChange={handleClosePackageDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingPackage ? "Editar Pacote" : "Novo Pacote"}</DialogTitle>
+            <DialogDescription>
+              {editingPackage ? "Atualize as informações do pacote" : "Cadastre um novo pacote da empresa"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...packageForm}>
+            <form onSubmit={packageForm.handleSubmit((data) => packageMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={packageForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: Pacote Básico" data-testid="input-package-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={packageForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Descrição do pacote" rows={3} data-testid="input-package-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={handleClosePackageDialog} data-testid="button-cancel-package">
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={packageMutation.isPending} data-testid="button-save-package">
+                  {packageMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingPackage ? "Atualizar" : "Cadastrar"}
                 </Button>
               </div>
             </form>

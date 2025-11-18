@@ -12,6 +12,7 @@ import {
   eventCharacters,
   eventCategories,
   employeeRoles,
+  packages,
   eventExpenses,
   systemSettings,
   type User,
@@ -38,6 +39,8 @@ import {
   type InsertEventCategory,
   type EmployeeRole,
   type InsertEmployeeRole,
+  type Package,
+  type InsertPackage,
   type EventExpense,
   type InsertEventExpense,
   type SystemSetting,
@@ -128,6 +131,13 @@ export interface IStorage {
   createEmployeeRole(role: InsertEmployeeRole): Promise<EmployeeRole>;
   updateEmployeeRole(id: string, role: Partial<InsertEmployeeRole>): Promise<EmployeeRole>;
   deleteEmployeeRole(id: string): Promise<void>;
+  
+  // Settings - Packages
+  getAllPackages(): Promise<Package[]>;
+  getPackage(id: string): Promise<Package | undefined>;
+  createPackage(pkg: InsertPackage): Promise<Package>;
+  updatePackage(id: string, pkg: Partial<InsertPackage>): Promise<Package>;
+  deletePackage(id: string): Promise<void>;
   
   // Settings - System Settings
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
@@ -585,6 +595,30 @@ export class DatabaseStorage implements IStorage {
   
   async deleteEmployeeRole(id: string): Promise<void> {
     await db.delete(employeeRoles).where(eq(employeeRoles.id, id));
+  }
+  
+  // Packages
+  async getAllPackages(): Promise<Package[]> {
+    return await db.select().from(packages).orderBy(packages.name);
+  }
+  
+  async getPackage(id: string): Promise<Package | undefined> {
+    const [pkg] = await db.select().from(packages).where(eq(packages.id, id));
+    return pkg || undefined;
+  }
+  
+  async createPackage(pkg: InsertPackage): Promise<Package> {
+    const [newPackage] = await db.insert(packages).values(pkg).returning();
+    return newPackage;
+  }
+  
+  async updatePackage(id: string, pkg: Partial<InsertPackage>): Promise<Package> {
+    const [updated] = await db.update(packages).set(pkg).where(eq(packages.id, id)).returning();
+    return updated;
+  }
+  
+  async deletePackage(id: string): Promise<void> {
+    await db.delete(packages).where(eq(packages.id, id));
   }
   
   // Event Expenses
