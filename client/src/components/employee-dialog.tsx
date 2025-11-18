@@ -202,7 +202,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Funcionário" : "Novo Funcionário"}</DialogTitle>
           <DialogDescription>
@@ -217,7 +217,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
             <TabsTrigger value="payments" disabled={!isEdit} data-testid="tab-payments">Dados de Pagamentos</TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="max-h-[calc(90vh-240px)] pr-4">
+          <ScrollArea className="h-[calc(90vh-280px)] pr-4">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <TabsContent value="personal" className="mt-6 space-y-6">
