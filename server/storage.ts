@@ -3,6 +3,7 @@ import {
   users,
   clients,
   employees,
+  employeePayments,
   events,
   inventoryItems,
   stockMovements,
@@ -21,6 +22,8 @@ import {
   type InsertClient,
   type Employee,
   type InsertEmployee,
+  type EmployeePayment,
+  type InsertEmployeePayment,
   type Event,
   type InsertEvent,
   type InventoryItem,
@@ -68,6 +71,11 @@ export interface IStorage {
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee>;
   deleteEmployee(id: string): Promise<void>;
+  
+  // Employee Payments
+  getEmployeePayments(employeeId: string): Promise<EmployeePayment[]>;
+  createEmployeePayment(employeeId: string, payment: Omit<InsertEmployeePayment, 'employeeId'>): Promise<EmployeePayment>;
+  deleteEmployeePayment(id: string): Promise<void>;
   
   // Events
   getAllEvents(): Promise<any[]>;
@@ -208,6 +216,27 @@ export class DatabaseStorage implements IStorage {
   
   async deleteEmployee(id: string): Promise<void> {
     await db.delete(employees).where(eq(employees.id, id));
+  }
+  
+  // Employee Payments
+  async getEmployeePayments(employeeId: string): Promise<EmployeePayment[]> {
+    return await db
+      .select()
+      .from(employeePayments)
+      .where(eq(employeePayments.employeeId, employeeId))
+      .orderBy(desc(employeePayments.paymentDate));
+  }
+  
+  async createEmployeePayment(employeeId: string, payment: Omit<InsertEmployeePayment, 'employeeId'>): Promise<EmployeePayment> {
+    const [newPayment] = await db
+      .insert(employeePayments)
+      .values({ ...payment, employeeId })
+      .returning();
+    return newPayment;
+  }
+  
+  async deleteEmployeePayment(id: string): Promise<void> {
+    await db.delete(employeePayments).where(eq(employeePayments.id, id));
   }
   
   // Events

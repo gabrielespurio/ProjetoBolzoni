@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertEmployeePaymentSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -197,6 +197,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao deletar funcionário" });
+    }
+  });
+  
+  // Employee Payments routes
+  app.get("/api/employees/:id/payments", authenticateToken, async (req, res) => {
+    try {
+      const payments = await storage.getEmployeePayments(req.params.id);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar pagamentos" });
+    }
+  });
+  
+  app.post("/api/employees/:id/payments", authenticateToken, async (req, res) => {
+    try {
+      const paymentData = insertEmployeePaymentSchema.omit({ employeeId: true }).parse({
+        ...req.body,
+        paymentDate: new Date(req.body.paymentDate),
+      });
+      const payment = await storage.createEmployeePayment(req.params.id, paymentData);
+      res.status(201).json(payment);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar pagamento" });
+    }
+  });
+  
+  app.delete("/api/employee-payments/:id", authenticateToken, async (req, res) => {
+    try {
+      await storage.deleteEmployeePayment(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar pagamento" });
     }
   });
   
