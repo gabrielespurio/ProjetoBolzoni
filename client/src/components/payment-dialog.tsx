@@ -47,9 +47,9 @@ export function PaymentDialog({ open, onClose, employeeId }: PaymentDialogProps)
   const mutation = useMutation({
     mutationFn: async (data: PaymentForm) => {
       const paymentData = {
-        amount: data.amount,
-        paymentDate: data.paymentDate,
-        description: data.description,
+        amount: parseFloat(data.amount),
+        paymentDate: new Date(data.paymentDate),
+        description: data.description || null,
       };
       return apiRequest("POST", `/api/employees/${employeeId}/payments`, paymentData);
     },

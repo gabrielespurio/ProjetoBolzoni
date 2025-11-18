@@ -282,6 +282,14 @@ export const insertClientSchema = createInsertSchema(clients).omit({
 export const insertEmployeeSchema = createInsertSchema(employees).omit({
   id: true,
   createdAt: true,
+}).extend({
+  userEmail: z.string().email().optional(),
+  userPassword: z.string().min(6).optional(),
+});
+
+export const insertEmployeePaymentSchema = createInsertSchema(employeePayments).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertEventSchema = createInsertSchema(events).omit({
@@ -340,11 +348,6 @@ export const insertEventExpenseSchema = createInsertSchema(eventExpenses).omit({
 export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
   id: true,
   updatedAt: true,
-});
-
-export const insertEmployeePaymentSchema = createInsertSchema(employeePayments).omit({
-  id: true,
-  createdAt: true,
 });
 
 export type User = typeof users.$inferSelect;
