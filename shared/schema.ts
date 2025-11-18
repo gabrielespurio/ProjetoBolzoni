@@ -42,7 +42,17 @@ export const employees = pgTable("employees", {
   cidade: text("cidade"),
   estado: text("estado"),
   numero: text("numero"),
+  userId: varchar("user_id").references(() => users.id),
   isAvailable: boolean("is_available").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const employeePayments = pgTable("employee_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -193,8 +203,27 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   events: many(events),
 }));
 
-export const employeesRelations = relations(employees, ({ many }) => ({
+export const employeesRelations = relations(employees, ({ one, many }) => ({
+  user: one(users, {
+    fields: [employees.userId],
+    references: [users.id],
+  }),
   eventEmployees: many(eventEmployees),
+  payments: many(employeePayments),
+}));
+
+export const usersRelations = relations(users, ({ one }) => ({
+  employee: one(employees, {
+    fields: [users.id],
+    references: [employees.userId],
+  }),
+}));
+
+export const employeePaymentsRelations = relations(employeePayments, ({ one }) => ({
+  employee: one(employees, {
+    fields: [employeePayments.employeeId],
+    references: [employees.id],
+  }),
 }));
 
 export const inventoryItemsRelations = relations(inventoryItems, ({ many }) => ({
@@ -313,6 +342,11 @@ export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit
   updatedAt: true,
 });
 
+export const insertEmployeePaymentSchema = createInsertSchema(employeePayments).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -357,3 +391,6 @@ export type InsertEventExpense = z.infer<typeof insertEventExpenseSchema>;
 
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+
+export type EmployeePayment = typeof employeePayments.$inferSelect;
+export type InsertEmployeePayment = z.infer<typeof insertEmployeePaymentSchema>;
