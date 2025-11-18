@@ -1342,7 +1342,26 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       const ticketValue = parseFloat(form.watch("ticketValue") || "0");
                       const installments = parseInt(field.value?.toString() || "1");
                       const remainingValue = contractValue - ticketValue;
-                      const installmentValue = installments > 0 ? remainingValue / installments : 0;
+                      
+                      // Calcular o valor correto da parcela incluindo taxas e juros
+                      let calculatedInstallmentValue = 0;
+                      
+                      if (installments > 0 && remainingValue > 0) {
+                        // Aplicar taxa da operadora sobre o valor restante
+                        const feeAmount = remainingValue * (feePercentage / 100);
+                        const valueToFinance = remainingValue + feeAmount;
+                        
+                        // Verificar se tem juros compostos (Tabela Price)
+                        if (hasInstallmentInterest && monthlyInterestRate > 0 && installments > 1) {
+                          const i = monthlyInterestRate / 100;
+                          const n = installments;
+                          const factor = Math.pow(1 + i, n);
+                          calculatedInstallmentValue = valueToFinance * (i * factor) / (factor - 1);
+                        } else {
+                          // Sem juros compostos: dividir valor com taxa pelo número de parcelas
+                          calculatedInstallmentValue = valueToFinance / installments;
+                        }
+                      }
                       
                       return (
                         <FormItem>
@@ -1367,7 +1386,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                             <div className="mt-2 text-sm text-muted-foreground">
                               <p>Valor restante: R$ {remainingValue.toFixed(2)}</p>
                               <p className="font-medium text-foreground">
-                                {installments}x de R$ {installmentValue.toFixed(2)}
+                                {installments}x de R$ {calculatedInstallmentValue.toFixed(2)}
                               </p>
                             </div>
                           )}
