@@ -134,6 +134,16 @@ The system manages nine core entities:
   - Backend automatically joins packages table to return package names with event data for display
   - Enforces data integrity by ensuring only configured packages can be selected for events
   - Migration executed directly on database to add package_id column and drop obsolete package column
+- **Employee Module Enhancement (November 18, 2025):** Expanded employee management with comprehensive personal and address information:
+  - Added document fields: CPF and RG for employee identification
+  - Implemented complete address system: CEP, Rua, Bairro, Cidade, Estado, and Número
+  - Integrated ViaCEP API for automatic address completion when CEP is entered
+  - Created custom `useViaCep` hook for address lookup with loading states and error handling
+  - Employee form organized into logical sections: Basic Information, Documents, Contact, and Address
+  - Form features CEP field with automatic lookup on blur and visual loading indicator
+  - Employee list view enhanced to display CPF and location (City - State) information
+  - Search functionality expanded to include CPF and city in filter criteria
+  - All new fields are optional to maintain backward compatibility with existing employee records
 
 ### External Dependencies
 
