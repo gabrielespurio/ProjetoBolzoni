@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Phone, Mail, Briefcase } from "lucide-react";
+import { Plus, Search, Phone, Mail, Briefcase, MapPin, CreditCard } from "lucide-react";
 import { EmployeeDialog } from "@/components/employee-dialog";
 import type { Employee } from "@shared/schema";
 
@@ -22,7 +22,9 @@ export default function Employees() {
     employee.name.toLowerCase().includes(search.toLowerCase()) ||
     employee.role.toLowerCase().includes(search.toLowerCase()) ||
     employee.phone?.includes(search) ||
-    employee.email?.toLowerCase().includes(search.toLowerCase())
+    employee.email?.toLowerCase().includes(search.toLowerCase()) ||
+    employee.cpf?.includes(search) ||
+    employee.cidade?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleEdit = (employee: Employee) => {
@@ -110,6 +112,22 @@ export default function Employees() {
                         <div className="flex items-center gap-2">
                           <Mail className="h-4 w-4" />
                           <span className="truncate">{employee.email}</span>
+                        </div>
+                      )}
+                      {employee.cpf && (
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          <span>{employee.cpf}</span>
+                        </div>
+                      )}
+                      {(employee.cidade || employee.estado) && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>
+                            {employee.cidade && employee.estado 
+                              ? `${employee.cidade} - ${employee.estado}`
+                              : employee.cidade || employee.estado}
+                          </span>
                         </div>
                       )}
                     </div>
