@@ -743,6 +743,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Função para calcular taxa mensal baseada no número de parcelas (Sumup)
+  function calculateMonthlyInterestRate(installments: number): number {
+    // Taxas calculadas baseadas nas simulações reais da Sumup
+    // 5x = 2.10% ao mês, 10x = 2.82% ao mês
+    const taxaMap: { [key: number]: number } = {
+      1: 0.00,    // Sem juros para 1x
+      2: 0.53,
+      3: 1.05,
+      4: 1.58,
+      5: 2.10,
+      6: 2.24,
+      7: 2.39,
+      8: 2.53,
+      9: 2.68,
+      10: 2.82,
+      11: 2.96,
+      12: 3.11
+    };
+
+    // Se temos a taxa exata no mapa, retornar
+    if (taxaMap[installments] !== undefined) {
+      return taxaMap[installments];
+    }
+
+    // Para valores acima de 12, extrapolar
+    if (installments > 12) {
+      const incremento = (taxaMap[10] - taxaMap[5]) / (10 - 5); // 0.144% por parcela
+      return taxaMap[12] + incremento * (installments - 12);
+    }
+
+    // Caso inválido, retornar 0
+    return 0;
+  }
+
   // Calcular taxa aplicável (com juros compostos se parcelado)
   app.post("/api/settings/fees/calculate", authenticateToken, async (req, res) => {
     try {
@@ -766,13 +800,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const feeTypeSetting = await storage.getSystemSetting("fee_type");
       const feeType = feeTypeSetting?.value || "sumup";
 
-      // Buscar taxa de juros mensal
-      const interestSetting = await storage.getSystemSetting("monthly_interest_rate");
-      const monthlyInterestRate = interestSetting?.value ? parseFloat(interestSetting.value) : 0;
-
       // Validar installments: garantir valor numérico válido (default 1)
       const parsedInstallments = installments ? parseInt(String(installments)) : 1;
       const numInstallments = isNaN(parsedInstallments) || parsedInstallments < 1 ? 1 : parsedInstallments;
+      
+      // Calcular taxa mensal baseada no número de parcelas (para Sumup)
+      let monthlyInterestRate = 0;
+      if (feeType === "sumup") {
+        monthlyInterestRate = calculateMonthlyInterestRate(numInstallments);
+      } else {
+        // Para taxas customizadas, usar a taxa configurada manualmente
+        const interestSetting = await storage.getSystemSetting("monthly_interest_rate");
+        monthlyInterestRate = interestSetting?.value ? parseFloat(interestSetting.value) : 0;
+      }
       
       // Verificar se tem parcelamento com juros (crédito parcelado > 1x)
       const hasInstallmentInterest = paymentMethod === "cartao_credito" && numInstallments > 1 && monthlyInterestRate > 0;
