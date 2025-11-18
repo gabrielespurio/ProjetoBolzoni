@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PaymentDialog } from "./payment-dialog";
 
 const employeeFormSchema = insertEmployeeSchema.extend({
   phone: z.string().optional(),
@@ -53,6 +54,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
   const isEdit = !!employee;
   const { fetchAddress, isLoading: isLoadingCep } = useViaCep();
   const [activeTab, setActiveTab] = useState("personal");
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
   const form = useForm<EmployeeForm>({
     resolver: zodResolver(employeeFormSchema),
@@ -162,8 +164,34 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      return apiRequest("DELETE", `/api/employee-payments/${paymentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/employees", employee?.id, "payments"] });
+      toast({
+        title: "Pagamento excluído",
+        description: "Pagamento excluído com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Ocorreu um erro ao excluir o pagamento.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: EmployeeForm) => {
     mutation.mutate(data);
+  };
+
+  const handleDeletePayment = (paymentId: string) => {
+    if (confirm("Tem certeza que deseja excluir este pagamento?")) {
+      deleteMutation.mutate(paymentId);
+    }
   };
 
   const handleClose = () => {
@@ -461,7 +489,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           Registros de todos os pagamentos realizados a este funcionário
                         </p>
                       </div>
-                      <Button type="button" size="sm" data-testid="button-add-payment">
+                      <Button type="button" size="sm" onClick={() => setPaymentDialogOpen(true)} data-testid="button-add-payment">
                         <Plus className="h-4 w-4 mr-2" />
                         Adicionar Pagamento
                       </Button>
@@ -497,6 +525,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                                     type="button"
                                     variant="ghost"
                                     size="icon"
+                                    onClick={() => handleDeletePayment(payment.id)}
                                     data-testid={`button-delete-payment-${payment.id}`}
                                   >
                                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -532,6 +561,13 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
           </ScrollArea>
         </Tabs>
       </DialogContent>
+      {employee && (
+        <PaymentDialog
+          open={paymentDialogOpen}
+          onClose={() => setPaymentDialogOpen(false)}
+          employeeId={employee.id}
+        />
+      )}
     </Dialog>
   );
 }

@@ -173,7 +173,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/employees", authenticateToken, async (req, res) => {
     try {
-      const data = insertEmployeeSchema.parse(req.body);
+      const { userEmail, userPassword, ...employeeData } = req.body;
+      let userId: string | undefined = undefined;
+      
+      // Create user if email and password are provided
+      if (userEmail && userPassword) {
+        const existingUser = await storage.getUserByUsername(userEmail);
+        if (existingUser) {
+          return res.status(400).json({ message: "Email já cadastrado como usuário" });
+        }
+        
+        const hashedPassword = await bcrypt.hash(userPassword, 10);
+        const user = await storage.createUser({
+          username: userEmail,
+          password: hashedPassword,
+          name: employeeData.name,
+          role: "employee",
+        });
+        userId = user.id;
+      }
+      
+      const data = insertEmployeeSchema.parse({ ...employeeData, userId });
       const employee = await storage.createEmployee(data);
       res.status(201).json(employee);
     } catch (error: any) {
@@ -183,7 +203,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/employees/:id", authenticateToken, async (req, res) => {
     try {
-      const data = insertEmployeeSchema.partial().parse(req.body);
+      const { userEmail, userPassword, ...employeeData } = req.body;
+      const currentEmployee = await storage.getEmployee(req.params.id);
+      
+      if (!currentEmployee) {
+        return res.status(404).json({ message: "Funcionário não encontrado" });
+      }
+      
+      let userId = currentEmployee.userId;
+      
+      // Create or update user if email and password are provided
+      if (userEmail && userPassword) {
+        if (currentEmployee.userId) {
+          // Update existing user password
+          const hashedPassword = await bcrypt.hash(userPassword, 10);
+          await storage.updateUser(currentEmployee.userId, {
+            password: hashedPassword,
+            name: employeeData.name || currentEmployee.name,
+          });
+        } else {
+          // Create new user
+          const existingUser = await storage.getUserByUsername(userEmail);
+          if (existingUser) {
+            return res.status(400).json({ message: "Email já cadastrado como usuário" });
+          }
+          
+          const hashedPassword = await bcrypt.hash(userPassword, 10);
+          const user = await storage.createUser({
+            username: userEmail,
+            password: hashedPassword,
+            name: employeeData.name || currentEmployee.name,
+            role: "employee",
+          });
+          userId = user.id;
+        }
+      }
+      
+      const data = insertEmployeeSchema.partial().parse({ ...employeeData, userId });
       const employee = await storage.updateEmployee(req.params.id, data);
       res.json(employee);
     } catch (error: any) {
