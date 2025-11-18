@@ -1,10 +1,10 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { insertEmployeeSchema, type Employee } from "@shared/schema";
+import { insertEmployeeSchema, type Employee, type EmployeePayment } from "@shared/schema";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useViaCep } from "@/hooks/use-viacep";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const employeeFormSchema = insertEmployeeSchema.extend({
   phone: z.string().optional(),
@@ -32,6 +36,8 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   cidade: z.string().optional(),
   estado: z.string().optional(),
   numero: z.string().optional(),
+  userEmail: z.string().email("Email inválido").optional().or(z.literal("")),
+  userPassword: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional().or(z.literal("")),
 });
 
 type EmployeeForm = z.infer<typeof employeeFormSchema>;
@@ -46,6 +52,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
   const { toast } = useToast();
   const isEdit = !!employee;
   const { fetchAddress, isLoading: isLoadingCep } = useViaCep();
+  const [activeTab, setActiveTab] = useState("personal");
 
   const form = useForm<EmployeeForm>({
     resolver: zodResolver(employeeFormSchema),
@@ -63,7 +70,14 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
       estado: employee?.estado || "",
       numero: employee?.numero || "",
       isAvailable: employee?.isAvailable ?? true,
+      userEmail: "",
+      userPassword: "",
     },
+  });
+
+  const { data: payments, isLoading: isLoadingPayments } = useQuery<EmployeePayment[]>({
+    queryKey: ["/api/employees", employee?.id, "payments"],
+    enabled: isEdit && activeTab === "payments",
   });
 
   const handleCepBlur = async () => {
@@ -95,6 +109,8 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         estado: employee.estado || "",
         numero: employee.numero || "",
         isAvailable: employee.isAvailable ?? true,
+        userEmail: "",
+        userPassword: "",
       });
     } else if (open && !employee) {
       form.reset({
@@ -111,7 +127,12 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         estado: "",
         numero: "",
         isAvailable: true,
+        userEmail: "",
+        userPassword: "",
       });
+    }
+    if (open) {
+      setActiveTab("personal");
     }
   }, [open, employee, form]);
 
@@ -147,6 +168,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
 
   const handleClose = () => {
     form.reset();
+    setActiveTab("personal");
     onClose();
   };
 
@@ -159,183 +181,29 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
             {isEdit ? "Atualize as informações do funcionário" : "Cadastre um novo funcionário"}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-200px)] pr-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground">Informações Básicas</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Nome do funcionário" data-testid="input-employee-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Função *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Recreador, Caracterista" data-testid="input-employee-role" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground">Documentos</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="cpf"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CPF</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="000.000.000-00" data-testid="input-employee-cpf" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="rg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>RG</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="00.000.000-0" data-testid="input-employee-rg" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="personal" data-testid="tab-personal">Informações Pessoais</TabsTrigger>
+            <TabsTrigger value="access" data-testid="tab-access">Informações de Acesso</TabsTrigger>
+            <TabsTrigger value="payments" disabled={!isEdit} data-testid="tab-payments">Dados de Pagamentos</TabsTrigger>
+          </TabsList>
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground">Contato</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Telefone</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="(00) 00000-0000" data-testid="input-employee-phone" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="email" placeholder="email@exemplo.com" data-testid="input-employee-email" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-foreground">Endereço</h3>
-                <div className="grid gap-4">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <FormField
-                      control={form.control}
-                      name="cep"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CEP</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input 
-                                {...field} 
-                                placeholder="00000-000" 
-                                data-testid="input-employee-cep"
-                                onBlur={handleCepBlur}
-                                maxLength={9}
-                              />
-                              {isLoadingCep && (
-                                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                              )}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="estado"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estado</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="UF" data-testid="input-employee-estado" maxLength={2} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="cidade"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cidade</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Cidade" data-testid="input-employee-cidade" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="bairro"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bairro</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Bairro" data-testid="input-employee-bairro" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="grid gap-4 grid-cols-2">
+          <ScrollArea className="max-h-[calc(90vh-240px)] pr-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <TabsContent value="personal" className="mt-6 space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground">Informações Básicas</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
                       <FormField
                         control={form.control}
-                        name="rua"
+                        name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Rua</FormLabel>
+                            <FormLabel>Nome *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Rua" data-testid="input-employee-rua" />
+                              <Input {...field} placeholder="Nome do funcionário" data-testid="input-employee-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -343,12 +211,12 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                       />
                       <FormField
                         control={form.control}
-                        name="numero"
+                        name="role"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Número</FormLabel>
+                            <FormLabel>Função *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Nº" data-testid="input-employee-numero" />
+                              <Input {...field} placeholder="Ex: Recreador, Caracterista" data-testid="input-employee-role" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -356,42 +224,313 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                       />
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <FormField
-                control={form.control}
-                name="isAvailable"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-md border border-border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel>Disponível</FormLabel>
-                      <div className="text-sm text-muted-foreground">
-                        Funcionário está disponível para eventos
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground">Documentos</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="cpf"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CPF</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="000.000.000-00" data-testid="input-employee-cpf" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="rg"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>RG</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="00.000.000-0" data-testid="input-employee-rg" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground">Contato</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Telefone</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="(00) 00000-0000" data-testid="input-employee-phone" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="email" placeholder="email@exemplo.com" data-testid="input-employee-email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground">Endereço</h3>
+                    <div className="grid gap-4">
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <FormField
+                          control={form.control}
+                          name="cep"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>CEP</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input 
+                                    {...field} 
+                                    placeholder="00000-000" 
+                                    data-testid="input-employee-cep"
+                                    onBlur={handleCepBlur}
+                                    maxLength={9}
+                                  />
+                                  {isLoadingCep && (
+                                    <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                                  )}
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="estado"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Estado</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="UF" data-testid="input-employee-estado" maxLength={2} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="cidade"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Cidade</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Cidade" data-testid="input-employee-cidade" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="bairro"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Bairro</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Bairro" data-testid="input-employee-bairro" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="grid gap-4 grid-cols-2">
+                          <FormField
+                            control={form.control}
+                            name="rua"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Rua</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="Rua" data-testid="input-employee-rua" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="numero"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Número</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="Nº" data-testid="input-employee-numero" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-employee-available"
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="isAvailable"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-md border border-border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Disponível</FormLabel>
+                          <div className="text-sm text-muted-foreground">
+                            Funcionário está disponível para eventos
+                          </div>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-employee-available"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="access" className="mt-6 space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold text-foreground">Credenciais de Acesso</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Configure o email e senha para que o funcionário possa acessar o sistema.
+                      </p>
+                    </div>
+                    <div className="grid gap-4">
+                      <FormField
+                        control={form.control}
+                        name="userEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email de Acesso</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="email" placeholder="email@exemplo.com" data-testid="input-user-email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end gap-4 pt-4">
-                <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={mutation.isPending} data-testid="button-save-employee">
-                  {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEdit ? "Atualizar" : "Cadastrar"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
+                      <FormField
+                        control={form.control}
+                        name="userPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Senha</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="password" placeholder="Mínimo 6 caracteres" data-testid="input-user-password" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="payments" className="mt-6 space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-semibold text-foreground">Histórico de Pagamentos</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Registros de todos os pagamentos realizados a este funcionário
+                        </p>
+                      </div>
+                      <Button type="button" size="sm" data-testid="button-add-payment">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar Pagamento
+                      </Button>
+                    </div>
+
+                    {isLoadingPayments ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : payments && payments.length > 0 ? (
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Data</TableHead>
+                              <TableHead>Descrição</TableHead>
+                              <TableHead className="text-right">Valor</TableHead>
+                              <TableHead className="w-[50px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {payments.map((payment) => (
+                              <TableRow key={payment.id}>
+                                <TableCell>
+                                  {format(new Date(payment.paymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                                </TableCell>
+                                <TableCell>{payment.description || "-"}</TableCell>
+                                <TableCell className="text-right">
+                                  R$ {parseFloat(payment.amount).toFixed(2).replace(".", ",")}
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    data-testid={`button-delete-payment-${payment.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center border rounded-md bg-muted/30">
+                        <p className="text-sm text-muted-foreground">Nenhum pagamento registrado</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Clique em "Adicionar Pagamento" para registrar um novo pagamento
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <div className="flex justify-end gap-4 pt-4 border-t">
+                  <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={mutation.isPending} data-testid="button-save-employee">
+                    {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isEdit ? "Atualizar" : "Cadastrar"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </ScrollArea>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
