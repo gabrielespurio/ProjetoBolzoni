@@ -200,7 +200,7 @@ export default function Events() {
         eventTime: eventTime,
         location: location,
         contractValue: formatCurrency(event.contractValue),
-        package: event.package || "Pacote Colors",
+        package: event.packageName || "Pacote não especificado",
         characters: event.characterNames && event.characterNames.length > 0 
           ? event.characterNames 
           : ["Personagem não especificado"],

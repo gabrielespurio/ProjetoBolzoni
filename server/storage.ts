@@ -227,7 +227,8 @@ export class DatabaseStorage implements IStorage {
         venueName: events.venueName,
         venueNumber: events.venueNumber,
         contractValue: events.contractValue,
-        package: events.package,
+        packageId: events.packageId,
+        packageName: packages.name,
         status: events.status,
         notes: events.notes,
         createdAt: events.createdAt,
@@ -235,6 +236,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(events)
       .leftJoin(clients, eq(events.clientId, clients.id))
+      .leftJoin(packages, eq(events.packageId, packages.id))
       .where(ne(events.status, "deleted"))
       .orderBy(desc(events.date));
     
