@@ -128,6 +128,12 @@ The system manages nine core entities:
   - Backend validation ensures only valid positive numeric values are accepted for interest rate
   - State management properly resets all fee/interest states when payment method changes from card to non-card methods
   - Form properly loads `installments` field when editing existing events to ensure correct fee recalculation
+- **Package Selection Dropdown (November 18, 2025):** Transformed package field from free text to dropdown selection:
+  - Database schema updated: Replaced text `package` column with foreign key `packageId` referencing packages table
+  - Event form now displays a dropdown populated with packages configured in the settings module
+  - Backend automatically joins packages table to return package names with event data for display
+  - Enforces data integrity by ensuring only configured packages can be selected for events
+  - Migration executed directly on database to add package_id column and drop obsolete package column
 
 ### External Dependencies
 
