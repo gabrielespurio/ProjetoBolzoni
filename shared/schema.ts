@@ -58,7 +58,7 @@ export const events = pgTable("events", {
   cardType: text("card_type"),
   paymentDate: timestamp("payment_date"),
   installments: integer("installments"),
-  package: text("package"),
+  packageId: varchar("package_id").references(() => packages.id),
   status: eventStatusEnum("status").notNull().default("scheduled"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -170,6 +170,10 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
     fields: [events.categoryId],
     references: [eventCategories.id],
   }),
+  package: one(packages, {
+    fields: [events.packageId],
+    references: [packages.id],
+  }),
   eventEmployees: many(eventEmployees),
   eventCharacters: many(eventCharacters),
   eventExpenses: many(eventExpenses),
@@ -222,6 +226,10 @@ export const eventExpensesRelations = relations(eventExpenses, ({ one }) => ({
     fields: [eventExpenses.eventId],
     references: [events.id],
   }),
+}));
+
+export const packagesRelations = relations(packages, ({ many }) => ({
+  events: many(events),
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({

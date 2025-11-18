@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { insertEventSchema, type Event, type Client, type Employee, type InventoryItem, type EventCategory } from "@shared/schema";
+import { insertEventSchema, type Event, type Client, type Employee, type InventoryItem, type EventCategory, type Package } from "@shared/schema";
 import { z } from "zod";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
@@ -36,7 +36,7 @@ const eventFormSchema = insertEventSchema.extend({
   paymentMethod: z.string().optional(),
   cardType: z.string().optional(),
   paymentDate: z.string().optional(),
-  package: z.string().optional(),
+  packageId: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
   expenses: z.array(z.object({
     title: z.string(),
@@ -115,6 +115,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     enabled: open,
   });
 
+  const { data: packages } = useQuery<Package[]>({
+    queryKey: ["/api/settings/packages"],
+    enabled: open,
+  });
+
   const characters = useMemo(() => 
     inventoryItems?.filter(item => item.type === "character") || [],
     [inventoryItems]
@@ -147,7 +152,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       paymentMethod: "",
       cardType: "",
       paymentDate: "",
-      package: "",
+      packageId: "",
       status: "scheduled",
       notes: "",
       characterIds: [],
@@ -231,7 +236,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cardType: (event as any).cardType || "",
         installments: (event as any).installments || 1,
         paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
-        package: (event as any).package || "",
+        packageId: (event as any).packageId || "",
         status: event.status || "scheduled",
         notes: event.notes || "",
         characterIds: [],
@@ -263,7 +268,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cardType: "",
         installments: 1,
         paymentDate: "",
-        package: "",
+        packageId: "",
         status: "scheduled",
         notes: "",
         characterIds: [],
@@ -355,7 +360,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       ticketValue: data.ticketValue && data.ticketValue !== "" ? data.ticketValue : null,
       paymentDate: data.paymentDate && data.paymentDate !== "" ? new Date(data.paymentDate) : null,
       paymentMethod: data.paymentMethod || null,
-      package: data.package || null,
+      packageId: data.packageId || null,
       venueName: data.venueName || null,
       venueNumber: data.venueNumber || null,
     };
@@ -798,13 +803,30 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               </div>
               <FormField
                 control={form.control}
-                name="package"
+                name="packageId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Pacote</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Descreva o pacote contratado" data-testid="input-event-package" />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-event-package">
+                          <SelectValue placeholder="Selecione o pacote" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {packages && packages.length > 0 ? (
+                          packages.map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id} data-testid={`package-option-${pkg.id}`}>
+                              {pkg.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-packages" disabled>
+                            Nenhum pacote cadastrado
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
