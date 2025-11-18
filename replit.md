@@ -118,6 +118,16 @@ The system manages nine core entities:
   - Users can specify card type: "Visa/Master" or "Outros" (Others)
   - Database schema updated with cardType field in events table
   - Form validation and storage properly handle the new field
+- **Compound Interest Calculation System (November 18, 2025):** Implemented two-tier fee calculation for credit card installments:
+  - **Tier 1 - Operator Fee:** SumUp fee (5.49% for credit, 1.99% for debit) applied to remaining value after ticket/down payment
+  - **Tier 2 - Compound Interest:** Monthly interest rate (configurable in settings, ~2.85% recommended) applied using Price Table formula
+  - Settings page includes dedicated field for monthly interest rate with input validation and normalization (accepts both comma and dot as decimal separator)
+  - Event dialog displays detailed breakdown: operator fee, compound interest amount, total with fees/interest, and installment values
+  - Important: `contractValue` represents the BASE value (before fees/interest) - this is auto-calculated from characters + expenses + km distance
+  - Operator fees and compound interest are ADDITIONAL costs shown in the contract summary but NOT included in the saved `contractValue`
+  - Backend validation ensures only valid positive numeric values are accepted for interest rate
+  - State management properly resets all fee/interest states when payment method changes from card to non-card methods
+  - Form properly loads `installments` field when editing existing events to ensure correct fee recalculation
 
 ### External Dependencies
 

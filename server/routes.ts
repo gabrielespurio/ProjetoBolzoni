@@ -711,7 +711,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Calcular taxa aplicável
+  // Taxa de juros mensal
+  app.get("/api/settings/fees/monthly-interest", authenticateToken, async (req, res) => {
+    try {
+      const interest = await storage.getSystemSetting("monthly_interest_rate");
+      res.json({ monthlyInterestRate: interest?.value || "0" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar taxa de juros" });
+    }
+  });
+
+  app.post("/api/settings/fees/monthly-interest", authenticateToken, async (req, res) => {
+    try {
+      const { monthlyInterestRate } = req.body;
+      if (monthlyInterestRate === undefined || monthlyInterestRate === null) {
+        return res.status(400).json({ message: "Taxa de juros é obrigatória" });
+      }
+      
+      // Validar que é um número válido e positivo
+      const rate = parseFloat(monthlyInterestRate);
+      if (isNaN(rate) || !isFinite(rate) || rate < 0) {
+        return res.status(400).json({ 
+          message: "Taxa de juros inválida. Deve ser um número positivo." 
+        });
+      }
+      
+      await storage.upsertSystemSetting("monthly_interest_rate", String(rate));
+      res.json({ success: true, monthlyInterestRate: rate });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao salvar taxa de juros" });
+    }
+  });
+
+  // Calcular taxa aplicável (com juros compostos se parcelado)
   app.post("/api/settings/fees/calculate", authenticateToken, async (req, res) => {
     try {
       const { paymentMethod, cardType, installments } = req.body;
@@ -722,12 +754,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Se não for cartão, não há taxa
       if (paymentMethod !== "cartao_credito" && paymentMethod !== "cartao_debito") {
-        return res.json({ feePercentage: 0, feeType: "none" });
+        return res.json({ 
+          feePercentage: 0, 
+          feeType: "none",
+          monthlyInterestRate: 0,
+          hasInstallmentInterest: false
+        });
       }
 
       // Buscar tipo de taxa configurado
       const feeTypeSetting = await storage.getSystemSetting("fee_type");
       const feeType = feeTypeSetting?.value || "sumup";
+
+      // Buscar taxa de juros mensal
+      const interestSetting = await storage.getSystemSetting("monthly_interest_rate");
+      const monthlyInterestRate = interestSetting?.value ? parseFloat(interestSetting.value) : 0;
+
+      // Validar installments: garantir valor numérico válido (default 1)
+      const parsedInstallments = installments ? parseInt(String(installments)) : 1;
+      const numInstallments = isNaN(parsedInstallments) || parsedInstallments < 1 ? 1 : parsedInstallments;
+      
+      // Verificar se tem parcelamento com juros (crédito parcelado > 1x)
+      const hasInstallmentInterest = paymentMethod === "cartao_credito" && numInstallments > 1 && monthlyInterestRate > 0;
 
       if (feeType === "custom") {
         // Usar taxas personalizadas
@@ -741,14 +789,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (paymentMethod === "cartao_debito") {
           const feeStr = customFees.debit || "0%";
           const feePercentage = parseFloat(feeStr.replace("%", "").replace(",", "."));
-          return res.json({ feePercentage, feeType: "custom_debit" });
+          return res.json({ 
+            feePercentage, 
+            feeType: "custom_debit",
+            monthlyInterestRate,
+            hasInstallmentInterest: false
+          });
         } else {
           // Crédito
-          const feeStr = installments && parseInt(installments) > 1 
+          const feeStr = numInstallments > 1 
             ? customFees.creditInstallments 
             : customFees.creditCash;
           const feePercentage = parseFloat((feeStr || "0%").replace("%", "").replace(",", "."));
-          return res.json({ feePercentage, feeType: installments && parseInt(installments) > 1 ? "custom_credit_installments" : "custom_credit_cash" });
+          return res.json({ 
+            feePercentage, 
+            feeType: numInstallments > 1 ? "custom_credit_installments" : "custom_credit_cash",
+            monthlyInterestRate,
+            hasInstallmentInterest
+          });
         }
       } else {
         // Usar taxas da Sumup
@@ -786,16 +844,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const effectiveCardType = cardType || "visa_master";
           const feeStr = effectiveCardType === "visa_master" ? tier.debit.visa_master : tier.debit.others;
           const feePercentage = parseFloat(feeStr.replace("%", "").replace(",", "."));
-          return res.json({ feePercentage, feeType: `sumup_debit_${effectiveCardType}` });
+          return res.json({ 
+            feePercentage, 
+            feeType: `sumup_debit_${effectiveCardType}`,
+            monthlyInterestRate,
+            hasInstallmentInterest: false
+          });
         } else {
           // Crédito - considerar como parcelado se installments > 1, caso contrário à vista
-          const numInstallments = installments ? parseInt(String(installments)) : 1;
           const isInstallment = numInstallments > 1;
           const feeStr = isInstallment ? tier.credit_installments.d30 : tier.credit_cash.d1;
           const feePercentage = parseFloat(feeStr.replace("%", "").replace(",", "."));
           return res.json({ 
             feePercentage, 
-            feeType: isInstallment ? "sumup_credit_installments" : "sumup_credit_cash" 
+            feeType: isInstallment ? "sumup_credit_installments" : "sumup_credit_cash",
+            monthlyInterestRate,
+            hasInstallmentInterest
           });
         }
       }

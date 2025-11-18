@@ -73,6 +73,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [newEmployee, setNewEmployee] = useState<{ employeeId: string; cacheValue: string }>({ employeeId: "", cacheValue: "" });
   const [feePercentage, setFeePercentage] = useState<number>(0);
+  const [monthlyInterestRate, setMonthlyInterestRate] = useState<number>(0);
+  const [hasInstallmentInterest, setHasInstallmentInterest] = useState(false);
   const [calculatingFee, setCalculatingFee] = useState(false);
 
   const { data: clients } = useQuery<Client[]>({
@@ -161,11 +163,17 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     const calculateFee = async () => {
       if (!paymentMethod || (paymentMethod !== "cartao_credito" && paymentMethod !== "cartao_debito")) {
         setFeePercentage(0);
+        setMonthlyInterestRate(0);
+        setHasInstallmentInterest(false);
         return;
       }
 
       setCalculatingFee(true);
       try {
+        // Garantir que installments seja sempre um número válido (default 1)
+        const numericInstallments = installments ? parseInt(String(installments)) : 1;
+        const validInstallments = isNaN(numericInstallments) || numericInstallments < 1 ? 1 : numericInstallments;
+        
         const response = await fetch("/api/settings/fees/calculate", {
           method: "POST",
           headers: {
@@ -175,19 +183,25 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
           body: JSON.stringify({
             paymentMethod,
             cardType,
-            installments,
+            installments: validInstallments,
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
           setFeePercentage(data.feePercentage || 0);
+          setMonthlyInterestRate(data.monthlyInterestRate || 0);
+          setHasInstallmentInterest(data.hasInstallmentInterest || false);
         } else {
           setFeePercentage(0);
+          setMonthlyInterestRate(0);
+          setHasInstallmentInterest(false);
         }
       } catch (error) {
         console.error("Erro ao calcular taxa:", error);
         setFeePercentage(0);
+        setMonthlyInterestRate(0);
+        setHasInstallmentInterest(false);
       } finally {
         setCalculatingFee(false);
       }
@@ -215,6 +229,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         ticketValue: (event as any).ticketValue || "",
         paymentMethod: (event as any).paymentMethod || "",
         cardType: (event as any).cardType || "",
+        installments: (event as any).installments || 1,
         paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
         package: (event as any).package || "",
         status: event.status || "scheduled",
@@ -246,6 +261,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         ticketValue: "",
         paymentMethod: "",
         cardType: "",
+        installments: 1,
         paymentDate: "",
         package: "",
         status: "scheduled",
@@ -1209,8 +1225,32 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   const contractValue = parseFloat(form.watch("contractValue") || "0");
                   const ticketValue = parseFloat(form.watch("ticketValue") || "0");
                   const remainingValue = Math.max(0, contractValue - ticketValue);
+                  const numInstallments = parseInt(String(form.watch("installments") || "1"));
+                  
+                  // Passo 1: Aplicar taxa da operadora sobre o valor restante
                   const feeAmount = remainingValue * (feePercentage / 100);
-                  const totalWithFees = contractValue + feeAmount;
+                  
+                  // Valor após aplicar taxa da operadora (valor que será parcelado)
+                  const valueToFinance = remainingValue + feeAmount;
+                  
+                  // Passo 2: Calcular juros compostos se aplicável (Tabela Price)
+                  let interestAmount = 0;
+                  let installmentValue = 0;
+                  let totalFinanced = valueToFinance; // Por padrão, sem juros
+                  
+                  if (hasInstallmentInterest && monthlyInterestRate > 0 && numInstallments > 1) {
+                    const i = monthlyInterestRate / 100; // Taxa em decimal
+                    const n = numInstallments;
+                    
+                    // Fórmula da Tabela Price: PMT = PV × [i × (1 + i)^n] / [(1 + i)^n - 1]
+                    const factor = Math.pow(1 + i, n);
+                    installmentValue = valueToFinance * (i * factor) / (factor - 1);
+                    totalFinanced = installmentValue * n;
+                    interestAmount = totalFinanced - valueToFinance;
+                  }
+                  
+                  // Valor total final = entrada + valor financiado (com taxas e juros)
+                  const finalTotal = ticketValue + totalFinanced;
 
                   if (feePercentage > 0 && (paymentMethod === "cartao_credito" || paymentMethod === "cartao_debito") && remainingValue > 0) {
                     return (
@@ -1226,10 +1266,36 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                           <p className="text-xs text-muted-foreground italic">
                             * Taxa aplicada sobre o valor restante (R$ {remainingValue.toFixed(2)})
                           </p>
+                          
+                          {hasInstallmentInterest && monthlyInterestRate > 0 && numInstallments > 1 && interestAmount > 0 && (
+                            <>
+                              <div className="flex justify-between items-center text-sm mt-2">
+                                <span className="text-muted-foreground">
+                                  Juros ({monthlyInterestRate.toFixed(2)}% a.m. × {numInstallments}x)
+                                </span>
+                                <span className="font-medium text-orange-600 dark:text-orange-400">R$ {interestAmount.toFixed(2)}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground italic">
+                                * Juros compostos aplicados sobre R$ {valueToFinance.toFixed(2)} (Tabela Price)
+                              </p>
+                            </>
+                          )}
+                          
                           <div className="flex justify-between items-center text-sm pt-2 border-t">
-                            <span className="font-semibold">Valor Total com Taxas</span>
-                            <span className="font-semibold text-lg">R$ {totalWithFees.toFixed(2)}</span>
+                            <span className="font-semibold">
+                              Valor Total {feeAmount > 0 ? "com Taxas" : ""}{hasInstallmentInterest && interestAmount > 0 ? " e Juros" : ""}
+                            </span>
+                            <span className="font-semibold text-lg">R$ {finalTotal.toFixed(2)}</span>
                           </div>
+                          
+                          {hasInstallmentInterest && monthlyInterestRate > 0 && numInstallments > 1 && interestAmount > 0 && (
+                            <div className="bg-orange-50 dark:bg-orange-950/20 rounded p-2 mt-2">
+                              <p className="text-xs text-orange-700 dark:text-orange-300">
+                                <strong>Valor financiado:</strong> R$ {valueToFinance.toFixed(2)}<br />
+                                <strong>Parcelamento:</strong> {numInstallments}x de R$ {installmentValue.toFixed(2)}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </>
                     );
@@ -1318,8 +1384,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-event">
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={mutation.isPending || calculatingFee} data-testid="button-save-event">
+                {(mutation.isPending || calculatingFee) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEdit ? "Atualizar" : "Cadastrar"}
               </Button>
             </div>

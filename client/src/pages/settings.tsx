@@ -69,6 +69,7 @@ function FeesSettings() {
     creditCash: "",
     creditInstallments: "",
   });
+  const [monthlyInterestRate, setMonthlyInterestRate] = useState<string>("");
 
   // Buscar tipo de taxa atual
   const { data: feeTypeData, isLoading: loadingFeeType } = useQuery<{ type: string }>({
@@ -85,6 +86,11 @@ function FeesSettings() {
   const { data: customData, isLoading: loadingCustom } = useQuery<CustomFeesData | null>({
     queryKey: ["/api/settings/fees/custom"],
     enabled: feeType === "custom",
+  });
+
+  // Buscar taxa de juros mensal
+  const { data: interestData } = useQuery<{ monthlyInterestRate: string }>({
+    queryKey: ["/api/settings/fees/monthly-interest"],
   });
 
   // Atualizar tipo de taxa quando os dados chegam
@@ -105,6 +111,13 @@ function FeesSettings() {
     }
   }, [customData]);
 
+  // Atualizar taxa de juros quando os dados chegam
+  useEffect(() => {
+    if (interestData?.monthlyInterestRate) {
+      setMonthlyInterestRate(interestData.monthlyInterestRate);
+    }
+  }, [interestData]);
+
   // Mutation para salvar tipo de taxa
   const saveFeeTypeMutation = useMutation({
     mutationFn: async (type: "sumup" | "custom") => {
@@ -122,6 +135,35 @@ function FeesSettings() {
       toast({
         title: "Erro",
         description: error.message || "Erro ao salvar tipo de taxa",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para salvar taxa de juros mensal
+  const saveInterestRateMutation = useMutation({
+    mutationFn: async (rate: string) => {
+      // Normalizar: substituir vírgula por ponto e validar
+      const normalizedRate = rate.replace(',', '.');
+      const numericRate = parseFloat(normalizedRate);
+      
+      if (isNaN(numericRate) || !isFinite(numericRate) || numericRate < 0) {
+        throw new Error("Taxa de juros inválida. Use apenas números positivos (ex: 2.5 ou 2,5)");
+      }
+      
+      return apiRequest("POST", "/api/settings/fees/monthly-interest", { monthlyInterestRate: String(numericRate) });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/fees/monthly-interest"] });
+      toast({
+        title: "Taxa de juros atualizada",
+        description: "A taxa de juros mensal foi atualizada com sucesso",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar taxa de juros",
         variant: "destructive",
       });
     },
@@ -187,6 +229,49 @@ function FeesSettings() {
           </Select>
           <p className="text-xs text-muted-foreground">
             Escolha entre usar as taxas oficiais da Sumup ou definir taxas personalizadas
+          </p>
+        </div>
+
+        {/* Taxa de Juros Mensal para Parcelamento */}
+        <div className="space-y-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <label htmlFor="monthly-interest" className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                Taxa de Juros Mensal (%)
+              </label>
+              <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                Juros compostos aplicados em parcelamentos de cartão de crédito (Tabela Price)
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                id="monthly-interest"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={monthlyInterestRate}
+                onChange={(e) => setMonthlyInterestRate(e.target.value)}
+                placeholder="Ex: 2.5"
+                className="pr-8"
+                data-testid="input-monthly-interest"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">% a.m.</span>
+            </div>
+            <Button 
+              onClick={() => saveInterestRateMutation.mutate(monthlyInterestRate)}
+              disabled={saveInterestRateMutation.isPending || !monthlyInterestRate}
+              data-testid="button-save-monthly-interest"
+            >
+              {saveInterestRateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          </div>
+          <p className="text-xs text-orange-600 dark:text-orange-400">
+            <strong>Como funciona:</strong> Primeiro aplica-se a taxa da operadora (ex: 5,49% da SumUp), 
+            depois os juros mensais sobre o valor restante usando a fórmula da Tabela Price.
           </p>
         </div>
 
