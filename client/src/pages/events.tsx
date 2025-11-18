@@ -29,6 +29,7 @@ interface EventWithDetails extends Event {
   clientName?: string;
   employeeNames?: string[];
   characterNames?: string[];
+  packageName?: string;
 }
 
 export default function Events() {
