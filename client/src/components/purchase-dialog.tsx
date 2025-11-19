@@ -166,14 +166,13 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Item do Estoque</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                       <FormControl>
                         <SelectTrigger data-testid="select-purchase-item">
                           <SelectValue placeholder="Selecione (opcional)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
                         {items?.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
                             {item.name}
