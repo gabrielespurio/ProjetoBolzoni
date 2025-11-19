@@ -100,7 +100,13 @@ export default function Purchases() {
                         <span>•</span>
                         <div className="flex items-center gap-2">
                           <CalendarIcon className="h-4 w-4" />
-                          <span>{format(new Date(purchase.purchaseDate + 'T00:00:00'), "dd/MM/yyyy", { locale: ptBR })}</span>
+                          <span>
+                            {(() => {
+                              const date = new Date(purchase.purchaseDate);
+                              const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+                              return format(localDate, "dd/MM/yyyy", { locale: ptBR });
+                            })()}
+                          </span>
                         </div>
                       </div>
                     </div>
