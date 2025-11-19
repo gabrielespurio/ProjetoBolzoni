@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertEmployeePaymentSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertEmployeePaymentSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -434,10 +434,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const bodyData = { ...req.body };
       if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
-      const data = insertPurchaseSchema.parse(bodyData);
+      const data = validatePurchaseSchema.parse(bodyData);
+      
+      // Calcular installmentAmount no backend para garantir consistência
+      let purchaseData = data;
+      if (data.isInstallment && data.installments) {
+        const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
+        const calculatedInstallmentAmount = (totalAmount / data.installments).toFixed(2);
+        purchaseData = { ...data, installmentAmount: calculatedInstallmentAmount };
+      }
       
       // Criar a compra
-      const purchase = await storage.createPurchase(data);
+      const purchase = await storage.createPurchase(purchaseData);
       
       // Se houver item do estoque selecionado e quantidade, atualizar estoque
       if (data.itemId && data.quantity) {

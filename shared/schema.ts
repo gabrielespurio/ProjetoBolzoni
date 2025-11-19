@@ -319,7 +319,9 @@ export const insertFinancialTransactionSchema = createInsertSchema(financialTran
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({
   id: true,
   createdAt: true,
-}).refine((data) => {
+});
+
+export const validatePurchaseSchema = insertPurchaseSchema.refine((data) => {
   if (data.isInstallment) {
     const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
     return !isNaN(totalAmount) && totalAmount > 0;
