@@ -11,19 +11,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 const purchaseFormSchema = insertPurchaseSchema.extend({
   notes: z.string().optional(),
   itemId: z.string().optional().or(z.literal("")),
   quantity: z.number().int().positive("Quantidade deve ser maior que zero").optional(),
   purchaseDate: z.string(),
+  isInstallment: z.boolean().default(false),
+  installments: z.number().int().positive("Número de parcelas deve ser maior que zero").optional(),
+  installmentAmount: z.string().optional(),
+}).refine((data) => {
+  if (data.isInstallment) {
+    const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
+    return !isNaN(totalAmount) && totalAmount > 0;
+  }
+  return true;
+}, {
+  message: "Valor total deve ser maior que zero para compras parceladas",
+  path: ["amount"],
+}).refine((data) => {
+  if (data.isInstallment) {
+    return data.installments && data.installments >= 2;
+  }
+  return true;
+}, {
+  message: "Número de parcelas é obrigatório e deve ser no mínimo 2",
+  path: ["installments"],
 });
 
 type PurchaseForm = z.infer<typeof purchaseFormSchema>;
@@ -53,8 +75,32 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
       quantity: purchase?.quantity || undefined,
       purchaseDate: purchase?.purchaseDate ? new Date(purchase.purchaseDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
       notes: purchase?.notes || "",
+      isInstallment: purchase?.isInstallment || false,
+      installments: purchase?.installments || undefined,
+      installmentAmount: purchase?.installmentAmount || undefined,
     },
   });
+
+  // Calcular valor da parcela automaticamente
+  const amount = form.watch("amount");
+  const installments = form.watch("installments");
+  const isInstallment = form.watch("isInstallment");
+
+  useEffect(() => {
+    if (isInstallment && installments && Number(installments) > 0 && amount) {
+      const totalAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+      if (!isNaN(totalAmount) && totalAmount > 0) {
+        const installmentValue = (totalAmount / installments).toFixed(2);
+        form.setValue("installmentAmount", installmentValue);
+      }
+    } else {
+      // Limpar campos de parcelamento quando desligado
+      form.setValue("installmentAmount", undefined);
+      if (!isInstallment) {
+        form.setValue("installments", undefined);
+      }
+    }
+  }, [amount, installments, isInstallment, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: PurchaseForm) => {
@@ -87,10 +133,20 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
   const onSubmit = (data: PurchaseForm) => {
     // Parse date as local date (ignore timezone)
     const [year, month, day] = data.purchaseDate.split('-');
+    
+    // Calcular installmentAmount no momento do submit para garantir consistência
+    let calculatedInstallmentAmount = undefined;
+    if (data.isInstallment && data.installments) {
+      const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
+      calculatedInstallmentAmount = (totalAmount / data.installments).toFixed(2);
+    }
+    
     const purchaseData = {
       ...data,
       purchaseDate: new Date(parseInt(year), parseInt(month) - 1, parseInt(day)),
       itemId: data.itemId || undefined,
+      installments: data.isInstallment ? data.installments : undefined,
+      installmentAmount: data.isInstallment ? calculatedInstallmentAmount : undefined,
     };
     mutation.mutate(purchaseData as any);
   };
@@ -130,7 +186,7 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor *</FormLabel>
+                    <FormLabel>Valor Total *</FormLabel>
                     <FormControl>
                       <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-purchase-amount" />
                     </FormControl>
@@ -138,6 +194,63 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="isInstallment"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-md border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Compra Parcelada</FormLabel>
+                      <FormDescription className="text-xs">
+                        Dividir o pagamento em parcelas
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-purchase-installment"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              {isInstallment && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="installments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número de Parcelas *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            min="2"
+                            value={field.value || ""} 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            placeholder="Ex: 3" 
+                            data-testid="input-purchase-installments" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {installments && Number(installments) > 0 && form.watch("installmentAmount") && (
+                    <div className="rounded-md bg-muted p-4">
+                      <p className="text-sm font-medium">Valor por parcela</p>
+                      <p className="text-2xl font-bold" data-testid="text-installment-value">
+                        R$ {form.watch("installmentAmount")}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {installments}x de R$ {form.watch("installmentAmount")}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
               <FormField
                 control={form.control}
                 name="description"

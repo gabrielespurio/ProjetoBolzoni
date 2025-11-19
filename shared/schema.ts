@@ -127,6 +127,9 @@ export const purchases = pgTable("purchases", {
   quantity: integer("quantity"),
   purchaseDate: timestamp("purchase_date").notNull(),
   notes: text("notes"),
+  isInstallment: boolean("is_installment").notNull().default(false),
+  installments: integer("installments"),
+  installmentAmount: decimal("installment_amount", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -316,6 +319,23 @@ export const insertFinancialTransactionSchema = createInsertSchema(financialTran
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({
   id: true,
   createdAt: true,
+}).refine((data) => {
+  if (data.isInstallment) {
+    const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
+    return !isNaN(totalAmount) && totalAmount > 0;
+  }
+  return true;
+}, {
+  message: "Valor total deve ser maior que zero para compras parceladas",
+  path: ["amount"],
+}).refine((data) => {
+  if (data.isInstallment) {
+    return data.installments && data.installments >= 2;
+  }
+  return true;
+}, {
+  message: "Número de parcelas é obrigatório e deve ser no mínimo 2",
+  path: ["installments"],
 });
 
 export const insertEventEmployeeSchema = createInsertSchema(eventEmployees).omit({
