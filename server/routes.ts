@@ -435,7 +435,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bodyData = { ...req.body };
       if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
       const data = insertPurchaseSchema.parse(bodyData);
+      
+      // Criar a compra
       const purchase = await storage.createPurchase(data);
+      
+      // Se houver item do estoque selecionado e quantidade, atualizar estoque
+      if (data.itemId && data.quantity) {
+        // Buscar item atual
+        const item = await storage.getInventoryItem(data.itemId);
+        if (item) {
+          // Criar movimento de estoque (entrada)
+          await storage.createStockMovement({
+            itemId: data.itemId,
+            quantity: data.quantity,
+            type: "entrada",
+            notes: `Compra #${purchase.id.slice(0, 8)} - ${data.supplier}`,
+          });
+          
+          // Atualizar quantidade do item
+          await storage.updateInventoryItem(data.itemId, {
+            quantity: item.quantity + data.quantity,
+          });
+        }
+      }
+      
+      // Criar conta a pagar no módulo financeiro
+      await storage.createTransaction({
+        type: "payable",
+        description: `Compra: ${data.description} - ${data.supplier}`,
+        amount: data.amount,
+        dueDate: data.purchaseDate,
+        isPaid: false,
+        notes: data.notes || undefined,
+      });
+      
       res.status(201).json(purchase);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar compra" });

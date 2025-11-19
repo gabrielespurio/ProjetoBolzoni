@@ -22,6 +22,7 @@ import { Loader2 } from "lucide-react";
 const purchaseFormSchema = insertPurchaseSchema.extend({
   notes: z.string().optional(),
   itemId: z.string().optional().or(z.literal("")),
+  quantity: z.number().int().positive("Quantidade deve ser maior que zero").optional(),
   purchaseDate: z.string(),
 });
 
@@ -49,6 +50,7 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
       description: purchase?.description || "",
       amount: purchase?.amount || "0",
       itemId: purchase?.itemId || "",
+      quantity: purchase?.quantity || undefined,
       purchaseDate: purchase?.purchaseDate ? new Date(purchase.purchaseDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
       notes: purchase?.notes || "",
     },
@@ -185,6 +187,29 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
                   </FormItem>
                 )}
               />
+              {form.watch("itemId") && (
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number" 
+                          min="1"
+                          value={field.value || ""} 
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                          placeholder="Quantidade" 
+                          data-testid="input-purchase-quantity" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <FormField
               control={form.control}

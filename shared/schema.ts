@@ -124,6 +124,7 @@ export const purchases = pgTable("purchases", {
   description: text("description").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   itemId: varchar("item_id").references(() => inventoryItems.id),
+  quantity: integer("quantity"),
   purchaseDate: timestamp("purchase_date").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
