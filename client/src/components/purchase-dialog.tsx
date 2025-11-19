@@ -82,10 +82,11 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
   });
 
   const onSubmit = (data: PurchaseForm) => {
-    // Convert date string to Date object
+    // Parse date as local date (ignore timezone)
+    const [year, month, day] = data.purchaseDate.split('-');
     const purchaseData = {
       ...data,
-      purchaseDate: new Date(data.purchaseDate),
+      purchaseDate: new Date(parseInt(year), parseInt(month) - 1, parseInt(day)),
       itemId: data.itemId || undefined,
     };
     mutation.mutate(purchaseData as any);
