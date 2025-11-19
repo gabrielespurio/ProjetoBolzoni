@@ -67,6 +67,7 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/transactions"] });
       toast({
         title: isEdit ? "Compra atualizada" : "Compra registrada",
         description: isEdit ? "Compra atualizada com sucesso." : "Nova compra registrada com sucesso.",

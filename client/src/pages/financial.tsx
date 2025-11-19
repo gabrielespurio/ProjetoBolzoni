@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { FinancialDialog } from "@/components/financial-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -15,12 +16,20 @@ export default function Financial() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<FinancialTransaction | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const { data: transactions, isLoading } = useQuery<FinancialTransaction[]>({
     queryKey: ["/api/financial/transactions"],
   });
 
-  const filteredTransactions = transactions?.filter((transaction) =>
+  const payableTransactions = transactions?.filter((t) => t.type === "payable") || [];
+  const receivableTransactions = transactions?.filter((t) => t.type === "receivable") || [];
+
+  const filteredPayable = payableTransactions.filter((transaction) =>
+    transaction.description.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredReceivable = receivableTransactions.filter((transaction) =>
     transaction.description.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -63,6 +72,63 @@ export default function Financial() {
     }).format(value);
   };
 
+  const renderTransactionList = (transactionsList: FinancialTransaction[], emptyMessage: string) => {
+    if (isLoading) {
+      return (
+        <div className="space-y-4 p-6">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </div>
+      );
+    }
+
+    if (transactionsList.length === 0) {
+      return (
+        <div className="p-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            {search ? "Nenhuma transação encontrada" : emptyMessage}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="divide-y divide-border">
+        {transactionsList.map((transaction) => (
+          <div
+            key={transaction.id}
+            className="p-6 hover-elevate active-elevate-2 cursor-pointer"
+            onClick={() => handleEdit(transaction)}
+            data-testid={`transaction-${transaction.id}`}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1 flex-1">
+                <h3 className="text-base font-semibold text-foreground">{transaction.description}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Vencimento: {format(new Date(transaction.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                  {transaction.isPaid && transaction.paidDate && (
+                    <> • Pago em: {format(new Date(transaction.paidDate), "dd/MM/yyyy", { locale: ptBR })}</>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className={`text-base font-bold font-mono ${transaction.type === 'receivable' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {transaction.type === 'receivable' ? '+' : '-'} {formatCurrency(parseFloat(transaction.amount))}
+                  </p>
+                </div>
+                <Badge variant={transaction.isPaid ? "secondary" : "default"} data-testid={`badge-${transaction.isPaid ? 'paid' : 'pending'}`}>
+                  {transaction.isPaid ? "Pago" : "Pendente"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -78,123 +144,124 @@ export default function Financial() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="border-card-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Saldo
-            </CardTitle>
-            <DollarSign className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold font-mono" data-testid="metric-balance">
-              {formatCurrency(balance)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Recebido - Pago
-            </p>
-          </CardContent>
-        </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview" data-testid="tab-overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="receivable" data-testid="tab-receivable">Contas a Receber</TabsTrigger>
+          <TabsTrigger value="payable" data-testid="tab-payable">Contas a Pagar</TabsTrigger>
+        </TabsList>
 
-        <Card className="border-card-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              A Receber
-            </CardTitle>
-            <TrendingUp className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold font-mono" data-testid="metric-receivable">
-              {formatCurrency(summary.receivable)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Recebido: {formatCurrency(summary.received)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-card-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              A Pagar
-            </CardTitle>
-            <TrendingDown className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold font-mono" data-testid="metric-payable">
-              {formatCurrency(summary.payable)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Pago: {formatCurrency(summary.paid)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-card-border">
-        <CardHeader className="border-b border-border">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por descrição..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-transactions"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-4 p-6">
-              {[...Array(8)].map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
-            </div>
-          ) : filteredTransactions && filteredTransactions.length > 0 ? (
-            <div className="divide-y divide-border">
-              {filteredTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="p-6 hover-elevate active-elevate-2 cursor-pointer"
-                  onClick={() => handleEdit(transaction)}
-                  data-testid={`transaction-${transaction.id}`}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1 flex-1">
-                      <h3 className="text-base font-semibold text-foreground">{transaction.description}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Vencimento: {format(new Date(transaction.dueDate), "dd/MM/yyyy", { locale: ptBR })}
-                        {transaction.isPaid && transaction.paidDate && (
-                          <> • Pago em: {format(new Date(transaction.paidDate), "dd/MM/yyyy", { locale: ptBR })}</>
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className={`text-base font-bold font-mono ${transaction.type === 'receivable' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {transaction.type === 'receivable' ? '+' : '-'} {formatCurrency(parseFloat(transaction.amount))}
-                        </p>
-                      </div>
-                      <Badge variant={transaction.isPaid ? "secondary" : "default"}>
-                        {transaction.isPaid ? "Pago" : "Pendente"}
-                      </Badge>
-                    </div>
-                  </div>
+        <TabsContent value="overview" className="space-y-6 mt-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="border-card-border">
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Saldo
+                </CardTitle>
+                <DollarSign className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold font-mono" data-testid="metric-balance">
+                  {formatCurrency(balance)}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                {search ? "Nenhuma transação encontrada" : "Nenhuma transação cadastrada"}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Recebido - Pago
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-card-border">
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  A Receber
+                </CardTitle>
+                <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold font-mono" data-testid="metric-receivable">
+                  {formatCurrency(summary.receivable)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Recebido: {formatCurrency(summary.received)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-card-border">
+              <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                <CardTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  A Pagar
+                </CardTitle>
+                <TrendingDown className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold font-mono" data-testid="metric-payable">
+                  {formatCurrency(summary.payable)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pago: {formatCurrency(summary.paid)}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-card-border">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-base">Transações Recentes</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {renderTransactionList(
+                (transactions || []).slice(0, 10),
+                "Nenhuma transação cadastrada"
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="receivable" className="space-y-6 mt-6">
+          <Card className="border-card-border">
+            <CardHeader className="border-b border-border">
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por descrição..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-search-receivable"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {renderTransactionList(filteredReceivable, "Nenhuma conta a receber cadastrada")}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payable" className="space-y-6 mt-6">
+          <Card className="border-card-border">
+            <CardHeader className="border-b border-border">
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por descrição..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-search-payable"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {renderTransactionList(filteredPayable, "Nenhuma conta a pagar cadastrada")}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <FinancialDialog
         open={isDialogOpen}
