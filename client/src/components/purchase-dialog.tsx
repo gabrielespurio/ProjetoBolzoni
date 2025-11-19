@@ -29,6 +29,7 @@ const purchaseFormSchema = insertPurchaseSchema.extend({
   isInstallment: z.boolean().default(false),
   installments: z.number().int().positive("Número de parcelas deve ser maior que zero").optional(),
   installmentAmount: z.string().optional(),
+  firstInstallmentDate: z.string().optional(),
 }).refine((data) => {
   if (data.isInstallment) {
     const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
@@ -46,6 +47,14 @@ const purchaseFormSchema = insertPurchaseSchema.extend({
 }, {
   message: "Número de parcelas é obrigatório e deve ser no mínimo 2",
   path: ["installments"],
+}).refine((data) => {
+  if (data.isInstallment) {
+    return data.firstInstallmentDate && data.firstInstallmentDate.trim() !== "";
+  }
+  return true;
+}, {
+  message: "Data da primeira parcela é obrigatória para compras parceladas",
+  path: ["firstInstallmentDate"],
 });
 
 type PurchaseForm = z.infer<typeof purchaseFormSchema>;
@@ -78,6 +87,7 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
       isInstallment: purchase?.isInstallment || false,
       installments: purchase?.installments || undefined,
       installmentAmount: purchase?.installmentAmount || undefined,
+      firstInstallmentDate: purchase?.firstInstallmentDate ? new Date(purchase.firstInstallmentDate).toISOString().slice(0, 10) : "",
     },
   });
 
@@ -232,6 +242,23 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
                             onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                             placeholder="Ex: 3" 
                             data-testid="input-purchase-installments" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="firstInstallmentDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data da Primeira Parcela *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="date" 
+                            data-testid="input-purchase-first-installment-date" 
                           />
                         </FormControl>
                         <FormMessage />

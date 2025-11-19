@@ -130,6 +130,7 @@ export const purchases = pgTable("purchases", {
   isInstallment: boolean("is_installment").notNull().default(false),
   installments: integer("installments"),
   installmentAmount: decimal("installment_amount", { precision: 10, scale: 2 }),
+  firstInstallmentDate: timestamp("first_installment_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
