@@ -434,6 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const bodyData = { ...req.body };
       if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
+      if (bodyData.firstInstallmentDate) bodyData.firstInstallmentDate = new Date(bodyData.firstInstallmentDate);
       const data = validatePurchaseSchema.parse(bodyData);
       
       // Calcular installmentAmount no backend para garantir consistência
@@ -467,15 +468,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Criar conta a pagar no módulo financeiro
-      await storage.createTransaction({
-        type: "payable",
-        description: `Compra: ${data.description} - ${data.supplier}`,
-        amount: data.amount,
-        dueDate: data.purchaseDate,
-        isPaid: false,
-        notes: data.notes || undefined,
-      });
+      // Criar contas a pagar no módulo financeiro
+      if (data.isInstallment && data.installments && data.firstInstallmentDate) {
+        // Compra parcelada: criar uma transação para cada parcela
+        const installmentAmount = typeof purchaseData.installmentAmount === 'string' 
+          ? parseFloat(purchaseData.installmentAmount) 
+          : Number(purchaseData.installmentAmount);
+        
+        for (let i = 0; i < data.installments; i++) {
+          // Calcular data de vencimento da parcela (primeira parcela + i meses)
+          const dueDate = new Date(data.firstInstallmentDate);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          
+          await storage.createTransaction({
+            type: "payable",
+            description: `Compra: ${data.description} - ${data.supplier} (${i + 1}/${data.installments})`,
+            amount: installmentAmount.toString(),
+            dueDate: dueDate,
+            isPaid: false,
+            notes: data.notes || undefined,
+          });
+        }
+      } else {
+        // Compra à vista: criar uma única transação
+        await storage.createTransaction({
+          type: "payable",
+          description: `Compra: ${data.description} - ${data.supplier}`,
+          amount: data.amount,
+          dueDate: data.purchaseDate,
+          isPaid: false,
+          notes: data.notes || undefined,
+        });
+      }
       
       res.status(201).json(purchase);
     } catch (error: any) {
@@ -487,6 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const bodyData = { ...req.body };
       if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
+      if (bodyData.firstInstallmentDate) bodyData.firstInstallmentDate = new Date(bodyData.firstInstallmentDate);
       const data = insertPurchaseSchema.partial().parse(bodyData);
       const purchase = await storage.updatePurchase(req.params.id, data);
       res.json(purchase);
