@@ -432,9 +432,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/purchases", authenticateToken, async (req, res) => {
     try {
+      // Função auxiliar para converter string de data YYYY-MM-DD para Date no timezone local
+      const parseLocalDate = (dateString: string): Date => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        // Criar data às 12:00 no horário local para evitar problemas de timezone
+        return new Date(year, month - 1, day, 12, 0, 0);
+      };
+      
       const bodyData = { ...req.body };
-      if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
-      if (bodyData.firstInstallmentDate) bodyData.firstInstallmentDate = new Date(bodyData.firstInstallmentDate);
+      if (bodyData.purchaseDate) bodyData.purchaseDate = parseLocalDate(bodyData.purchaseDate);
+      if (bodyData.firstInstallmentDate) bodyData.firstInstallmentDate = parseLocalDate(bodyData.firstInstallmentDate);
       const data = validatePurchaseSchema.parse(bodyData);
       
       // Calcular installmentAmount no backend para garantir consistência
@@ -477,8 +484,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         for (let i = 0; i < data.installments; i++) {
           // Calcular data de vencimento da parcela (primeira parcela + i meses)
-          const dueDate = new Date(data.firstInstallmentDate);
-          dueDate.setMonth(dueDate.getMonth() + i);
+          // Criar nova data mantendo dia, mês e ano corretos
+          const firstDate = new Date(data.firstInstallmentDate);
+          const dueDate = new Date(
+            firstDate.getFullYear(),
+            firstDate.getMonth() + i,
+            firstDate.getDate(),
+            12, 0, 0
+          );
           
           await storage.createTransaction({
             type: "payable",
@@ -509,9 +522,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/purchases/:id", authenticateToken, async (req, res) => {
     try {
+      // Função auxiliar para converter string de data YYYY-MM-DD para Date no timezone local
+      const parseLocalDate = (dateString: string): Date => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        // Criar data às 12:00 no horário local para evitar problemas de timezone
+        return new Date(year, month - 1, day, 12, 0, 0);
+      };
+      
       const bodyData = { ...req.body };
-      if (bodyData.purchaseDate) bodyData.purchaseDate = new Date(bodyData.purchaseDate);
-      if (bodyData.firstInstallmentDate) bodyData.firstInstallmentDate = new Date(bodyData.firstInstallmentDate);
+      if (bodyData.purchaseDate) bodyData.purchaseDate = parseLocalDate(bodyData.purchaseDate);
+      if (bodyData.firstInstallmentDate) bodyData.firstInstallmentDate = parseLocalDate(bodyData.firstInstallmentDate);
       const data = insertPurchaseSchema.partial().parse(bodyData);
       const purchase = await storage.updatePurchase(req.params.id, data);
       res.json(purchase);
