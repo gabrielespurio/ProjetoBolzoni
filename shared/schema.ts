@@ -320,6 +320,9 @@ export const insertFinancialTransactionSchema = createInsertSchema(financialTran
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({
   id: true,
   createdAt: true,
+}).extend({
+  purchaseDate: z.union([z.string(), z.date()]),
+  firstInstallmentDate: z.union([z.string(), z.date()]).optional(),
 });
 
 export const validatePurchaseSchema = insertPurchaseSchema.refine((data) => {
