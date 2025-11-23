@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -15,7 +15,7 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 43329
+localPort = 40735
 externalPort = 3000
 
 [env]
@@ -48,3 +48,8 @@ waitForPort = 5000
 [agent]
 integrations = ["javascript_database:1.0.0"]
 expertMode = true
+
+[userenv]
+
+[userenv.shared]
+DATABASE_URL = "postgresql://neondb_owner:npg_bgx9lonfe3ws@ep-cold-morning-acyn336g-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
