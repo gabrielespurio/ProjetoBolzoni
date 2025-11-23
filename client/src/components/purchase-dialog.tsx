@@ -151,12 +151,20 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
       calculatedInstallmentAmount = (totalAmount / data.installments).toFixed(2);
     }
     
+    // Convert firstInstallmentDate to Date object if present
+    let firstInstallmentDateObj = undefined;
+    if (data.isInstallment && data.firstInstallmentDate) {
+      const [fYear, fMonth, fDay] = data.firstInstallmentDate.split('-');
+      firstInstallmentDateObj = new Date(parseInt(fYear), parseInt(fMonth) - 1, parseInt(fDay));
+    }
+    
     const purchaseData = {
       ...data,
       purchaseDate: new Date(parseInt(year), parseInt(month) - 1, parseInt(day)),
       itemId: data.itemId || undefined,
       installments: data.isInstallment ? data.installments : undefined,
       installmentAmount: data.isInstallment ? calculatedInstallmentAmount : undefined,
+      firstInstallmentDate: firstInstallmentDateObj,
     };
     mutation.mutate(purchaseData as any);
   };
