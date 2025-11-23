@@ -432,6 +432,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/purchases", authenticateToken, async (req, res) => {
     try {
+      // Validar os dados primeiro (ainda como strings)
+      const data = validatePurchaseSchema.parse(req.body);
+      
       // Função auxiliar para converter string de data YYYY-MM-DD para Date no timezone local
       const parseLocalDate = (dateString: string): Date => {
         const [year, month, day] = dateString.split('-').map(Number);
@@ -439,17 +442,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return new Date(year, month - 1, day, 12, 0, 0);
       };
       
-      const bodyData = { ...req.body };
-      if (bodyData.purchaseDate) bodyData.purchaseDate = parseLocalDate(bodyData.purchaseDate);
-      if (bodyData.firstInstallmentDate) bodyData.firstInstallmentDate = parseLocalDate(bodyData.firstInstallmentDate);
-      const data = validatePurchaseSchema.parse(bodyData);
+      // Converter as datas após a validação
+      const purchaseDate = parseLocalDate(data.purchaseDate as unknown as string);
+      const firstInstallmentDate = data.firstInstallmentDate 
+        ? parseLocalDate(data.firstInstallmentDate as unknown as string) 
+        : undefined;
       
       // Calcular installmentAmount no backend para garantir consistência
-      let purchaseData = data;
+      let purchaseData: any = { 
+        ...data, 
+        purchaseDate,
+        firstInstallmentDate 
+      };
       if (data.isInstallment && data.installments) {
         const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
         const calculatedInstallmentAmount = (totalAmount / data.installments).toFixed(2);
-        purchaseData = { ...data, installmentAmount: calculatedInstallmentAmount };
+        purchaseData = { ...purchaseData, installmentAmount: calculatedInstallmentAmount };
       }
       
       // Criar a compra
@@ -476,7 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Criar contas a pagar no módulo financeiro
-      if (data.isInstallment && data.installments && data.firstInstallmentDate) {
+      if (data.isInstallment && data.installments && firstInstallmentDate) {
         // Compra parcelada: criar uma transação para cada parcela
         const installmentAmount = typeof purchaseData.installmentAmount === 'string' 
           ? parseFloat(purchaseData.installmentAmount) 
@@ -485,11 +493,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (let i = 0; i < data.installments; i++) {
           // Calcular data de vencimento da parcela (primeira parcela + i meses)
           // Criar nova data mantendo dia, mês e ano corretos
-          const firstDate = new Date(data.firstInstallmentDate);
           const dueDate = new Date(
-            firstDate.getFullYear(),
-            firstDate.getMonth() + i,
-            firstDate.getDate(),
+            firstInstallmentDate.getFullYear(),
+            firstInstallmentDate.getMonth() + i,
+            firstInstallmentDate.getDate(),
             12, 0, 0
           );
           
@@ -508,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: "payable",
           description: `Compra: ${data.description} - ${data.supplier}`,
           amount: data.amount,
-          dueDate: data.purchaseDate,
+          dueDate: purchaseDate,
           isPaid: false,
           notes: data.notes || undefined,
         });
