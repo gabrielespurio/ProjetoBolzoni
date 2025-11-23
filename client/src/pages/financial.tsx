@@ -1,25 +1,48 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Check } from "lucide-react";
 import { FinancialDialog } from "@/components/financial-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { FinancialTransaction } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Financial() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<FinancialTransaction | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const { toast } = useToast();
 
   const { data: transactions, isLoading } = useQuery<FinancialTransaction[]>({
     queryKey: ["/api/financial/transactions"],
+  });
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      return apiRequest("POST", `/api/financial/transactions/${transactionId}/pay`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/transactions"] });
+      toast({
+        title: "Baixa registrada",
+        description: "Pagamento marcado como pago com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao dar baixa no pagamento.",
+        variant: "destructive",
+      });
+    },
   });
 
   const payableTransactions = transactions?.filter((t) => t.type === "payable") || [];
@@ -63,6 +86,11 @@ export default function Financial() {
   const handleClose = () => {
     setIsDialogOpen(false);
     setSelectedTransaction(null);
+  };
+
+  const handleMarkAsPaid = (e: React.MouseEvent, transactionId: string) => {
+    e.stopPropagation();
+    markAsPaidMutation.mutate(transactionId);
   };
 
   const formatCurrency = (value: number) => {
@@ -118,7 +146,19 @@ export default function Financial() {
                     {transaction.type === 'receivable' ? '+' : '-'} {formatCurrency(parseFloat(transaction.amount))}
                   </p>
                 </div>
-                <Badge variant={transaction.isPaid ? "secondary" : "default"} data-testid={`badge-${transaction.isPaid ? 'paid' : 'pending'}`}>
+                {!transaction.isPaid && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => handleMarkAsPaid(e, transaction.id)}
+                    disabled={markAsPaidMutation.isPending}
+                    data-testid={`button-pay-${transaction.id}`}
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Dar Baixa
+                  </Button>
+                )}
+                <Badge variant={transaction.isPaid ? "secondary" : "destructive"} data-testid={`badge-${transaction.isPaid ? 'paid' : 'pending'}`}>
                   {transaction.isPaid ? "Pago" : "Pendente"}
                 </Badge>
               </div>

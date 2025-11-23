@@ -420,6 +420,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Mark transaction as paid (dar baixa)
+  app.post("/api/financial/transactions/:id/pay", authenticateToken, async (req, res) => {
+    try {
+      const transaction = await storage.updateTransaction(req.params.id, {
+        isPaid: true,
+        paidDate: new Date(),
+      });
+      res.json(transaction);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao dar baixa na transação" });
+    }
+  });
+  
   // Purchases routes
   app.get("/api/purchases", authenticateToken, async (req, res) => {
     try {
