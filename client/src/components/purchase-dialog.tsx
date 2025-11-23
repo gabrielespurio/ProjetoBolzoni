@@ -141,30 +141,16 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
   });
 
   const onSubmit = (data: PurchaseForm) => {
-    // Parse date as local date (ignore timezone)
-    const [year, month, day] = data.purchaseDate.split('-');
-    
-    // Calcular installmentAmount no momento do submit para garantir consistência
-    let calculatedInstallmentAmount = undefined;
-    if (data.isInstallment && data.installments) {
-      const totalAmount = typeof data.amount === 'string' ? parseFloat(data.amount) : Number(data.amount);
-      calculatedInstallmentAmount = (totalAmount / data.installments).toFixed(2);
-    }
-    
-    // Convert firstInstallmentDate to Date object if present
-    let firstInstallmentDateObj = undefined;
-    if (data.isInstallment && data.firstInstallmentDate) {
-      const [fYear, fMonth, fDay] = data.firstInstallmentDate.split('-');
-      firstInstallmentDateObj = new Date(parseInt(fYear), parseInt(fMonth) - 1, parseInt(fDay));
-    }
-    
+    // Backend expects dates as strings and will handle conversion
     const purchaseData = {
       ...data,
-      purchaseDate: new Date(parseInt(year), parseInt(month) - 1, parseInt(day)),
       itemId: data.itemId || undefined,
       installments: data.isInstallment ? data.installments : undefined,
-      installmentAmount: data.isInstallment ? calculatedInstallmentAmount : undefined,
-      firstInstallmentDate: firstInstallmentDateObj,
+      // Remove installmentAmount from frontend - backend calculates it
+      installmentAmount: undefined,
+      // Keep dates as strings - backend will convert them
+      purchaseDate: data.purchaseDate,
+      firstInstallmentDate: data.isInstallment ? data.firstInstallmentDate : undefined,
     };
     mutation.mutate(purchaseData as any);
   };
