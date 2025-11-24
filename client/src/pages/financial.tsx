@@ -158,7 +158,12 @@ export default function Financial() {
                     Dar Baixa
                   </Button>
                 )}
-                <Badge variant={transaction.isPaid ? "secondary" : "destructive"} data-testid={`badge-${transaction.isPaid ? 'paid' : 'pending'}`}>
+                <Badge 
+                  variant={transaction.isPaid ? "outline" : "destructive"} 
+                  className={transaction.isPaid ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700" : ""}
+                  data-testid={`badge-${transaction.isPaid ? 'paid' : 'pending'}`}
+                >
+                  {transaction.isPaid && <Check className="mr-1 h-3 w-3" />}
                   {transaction.isPaid ? "Pago" : "Pendente"}
                 </Badge>
               </div>
