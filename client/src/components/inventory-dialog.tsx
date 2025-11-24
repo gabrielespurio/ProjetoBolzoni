@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 const inventoryFormSchema = insertInventoryItemSchema.extend({
-  unit: z.string().optional(),
   costPrice: z.string().optional(),
   salePrice: z.string().optional(),
   notes: z.string().optional(),
@@ -45,7 +44,6 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
       type: item?.type || "consumable",
       quantity: item?.quantity || 0,
       minQuantity: item?.minQuantity || 0,
-      unit: item?.unit || "",
       costPrice: item?.costPrice || "",
       salePrice: item?.salePrice || "",
       notes: item?.notes || "",
@@ -155,39 +153,24 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                 )}
               />
               {selectedType !== "character" && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="minQuantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estoque Mínimo *</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="number"
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            data-testid="input-item-min-quantity"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="unit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unidade</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: un, kg, L" data-testid="input-item-unit" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                <FormField
+                  control={form.control}
+                  name="minQuantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estoque Mínimo *</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          data-testid="input-item-min-quantity"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
               {selectedType === "character" && (
                 <>
