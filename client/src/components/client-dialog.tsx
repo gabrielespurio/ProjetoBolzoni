@@ -251,12 +251,12 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                   Endereço
                 </h3>
                 <div className="grid gap-4">
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="flex gap-4 flex-wrap">
                     <FormField
                       control={form.control}
                       name="cep"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="w-36">
                           <FormLabel>CEP</FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -280,7 +280,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                       control={form.control}
                       name="estado"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="w-16">
                           <FormLabel>Estado</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="UF" data-testid="input-client-estado" maxLength={2} />
@@ -293,7 +293,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                       control={form.control}
                       name="cidade"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex-1 min-w-48">
                           <FormLabel>Cidade</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="Nome da cidade" data-testid="input-client-cidade" />
@@ -331,7 +331,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                       )}
                     />
                   </div>
-                  <div className="grid gap-4 md:grid-cols-4">
+                  <div className="w-20">
                     <FormField
                       control={form.control}
                       name="numero"
