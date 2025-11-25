@@ -304,6 +304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedData = insertEventSchema.parse({
         ...eventData,
         date: new Date(eventData.date),
+        paymentDate: eventData.paymentDate ? new Date(eventData.paymentDate) : null,
       });
       const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees);
       res.status(201).json(event);
@@ -318,6 +319,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bodyData = { ...eventData };
       if (bodyData.date) {
         bodyData.date = new Date(bodyData.date);
+      }
+      if (bodyData.paymentDate !== undefined) {
+        bodyData.paymentDate = bodyData.paymentDate ? new Date(bodyData.paymentDate) : null;
       }
       const data = insertEventSchema.partial().parse(bodyData);
       const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees);
