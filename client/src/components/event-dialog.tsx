@@ -833,6 +833,26 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="packageNotes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observação do Pacote</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        value={field.value || ""}
+                        placeholder="Observações sobre o pacote..."
+                        className="resize-none"
+                        rows={2}
+                        data-testid="input-package-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="space-y-4">
