@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertInventoryItemSchema, type InventoryItem } from "@shared/schema";
 import { z } from "zod";
@@ -40,17 +41,46 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
   const form = useForm<InventoryForm>({
     resolver: zodResolver(inventoryFormSchema),
     defaultValues: {
-      name: item?.name || "",
-      type: item?.type || "consumable",
-      quantity: item?.quantity || 0,
-      minQuantity: item?.minQuantity || 0,
-      costPrice: item?.costPrice || "",
-      salePrice: item?.salePrice || "",
-      notes: item?.notes || "",
+      name: "",
+      type: "consumable",
+      quantity: 0,
+      minQuantity: 0,
+      costPrice: "",
+      salePrice: "",
+      notes: "",
     },
   });
 
   const selectedType = form.watch("type");
+
+  // Atualizar o formulário quando o item ou o estado do diálogo mudar
+  useEffect(() => {
+    if (open) {
+      if (item) {
+        // Modo edição: preencher com os dados do item
+        form.reset({
+          name: item.name,
+          type: item.type,
+          quantity: item.quantity,
+          minQuantity: item.minQuantity,
+          costPrice: item.costPrice || "",
+          salePrice: item.salePrice || "",
+          notes: item.notes || "",
+        });
+      } else {
+        // Modo criação: resetar para valores padrão
+        form.reset({
+          name: "",
+          type: "consumable",
+          quantity: 0,
+          minQuantity: 0,
+          costPrice: "",
+          salePrice: "",
+          notes: "",
+        });
+      }
+    }
+  }, [open, item, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: InventoryForm) => {
