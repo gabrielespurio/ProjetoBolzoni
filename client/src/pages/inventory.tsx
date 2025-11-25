@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,17 +13,47 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, AlertTriangle, Edit } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Search, AlertTriangle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { InventoryDialog } from "@/components/inventory-dialog";
 import type { InventoryItem } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Inventory() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const { toast } = useToast();
 
   const { data: items, isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      return apiRequest("DELETE", `/api/inventory/${itemId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      toast({
+        title: "Item excluído",
+        description: "Item removido do estoque com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir item.",
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredItems = items?.filter((item) =>
@@ -34,6 +64,12 @@ export default function Inventory() {
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);
     setIsDialogOpen(true);
+  };
+
+  const handleDelete = (itemId: string) => {
+    if (window.confirm("Tem certeza que deseja excluir este item?")) {
+      deleteMutation.mutate(itemId);
+    }
   };
 
   const handleAdd = () => {
@@ -189,14 +225,34 @@ export default function Inventory() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                          data-testid={`button-edit-${item.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              data-testid={`button-actions-${item.id}`}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(item)}
+                              data-testid={`button-edit-${item.id}`}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(item.id)}
+                              className="text-destructive focus:text-destructive"
+                              data-testid={`button-delete-${item.id}`}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
