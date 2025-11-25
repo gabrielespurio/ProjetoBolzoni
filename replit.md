@@ -2,9 +2,7 @@
 
 ## Overview
 
-Sistema Bolzoni is a comprehensive business management platform developed by HAVR Tecnologia for Bolzoni Produções, a company specializing in children's recreation and entertainment events. The system centralizes administrative and operational management across multiple domains including financial control, inventory management, client relationships, employee scheduling, event coordination, and procurement tracking.
-
-The application is built as a full-stack TypeScript monorepo with a React frontend and Express backend, designed to run on VPS infrastructure (specifically Contabo Ubuntu 22.04 LTS servers).
+Sistema Bolzoni is a comprehensive business management platform for Bolzoni Produções, a company specializing in children's recreation and entertainment events. Developed by HAVR Tecnologia, the system centralizes administrative and operational management, covering financial control, inventory, client relationships, employee scheduling, event coordination, and procurement. It aims to streamline operations and enhance efficiency for the client.
 
 ## User Preferences
 
@@ -14,195 +12,38 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Framework & Build System:**
-- React 18 with TypeScript for type safety
-- Vite as the build tool and development server
-- Wouter for lightweight client-side routing (no React Router dependency)
-
-**UI Design System:**
-- Shadcn/UI component library with Radix UI primitives
-- TailwindCSS for styling with custom design tokens
-- Enterprise design approach inspired by Carbon Design System and Ant Design
-- Custom color system with CSS variables supporting light/dark modes
-- Typography hierarchy using Inter (primary) and JetBrains Mono (monospace for data)
-
-**State Management:**
-- TanStack Query (React Query) for server state management and caching
-- Local component state with React hooks
-- No global state management library (Redux/Zustand) - server state is the primary source of truth
-
-**Form Handling:**
-- React Hook Form for form state and validation
-- Zod schemas for runtime type validation
-- Integration with Drizzle schema validators via `drizzle-zod`
-
-**Data Visualization:**
-- Recharts library for charts and graphs on the dashboard
+The frontend is built with React 18 and TypeScript, using Vite for bundling. UI components leverage Shadcn/UI and Radix UI primitives, styled with TailwindCSS following an enterprise design approach. State management primarily uses TanStack Query for server state, avoiding global state libraries. Forms are handled with React Hook Form and Zod for validation, integrated with Drizzle. Recharts is used for data visualization.
 
 ### Backend Architecture
 
-**Server Framework:**
-- Express.js with TypeScript
-- Modular route registration pattern
-- Custom logging middleware for API requests
-
-**Authentication & Security:**
-- JWT (JSON Web Tokens) for stateless authentication
-- bcryptjs for password hashing
-- Token stored in localStorage on client, sent via Authorization header
-- Authentication middleware protecting all API routes except login/register
-
-**API Design:**
-- RESTful endpoints under `/api` namespace
-- Consistent response patterns with proper HTTP status codes
-- Error handling with automatic 401 redirects on authentication failure
-
-**Build Process:**
-- Backend bundled using esbuild for production deployment
-- ESM module format throughout the application
-- Separate build outputs: frontend to `dist/public`, backend to `dist`
+The backend is an Express.js application written in TypeScript, featuring a modular route structure and custom logging. Authentication is handled via stateless JWTs with `bcryptjs` for password hashing. The API follows RESTful principles with consistent response patterns and error handling. The backend is bundled with esbuild for production deployment.
 
 ### Data Storage
 
-**Database:**
-- PostgreSQL as the primary relational database
-- Neon Serverless PostgreSQL driver with WebSocket support
-- Connection pooling via `@neondatabase/serverless`
+PostgreSQL is the primary relational database, utilized with Neon Serverless PostgreSQL for connectivity. Drizzle ORM provides type-safe query building and schema management, with migrations handled by Drizzle Kit. The system manages nine core entities: Users, Clients, Employees, Events, Inventory Items, Financial Transactions, Purchases, Event Categories, and Employee Roles, with defined relationships between them.
 
-**ORM & Migrations:**
-- Drizzle ORM for type-safe database queries
-- Schema-first approach with TypeScript definitions in `shared/schema.ts`
-- Drizzle Kit for migration management (`db:push` command)
-- Shared schema types between frontend and backend
+### System Design Choices
 
-**Data Model:**
-The system manages nine core entities:
-- **Users** - Admin and employee authentication with role-based access
-- **Clients** - Customer contact information and relationship tracking
-- **Employees** - Staff management with availability tracking
-- **Events** - Event scheduling with client and contract associations
-- **Inventory Items** - Stock management for consumables and character costumes
-- **Financial Transactions** - Accounts payable/receivable with payment tracking
-- **Purchases** - Procurement records with supplier information
-- **Event Categories** - System configuration for event classification
-- **Employee Roles** - System configuration for employee function definitions
+The platform includes a comprehensive agenda/calendar module with monthly, weekly, and yearly views, automatically integrating event data. Enhanced address management for events, employees, and clients integrates with the ViaCEP API for automatic completion. Financial features include a two-tier fee calculation system for credit card installments (operator fee and compound interest) and an automatic cachê payment system that generates financial transactions for employees based on event participation. The client and employee modules have been enhanced with detailed personal and address information. A robust reports module allows CSV export of data across all modules. Interactive agenda events provide detailed information via modals.
 
-**Relationships:**
-- Events linked to clients and can have multiple employees and characters assigned
-- Events can optionally be associated with an event category
-- Financial transactions can be associated with events
-- Purchases can reference inventory items
-- Stock movements track inventory changes
-
-**Recent Changes (November 2025):**
-- **Database Connection:** Successfully configured external Neon PostgreSQL database connection. The system is now connected to the production Neon database instance hosted at sa-east-1 (South America region) via secure SSL connection with channel binding.
-- **Agenda Module:** Implemented comprehensive agenda/calendar module with three visualization modes:
-  - Monthly view: Full calendar grid showing all events for the month with event counts per day
-  - Weekly view: Detailed hour-by-hour schedule showing events organized by day and time
-  - Yearly view: Overview of all 12 months with event indicators and counts
-  - Automatic integration with events - new events appear in agenda automatically based on their date/time
-  - Navigation controls to move between periods (prev/next) and quick "Today" button
-  - Event search improvements: Added real-time search with autocomplete for character selection in event forms to handle large inventories efficiently
-- Added event category field to events table - events can now be categorized using categories configured in the settings module
-- Database schema updated with categoryId field (nullable) in events table referencing event_categories
-- Event creation/edit form enhanced with category selector pulling from settings
-- Updated color scheme: Primary button color changed to match sidebar color (#6C5584), background color changed to white (#FFFFFF) for a cleaner, more cohesive design
-- **Enhanced Address Management (November 2025):** Improved event location system with granular address fields:
-  - Replaced single "location" field with structured address components (CEP, Estado, Cidade, Bairro, Rua)
-  - Integrated ViaCEP API for automatic address completion when CEP is entered
-  - Real-time address validation with user feedback via toast notifications
-  - Updated event forms to display organized address sections with proper field grouping
-  - Event listing now shows formatted addresses combining all address components
-- **Payment Card Type Selection (November 17, 2025):** Enhanced payment information in event forms:
-  - Added conditional "Tipo de Cartão" (Card Type) field that appears when "Cartão de Débito" is selected as payment method
-  - Users can specify card type: "Visa/Master" or "Outros" (Others)
-  - Database schema updated with cardType field in events table
-  - Form validation and storage properly handle the new field
-- **Compound Interest Calculation System (November 18, 2025):** Implemented two-tier fee calculation for credit card installments:
-  - **Tier 1 - Operator Fee:** SumUp fee (5.49% for credit, 1.99% for debit) applied to remaining value after ticket/down payment
-  - **Tier 2 - Compound Interest:** Monthly interest rate (configurable in settings, ~2.85% recommended) applied using Price Table formula
-  - Settings page includes dedicated field for monthly interest rate with input validation and normalization (accepts both comma and dot as decimal separator)
-  - Event dialog displays detailed breakdown: operator fee, compound interest amount, total with fees/interest, and installment values
-  - Important: `contractValue` represents the BASE value (before fees/interest) - this is auto-calculated from characters + expenses + km distance
-  - Operator fees and compound interest are ADDITIONAL costs shown in the contract summary but NOT included in the saved `contractValue`
-  - Backend validation ensures only valid positive numeric values are accepted for interest rate
-  - State management properly resets all fee/interest states when payment method changes from card to non-card methods
-  - Form properly loads `installments` field when editing existing events to ensure correct fee recalculation
-- **Package Selection Dropdown (November 18, 2025):** Transformed package field from free text to dropdown selection:
-  - Database schema updated: Replaced text `package` column with foreign key `packageId` referencing packages table
-  - Event form now displays a dropdown populated with packages configured in the settings module
-  - Backend automatically joins packages table to return package names with event data for display
-  - Enforces data integrity by ensuring only configured packages can be selected for events
-  - Migration executed directly on database to add package_id column and drop obsolete package column
-- **Employee Module Enhancement (November 18, 2025):** Expanded employee management with comprehensive personal and address information:
-  - Added document fields: CPF and RG for employee identification
-  - Implemented complete address system: CEP, Rua, Bairro, Cidade, Estado, and Número
-  - Integrated ViaCEP API for automatic address completion when CEP is entered
-  - Created custom `useViaCep` hook for address lookup with loading states and error handling
-  - Employee form organized into logical sections: Basic Information, Documents, Contact, and Address
-  - Form features CEP field with automatic lookup on blur and visual loading indicator
-  - Employee list view enhanced to display CPF and location (City - State) information
-  - Search functionality expanded to include CPF and city in filter criteria
-  - All new fields are optional to maintain backward compatibility with existing employee records
-- **Client Module Enhancement (November 25, 2025):** Completely redesigned client registration form with structured data collection:
-  - Added document fields: CPF and RG for client identification
-  - Implemented comprehensive address system: CEP, Rua, Bairro, Cidade, Estado, and Número
-  - Integrated ViaCEP API for automatic address completion when CEP is entered (browser-side fetch)
-  - Client form reorganized into four logical sections: Dados Básicos, Documentos, Endereço, and Observações
-  - Real-time CEP lookup with visual loading indicator and error handling
-  - Address fields auto-populate on valid CEP entry with user feedback via toast notifications
-  - Database schema migration: replaced legacy `city` field with structured `cidade` field
-  - Client list view updated to display location using new structured address data
-  - Search functionality enhanced to include new `cidade` field in filter criteria
-  - All new fields are optional to maintain backward compatibility with existing client records
-- **Reports Module (November 25, 2025):** Implemented comprehensive data export system for all modules:
-  - Tabbed interface with six sections: Clientes, Funcionários, Eventos, Inventário, Financeiro, Compras
-  - CSV export functionality with proper Brazilian formatting (dates, currency, special characters)
-  - Data tables display key information from each module with badges for status indicators
-  - Export utility handles proper escaping of commas and special characters in CSV output
-  - Each report exports relevant fields with translated column headers in Portuguese
-  - Empty state handling when no data is available
-  - Loading states with skeleton placeholders during data fetch
-- **Interactive Agenda Events (November 25, 2025):** Enhanced agenda module with clickable events and detailed modal:
-  - Clickable events in all three views (monthly, weekly, yearly) with visual hover feedback
-  - EventDetailModal component displays comprehensive event information including:
-    - Event name, status badge, date/time, and client name
-    - Package information with formatted address
-    - Full payment breakdown with conditional display based on payment type (full payment, installments, entry + installments)
-    - Cast/Elenco section showing employees assigned to characters
-    - Package and event observations
-    - Contract creation timestamp
-  - Backend getAllEvents enhanced to return additional fields: ticketValue, paymentMethod, cardType, paymentDate, installments, kmDistance, packageNotes, and eventEmployees with names
-  - Robust payment calculation logic with guards against null/zero installments to prevent NaN/Infinity display
-  - YearView shows first event when day is clicked (use month/week view for multi-event days)
-
-### External Dependencies
+## External Dependencies
 
 **Core Infrastructure:**
-- Neon PostgreSQL database (serverless PostgreSQL hosting)
-- Deployment target: Contabo VPS servers running Ubuntu 22.04 LTS
+- Neon PostgreSQL database (serverless hosting)
+- Contabo VPS servers (Ubuntu 22.04 LTS) for deployment
 
 **Third-Party UI Libraries:**
-- Radix UI - Comprehensive set of unstyled, accessible UI primitives
-- Lucide React - Icon library
-- date-fns - Date formatting and manipulation with Portuguese (Brazil) locale support
-- Recharts - Chart components for data visualization
+- Radix UI
+- Lucide React
+- date-fns
+- Recharts
 
 **Third-Party APIs:**
-- ViaCEP - Free Brazilian postal code (CEP) lookup API for automatic address completion
+- ViaCEP (Brazilian postal code lookup)
 
 **Development Tools:**
-- Replit-specific plugins for development environment integration
-- TypeScript for static type checking across the stack
-- PostCSS with Autoprefixer for CSS processing
+- TypeScript
+- PostCSS with Autoprefixer
 
 **Authentication:**
-- JWT tokens with configurable secret (SESSION_SECRET environment variable)
-- No third-party authentication service - custom implementation
-
-**Deployment Configuration:**
-- Environment variables required: `DATABASE_URL` (configured with Neon PostgreSQL connection), `SESSION_SECRET`
-- DATABASE_URL is configured as a Replit secret for secure credential management
-- Production build creates static assets and bundled server
-- Single process Node.js server serves both API and static files in production
-- Database connection uses SSL with channel binding for enhanced security
+- JWT (custom implementation)
