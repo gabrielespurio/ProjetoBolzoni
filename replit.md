@@ -163,6 +163,18 @@ The system manages nine core entities:
   - Each report exports relevant fields with translated column headers in Portuguese
   - Empty state handling when no data is available
   - Loading states with skeleton placeholders during data fetch
+- **Interactive Agenda Events (November 25, 2025):** Enhanced agenda module with clickable events and detailed modal:
+  - Clickable events in all three views (monthly, weekly, yearly) with visual hover feedback
+  - EventDetailModal component displays comprehensive event information including:
+    - Event name, status badge, date/time, and client name
+    - Package information with formatted address
+    - Full payment breakdown with conditional display based on payment type (full payment, installments, entry + installments)
+    - Cast/Elenco section showing employees assigned to characters
+    - Package and event observations
+    - Contract creation timestamp
+  - Backend getAllEvents enhanced to return additional fields: ticketValue, paymentMethod, cardType, paymentDate, installments, kmDistance, packageNotes, and eventEmployees with names
+  - Robust payment calculation logic with guards against null/zero installments to prevent NaN/Infinity display
+  - YearView shows first event when day is clicked (use month/week view for multi-event days)
 
 ### External Dependencies
 
