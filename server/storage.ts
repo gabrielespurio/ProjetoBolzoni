@@ -50,7 +50,27 @@ import {
   type InsertSystemSetting,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, ne } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, ne, like } from "drizzle-orm";
+
+// Função para calcular a próxima data de pagamento (dia 15 ou 30)
+// Se o dia do evento for entre 1-15, paga no dia 15
+// Se o dia do evento for entre 16-31, paga no dia 30
+export function calculateNextPaymentDate(eventDate: Date): Date {
+  const day = eventDate.getDate();
+  const month = eventDate.getMonth();
+  const year = eventDate.getFullYear();
+  
+  if (day <= 15) {
+    // Próximo pagamento é dia 15 do mesmo mês
+    return new Date(year, month, 15, 12, 0, 0);
+  } else {
+    // Próximo pagamento é dia 30 do mesmo mês
+    // Se o mês não tiver dia 30 (fevereiro), usa o último dia do mês
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const paymentDay = Math.min(30, lastDayOfMonth);
+    return new Date(year, month, paymentDay, 12, 0, 0);
+  }
+}
 
 export interface IStorage {
   // Users
@@ -96,7 +116,7 @@ export interface IStorage {
   removeEventExpenses(eventId: string): Promise<void>;
   
   // Event Employees
-  addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<void>;
+  addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, eventTitle?: string, eventDate?: Date): Promise<void>;
   removeEventEmployees(eventId: string): Promise<void>;
   
   // Inventory
@@ -372,7 +392,9 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (eventEmployees && eventEmployees.length > 0) {
-      await this.addEventEmployees(newEvent.id, eventEmployees);
+      // Passar título e data do evento para criar as transações de cachê
+      const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+      await this.addEventEmployees(newEvent.id, eventEmployees, event.title, eventDate);
     }
     
     return newEvent;
@@ -398,7 +420,9 @@ export class DatabaseStorage implements IStorage {
     if (eventEmployees !== undefined) {
       await this.removeEventEmployees(id);
       if (eventEmployees.length > 0) {
-        await this.addEventEmployees(id, eventEmployees);
+        // Usar os dados atualizados do evento para criar as transações de cachê
+        const eventDate = updated.date instanceof Date ? updated.date : new Date(updated.date);
+        await this.addEventEmployees(id, eventEmployees, updated.title, eventDate);
       }
     }
     
@@ -722,7 +746,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Event Employees
-  async addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<void> {
+  async addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, eventTitle?: string, eventDate?: Date): Promise<void> {
     if (employees.length === 0) return;
     const values = employees.map(emp => ({
       eventId,
@@ -731,9 +755,57 @@ export class DatabaseStorage implements IStorage {
       cacheValue: emp.cacheValue,
     }));
     await db.insert(eventEmployees).values(values);
+    
+    // Criar transações financeiras de cachê para cada funcionário
+    if (eventTitle && eventDate) {
+      for (const emp of employees) {
+        const cacheAmount = parseFloat(emp.cacheValue);
+        if (cacheAmount > 0) {
+          // Buscar nome do funcionário
+          const employee = await this.getEmployee(emp.employeeId);
+          const employeeName = employee?.name || 'Funcionário';
+          
+          // Buscar nome do personagem (se houver)
+          let characterName = '';
+          if (emp.characterId) {
+            const character = await this.getInventoryItem(emp.characterId);
+            characterName = character?.name ? ` ${character.name}` : '';
+          }
+          
+          // Calcular data de vencimento (próximo dia 15 ou 30 do mesmo mês)
+          // Se evento entre dias 1-15, paga dia 15
+          // Se evento entre dias 16-31, paga dia 30
+          const dueDate = calculateNextPaymentDate(eventDate);
+          
+          // Criar transação de cachê com referência ao evento e funcionário no notes
+          // Formato: [CACHE_REF:eventId:employeeId] para facilitar busca e remoção
+          await this.createTransaction({
+            type: 'payable',
+            description: `Cachê - ${employeeName}${characterName} - Evento: ${eventTitle}`,
+            amount: emp.cacheValue,
+            dueDate: dueDate,
+            isPaid: false,
+            notes: `[CACHE_REF:${eventId}:${emp.employeeId}] Pagamento de cachê referente ao evento realizado em ${eventDate.toLocaleDateString('pt-BR')}`,
+          });
+        }
+      }
+    }
   }
   
   async removeEventEmployees(eventId: string): Promise<void> {
+    // Remover transações de cachê relacionadas usando a referência no notes
+    // Buscar todas as transações que contêm a referência ao eventId
+    const allTransactions = await db.select().from(financialTransactions).where(
+      eq(financialTransactions.type, 'payable')
+    );
+    
+    // Filtrar transações que correspondem a este evento
+    for (const transaction of allTransactions) {
+      if (transaction.notes && transaction.notes.includes(`[CACHE_REF:${eventId}:`)) {
+        await db.delete(financialTransactions).where(eq(financialTransactions.id, transaction.id));
+      }
+    }
+    
     await db.delete(eventEmployees).where(eq(eventEmployees.eventId, eventId));
   }
   
