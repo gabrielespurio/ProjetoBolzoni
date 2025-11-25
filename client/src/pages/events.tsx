@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Search, MapPin, Calendar as CalendarIcon, FileText } from "lucide-react";
 import { EventDialog } from "@/components/event-dialog";
+import { DateFilter, type DateFilterValue } from "@/components/date-filter";
+import { filterByDateRange } from "@/lib/date-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Event } from "@shared/schema";
@@ -38,6 +40,10 @@ export default function Events() {
   const [selectedEvent, setSelectedEvent] = useState<EventWithDetails | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; status: string } | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: "custom",
+    range: undefined,
+  });
   const { toast } = useToast();
 
   const { data: events, isLoading } = useQuery<EventWithDetails[]>({
@@ -64,13 +70,21 @@ export default function Events() {
     },
   });
 
-  const filteredEvents = events?.filter((event) =>
-    event.title.toLowerCase().includes(search.toLowerCase()) ||
-    event.clientName?.toLowerCase().includes(search.toLowerCase()) ||
-    event.cidade?.toLowerCase().includes(search.toLowerCase()) ||
-    event.bairro?.toLowerCase().includes(search.toLowerCase()) ||
-    event.rua?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredEvents = useMemo(() => {
+    let result = events || [];
+    
+    result = filterByDateRange(result, "date", dateFilter);
+    
+    result = result.filter((event) =>
+      event.title.toLowerCase().includes(search.toLowerCase()) ||
+      event.clientName?.toLowerCase().includes(search.toLowerCase()) ||
+      event.cidade?.toLowerCase().includes(search.toLowerCase()) ||
+      event.bairro?.toLowerCase().includes(search.toLowerCase()) ||
+      event.rua?.toLowerCase().includes(search.toLowerCase())
+    );
+    
+    return result;
+  }, [events, search, dateFilter]);
 
   const handleEdit = (event: EventWithDetails) => {
     setSelectedEvent(event);
@@ -239,7 +253,7 @@ export default function Events() {
 
       <Card className="border-card-border">
         <CardHeader className="border-b border-border">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -250,6 +264,7 @@ export default function Events() {
                 data-testid="input-search-events"
               />
             </div>
+            <DateFilter value={dateFilter} onChange={setDateFilter} />
           </div>
         </CardHeader>
         <CardContent className="p-0">

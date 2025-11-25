@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Calendar as CalendarIcon } from "lucide-react";
 import { PurchaseDialog } from "@/components/purchase-dialog";
+import { DateFilter, type DateFilterValue } from "@/components/date-filter";
+import { filterByDateRange } from "@/lib/date-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Purchase } from "@shared/schema";
@@ -14,15 +16,27 @@ export default function Purchases() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: "custom",
+    range: undefined,
+  });
 
   const { data: purchases, isLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
   });
 
-  const filteredPurchases = purchases?.filter((purchase) =>
-    purchase.supplier.toLowerCase().includes(search.toLowerCase()) ||
-    purchase.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredPurchases = useMemo(() => {
+    let result = purchases || [];
+    
+    result = filterByDateRange(result, "purchaseDate", dateFilter);
+    
+    result = result.filter((purchase) =>
+      purchase.supplier.toLowerCase().includes(search.toLowerCase()) ||
+      purchase.description.toLowerCase().includes(search.toLowerCase())
+    );
+    
+    return result;
+  }, [purchases, search, dateFilter]);
 
   const handleEdit = (purchase: Purchase) => {
     setSelectedPurchase(purchase);
@@ -63,7 +77,7 @@ export default function Purchases() {
 
       <Card className="border-card-border">
         <CardHeader className="border-b border-border">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -74,6 +88,7 @@ export default function Purchases() {
                 data-testid="input-search-purchases"
               />
             </div>
+            <DateFilter value={dateFilter} onChange={setDateFilter} />
           </div>
         </CardHeader>
         <CardContent className="p-0">

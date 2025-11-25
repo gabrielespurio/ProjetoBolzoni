@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, Search, AlertTriangle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { InventoryDialog } from "@/components/inventory-dialog";
+import { DateFilter, type DateFilterValue } from "@/components/date-filter";
+import { filterByDateRange } from "@/lib/date-utils";
 import type { InventoryItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +31,10 @@ export default function Inventory() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: "custom",
+    range: undefined,
+  });
   const { toast } = useToast();
 
   const { data: items, isLoading } = useQuery<InventoryItem[]>({
@@ -56,10 +62,18 @@ export default function Inventory() {
     },
   });
 
-  const filteredItems = items?.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase()) ||
-    item.type.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredItems = useMemo(() => {
+    let result = items || [];
+    
+    result = filterByDateRange(result, "createdAt", dateFilter);
+    
+    result = result.filter((item) =>
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.type.toLowerCase().includes(search.toLowerCase())
+    );
+    
+    return result;
+  }, [items, search, dateFilter]);
 
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);
@@ -127,7 +141,7 @@ export default function Inventory() {
 
       <Card className="border-card-border">
         <CardHeader className="border-b border-border">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -138,6 +152,7 @@ export default function Inventory() {
                 data-testid="input-search-inventory"
               />
             </div>
+            <DateFilter value={dateFilter} onChange={setDateFilter} />
           </div>
         </CardHeader>
         <CardContent className="p-0">

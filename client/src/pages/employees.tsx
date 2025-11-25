@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,25 +7,39 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Phone, Mail, Briefcase, MapPin, CreditCard } from "lucide-react";
 import { EmployeeDialog } from "@/components/employee-dialog";
+import { DateFilter, type DateFilterValue } from "@/components/date-filter";
+import { filterByDateRange } from "@/lib/date-utils";
 import type { Employee } from "@shared/schema";
 
 export default function Employees() {
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: "custom",
+    range: undefined,
+  });
 
   const { data: employees, isLoading } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
 
-  const filteredEmployees = employees?.filter((employee) =>
-    employee.name.toLowerCase().includes(search.toLowerCase()) ||
-    employee.role.toLowerCase().includes(search.toLowerCase()) ||
-    employee.phone?.includes(search) ||
-    employee.email?.toLowerCase().includes(search.toLowerCase()) ||
-    employee.cpf?.includes(search) ||
-    employee.cidade?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredEmployees = useMemo(() => {
+    let result = employees || [];
+    
+    result = filterByDateRange(result, "createdAt", dateFilter);
+    
+    result = result.filter((employee) =>
+      employee.name.toLowerCase().includes(search.toLowerCase()) ||
+      employee.role.toLowerCase().includes(search.toLowerCase()) ||
+      employee.phone?.includes(search) ||
+      employee.email?.toLowerCase().includes(search.toLowerCase()) ||
+      employee.cpf?.includes(search) ||
+      employee.cidade?.toLowerCase().includes(search.toLowerCase())
+    );
+    
+    return result;
+  }, [employees, search, dateFilter]);
 
   const handleEdit = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -59,7 +73,7 @@ export default function Employees() {
 
       <Card className="border-card-border">
         <CardHeader className="border-b border-border">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -70,6 +84,7 @@ export default function Employees() {
                 data-testid="input-search-employees"
               />
             </div>
+            <DateFilter value={dateFilter} onChange={setDateFilter} />
           </div>
         </CardHeader>
         <CardContent className="p-0">

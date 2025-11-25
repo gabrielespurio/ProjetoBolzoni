@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Check } from "lucide-react";
 import { FinancialDialog } from "@/components/financial-dialog";
+import { DateFilter, type DateFilterValue } from "@/components/date-filter";
+import { filterByDateRange } from "@/lib/date-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { FinancialTransaction } from "@shared/schema";
@@ -19,6 +21,10 @@ export default function Financial() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<FinancialTransaction | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: "custom",
+    range: undefined,
+  });
   const { toast } = useToast();
 
   const { data: transactions, isLoading } = useQuery<FinancialTransaction[]>({
@@ -45,8 +51,14 @@ export default function Financial() {
     },
   });
 
-  const payableTransactions = transactions?.filter((t) => t.type === "payable") || [];
-  const receivableTransactions = transactions?.filter((t) => t.type === "receivable") || [];
+  const filteredTransactions = useMemo(() => {
+    let result = transactions || [];
+    result = filterByDateRange(result, "dueDate", dateFilter);
+    return result;
+  }, [transactions, dateFilter]);
+
+  const payableTransactions = filteredTransactions?.filter((t) => t.type === "payable") || [];
+  const receivableTransactions = filteredTransactions?.filter((t) => t.type === "receivable") || [];
 
   const filteredPayable = payableTransactions.filter((transaction) =>
     transaction.description.toLowerCase().includes(search.toLowerCase())
@@ -56,7 +68,7 @@ export default function Financial() {
     transaction.description.toLowerCase().includes(search.toLowerCase())
   );
 
-  const summary = transactions?.reduce(
+  const summary = filteredTransactions?.reduce(
     (acc, t) => {
       const amount = parseFloat(t.amount);
       if (t.type === "receivable") {
@@ -256,7 +268,7 @@ export default function Financial() {
             </CardHeader>
             <CardContent className="p-0">
               {renderTransactionList(
-                (transactions || []).slice(0, 10),
+                (filteredTransactions || []).slice(0, 10),
                 "Nenhuma transação cadastrada"
               )}
             </CardContent>
@@ -266,7 +278,7 @@ export default function Financial() {
         <TabsContent value="receivable" className="space-y-6 mt-6">
           <Card className="border-card-border">
             <CardHeader className="border-b border-border">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -277,6 +289,7 @@ export default function Financial() {
                     data-testid="input-search-receivable"
                   />
                 </div>
+                <DateFilter value={dateFilter} onChange={setDateFilter} />
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -288,7 +301,7 @@ export default function Financial() {
         <TabsContent value="payable" className="space-y-6 mt-6">
           <Card className="border-card-border">
             <CardHeader className="border-b border-border">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -299,6 +312,7 @@ export default function Financial() {
                     data-testid="input-search-payable"
                   />
                 </div>
+                <DateFilter value={dateFilter} onChange={setDateFilter} />
               </div>
             </CardHeader>
             <CardContent className="p-0">
