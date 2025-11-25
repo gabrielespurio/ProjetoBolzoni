@@ -31,7 +31,6 @@ export const clients = pgTable("clients", {
   cidade: text("cidade"),
   estado: text("estado"),
   numero: text("numero"),
-  city: text("city"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

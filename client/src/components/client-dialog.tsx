@@ -30,7 +30,6 @@ const clientFormSchema = insertClientSchema.extend({
   cidade: z.string().optional(),
   estado: z.string().optional(),
   numero: z.string().optional(),
-  city: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -71,7 +70,6 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
       cidade: client?.cidade || "",
       estado: client?.estado || "",
       numero: client?.numero || "",
-      city: client?.city || "",
       notes: client?.notes || "",
     },
   });
@@ -127,7 +125,6 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
       form.setValue("bairro", data.bairro);
       form.setValue("cidade", data.localidade);
       form.setValue("estado", data.uf);
-      form.setValue("city", data.localidade);
 
       toast({
         title: "Endereço encontrado",

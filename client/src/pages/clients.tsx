@@ -30,7 +30,7 @@ export default function Clients() {
     
     result = result.filter((client) =>
       client.name.toLowerCase().includes(search.toLowerCase()) ||
-      client.city?.toLowerCase().includes(search.toLowerCase()) ||
+      client.cidade?.toLowerCase().includes(search.toLowerCase()) ||
       client.phone?.includes(search) ||
       client.email?.toLowerCase().includes(search.toLowerCase())
     );
@@ -117,10 +117,10 @@ export default function Clients() {
                           <span className="truncate">{client.email}</span>
                         </div>
                       )}
-                      {client.city && (
+                      {client.cidade && (
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
-                          <span>{client.city}</span>
+                          <span>{client.cidade}</span>
                         </div>
                       )}
                     </div>
