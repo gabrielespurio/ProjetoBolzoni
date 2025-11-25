@@ -80,7 +80,14 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
   });
 
   const onSubmit = (data: InventoryForm) => {
-    mutation.mutate(data);
+    // Limpar campos vazios para evitar erros de validação no backend
+    const cleanedData = {
+      ...data,
+      costPrice: data.costPrice && data.costPrice !== "" ? data.costPrice : undefined,
+      salePrice: data.salePrice && data.salePrice !== "" ? data.salePrice : undefined,
+      notes: data.notes && data.notes !== "" ? data.notes : undefined,
+    };
+    mutation.mutate(cleanedData);
   };
 
   const handleClose = () => {
