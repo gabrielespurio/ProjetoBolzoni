@@ -1,4 +1,4 @@
-import { Home, Users, UserCircle, Calendar, CalendarDays, DollarSign, Package, ShoppingCart, Settings, LogOut, Building2 } from "lucide-react";
+import { Home, Users, UserCircle, Calendar, CalendarDays, DollarSign, Package, ShoppingCart, Settings, LogOut, Building2, FileSpreadsheet } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -55,6 +55,11 @@ const menuItems = [
     title: "Compras",
     url: "/purchases",
     icon: ShoppingCart,
+  },
+  {
+    title: "Relatórios",
+    url: "/reports",
+    icon: FileSpreadsheet,
   },
   {
     title: "Configurações",
