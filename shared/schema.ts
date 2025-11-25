@@ -145,6 +145,7 @@ export const eventEmployees = pgTable("event_employees", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").notNull().references(() => events.id),
   employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  characterId: varchar("character_id").references(() => inventoryItems.id),
   cacheValue: decimal("cache_value", { precision: 10, scale: 2 }).notNull().default("0"),
 });
 
@@ -252,6 +253,10 @@ export const eventEmployeesRelations = relations(eventEmployees, ({ one }) => ({
   employee: one(employees, {
     fields: [eventEmployees.employeeId],
     references: [employees.id],
+  }),
+  character: one(inventoryItems, {
+    fields: [eventEmployees.characterId],
+    references: [inventoryItems.id],
   }),
 }));
 

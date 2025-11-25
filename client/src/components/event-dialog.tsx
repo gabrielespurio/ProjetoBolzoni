@@ -69,9 +69,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [loadingCep, setLoadingCep] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [kmDistance, setKmDistance] = useState<string>("");
-  const [selectedEmployees, setSelectedEmployees] = useState<Array<{ employeeId: string; cacheValue: string }>>([]);
+  const [selectedEmployees, setSelectedEmployees] = useState<Array<{ employeeId: string; characterId: string; cacheValue: string }>>([]);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
-  const [newEmployee, setNewEmployee] = useState<{ employeeId: string; cacheValue: string }>({ employeeId: "", cacheValue: "" });
+  const [newEmployee, setNewEmployee] = useState<{ employeeId: string; characterId: string; cacheValue: string }>({ employeeId: "", characterId: "", cacheValue: "" });
   const [feePercentage, setFeePercentage] = useState<number>(0);
   const [monthlyInterestRate, setMonthlyInterestRate] = useState<number>(0);
   const [hasInstallmentInterest, setHasInstallmentInterest] = useState(false);
@@ -246,6 +246,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       setKmDistance((event as any).kmDistance || "");
       setSelectedEmployees((event as any).eventEmployees?.map((ee: any) => ({
         employeeId: ee.employeeId,
+        characterId: ee.characterId || "",
         cacheValue: ee.cacheValue || "0"
       })) || []);
     } else if (open && !event) {
@@ -321,6 +322,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         expenses: expenses,
         eventEmployees: selectedEmployees.map(emp => ({
           employeeId: emp.employeeId,
+          characterId: emp.characterId || null,
           cacheValue: emp.cacheValue,
         })),
       };
@@ -376,7 +378,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     setShowExpenseForm(false);
     setKmDistance("");
     setSelectedEmployees([]);
-    setNewEmployee({ employeeId: "", cacheValue: "" });
+    setNewEmployee({ employeeId: "", characterId: "", cacheValue: "" });
     setShowEmployeeForm(false);
     onClose();
   };
@@ -423,7 +425,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       return;
     }
     setSelectedEmployees(prev => [...prev, newEmployee]);
-    setNewEmployee({ employeeId: "", cacheValue: "" });
+    setNewEmployee({ employeeId: "", characterId: "", cacheValue: "" });
     setShowEmployeeForm(false);
   }, [newEmployee, toast]);
 
@@ -1113,6 +1115,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     <div className="space-y-2">
                       {selectedEmployees.map((emp, index) => {
                         const employee = employees?.find(e => e.id === emp.employeeId);
+                        const character = characters.find(c => c.id === emp.characterId);
                         return employee ? (
                           <div
                             key={index}
@@ -1122,6 +1125,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium">{employee.name}</p>
                               <p className="text-xs text-muted-foreground">{employee.role}</p>
+                              {character && (
+                                <p className="text-xs text-primary mt-1">
+                                  Personagem: {character.name}
+                                </p>
+                              )}
                               <p className="text-sm text-primary font-semibold mt-1">
                                 Cachê: R$ {parseFloat(emp.cacheValue).toFixed(2)}
                               </p>
@@ -1155,7 +1163,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </Button>
                 ) : (
                   <div className="border rounded-md p-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-3">
                       <div>
                         <label className="text-sm font-medium mb-1.5 block">Funcionário *</label>
                         <Select
@@ -1169,6 +1177,24 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                             {employees?.filter(e => !selectedEmployees.some(se => se.employeeId === e.id)).map(employee => (
                               <SelectItem key={employee.id} value={employee.id}>
                                 {employee.name} - {employee.role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Personagem</label>
+                        <Select
+                          value={newEmployee.characterId}
+                          onValueChange={(value) => setNewEmployee(prev => ({ ...prev, characterId: value }))}
+                        >
+                          <SelectTrigger data-testid="select-employee-character">
+                            <SelectValue placeholder="Selecione o personagem" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {characters.map(character => (
+                              <SelectItem key={character.id} value={character.id}>
+                                {character.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1197,7 +1223,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                         size="sm"
                         onClick={() => {
                           setShowEmployeeForm(false);
-                          setNewEmployee({ employeeId: "", cacheValue: "" });
+                          setNewEmployee({ employeeId: "", characterId: "", cacheValue: "" });
                         }}
                         className="flex-1"
                         data-testid="button-cancel-employee"

@@ -81,8 +81,8 @@ export interface IStorage {
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event>;
+  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
   
@@ -96,7 +96,7 @@ export interface IStorage {
   removeEventExpenses(eventId: string): Promise<void>;
   
   // Event Employees
-  addEventEmployees(eventId: string, employees: Array<{employeeId: string, cacheValue: string}>): Promise<void>;
+  addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<void>;
   removeEventEmployees(eventId: string): Promise<void>;
   
   // Inventory
@@ -308,14 +308,24 @@ export class DatabaseStorage implements IStorage {
     
     const expenses = await this.getEventExpenses(id);
     
+    const eventEmps = await db
+      .select({
+        employeeId: eventEmployees.employeeId,
+        characterId: eventEmployees.characterId,
+        cacheValue: eventEmployees.cacheValue,
+      })
+      .from(eventEmployees)
+      .where(eq(eventEmployees.eventId, id));
+    
     return {
       ...event,
       characterIds: characters.map(c => c.characterId),
       expenses,
+      eventEmployees: eventEmps,
     };
   }
   
-  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event> {
+  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
     
     if (characterIds && characterIds.length > 0) {
@@ -333,7 +343,7 @@ export class DatabaseStorage implements IStorage {
     return newEvent;
   }
   
-  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, cacheValue: string}>): Promise<Event> {
+  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
     
     if (characterIds !== undefined) {
@@ -677,11 +687,12 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Event Employees
-  async addEventEmployees(eventId: string, employees: Array<{employeeId: string, cacheValue: string}>): Promise<void> {
+  async addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>): Promise<void> {
     if (employees.length === 0) return;
     const values = employees.map(emp => ({
       eventId,
       employeeId: emp.employeeId,
+      characterId: emp.characterId || null,
       cacheValue: emp.cacheValue,
     }));
     await db.insert(eventEmployees).values(values);
