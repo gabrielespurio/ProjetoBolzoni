@@ -1187,12 +1187,13 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                         <Select
                           value={newEmployee.characterId}
                           onValueChange={(value) => setNewEmployee(prev => ({ ...prev, characterId: value }))}
+                          disabled={selectedCharacters.length === 0}
                         >
                           <SelectTrigger data-testid="select-employee-character">
-                            <SelectValue placeholder="Selecione o personagem" />
+                            <SelectValue placeholder={selectedCharacters.length === 0 ? "Selecione personagens primeiro" : "Selecione o personagem"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {characters.map(character => (
+                            {characters.filter(c => selectedCharacters.includes(c.id)).map(character => (
                               <SelectItem key={character.id} value={character.id}>
                                 {character.name}
                               </SelectItem>
