@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -16,11 +17,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 
 const clientFormSchema = insertClientSchema.extend({
   phone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
+  cpf: z.string().optional(),
+  rg: z.string().optional(),
+  cep: z.string().optional(),
+  rua: z.string().optional(),
+  bairro: z.string().optional(),
+  cidade: z.string().optional(),
+  estado: z.string().optional(),
+  numero: z.string().optional(),
   city: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -33,9 +42,20 @@ interface ClientDialogProps {
   client?: Client | null;
 }
 
+interface ViaCEPResponse {
+  cep: string;
+  logradouro: string;
+  complemento: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  erro?: boolean;
+}
+
 export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
   const { toast } = useToast();
   const isEdit = !!client;
+  const [isLoadingCEP, setIsLoadingCEP] = useState(false);
 
   const form = useForm<ClientForm>({
     resolver: zodResolver(clientFormSchema),
@@ -43,6 +63,14 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
       name: client?.name || "",
       phone: client?.phone || "",
       email: client?.email || "",
+      cpf: client?.cpf || "",
+      rg: client?.rg || "",
+      cep: client?.cep || "",
+      rua: client?.rua || "",
+      bairro: client?.bairro || "",
+      cidade: client?.cidade || "",
+      estado: client?.estado || "",
+      numero: client?.numero || "",
       city: client?.city || "",
       notes: client?.notes || "",
     },
@@ -74,6 +102,54 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
     },
   });
 
+  const fetchAddressFromCEP = async (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, "");
+    
+    if (cleanCEP.length !== 8) {
+      return;
+    }
+
+    setIsLoadingCEP(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+      const data: ViaCEPResponse = await response.json();
+
+      if (data.erro) {
+        toast({
+          title: "CEP não encontrado",
+          description: "O CEP informado não foi encontrado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      form.setValue("rua", data.logradouro);
+      form.setValue("bairro", data.bairro);
+      form.setValue("cidade", data.localidade);
+      form.setValue("estado", data.uf);
+      form.setValue("city", data.localidade);
+
+      toast({
+        title: "Endereço encontrado",
+        description: "Os dados do endereço foram preenchidos automaticamente.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao buscar CEP",
+        description: "Não foi possível buscar os dados do CEP.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingCEP(false);
+    }
+  };
+
+  const handleCEPBlur = (cep: string) => {
+    if (cep) {
+      fetchAddressFromCEP(cep);
+    }
+  };
+
   const onSubmit = (data: ClientForm) => {
     mutation.mutate(data);
   };
@@ -85,7 +161,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
           <DialogDescription>
@@ -94,73 +170,205 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome *</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Nome do cliente" data-testid="input-client-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="(00) 00000-0000" data-testid="input-client-phone" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="email" placeholder="email@exemplo.com" data-testid="input-client-email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cidade</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Nome da cidade" data-testid="input-client-city" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-medium mb-4">Dados Básicos</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome *</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Nome do cliente" data-testid="input-client-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="(00) 00000-0000" data-testid="input-client-phone" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" placeholder="email@exemplo.com" data-testid="input-client-email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium mb-4">Documentos</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="cpf"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CPF</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="000.000.000-00" data-testid="input-client-cpf" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="rg"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>RG</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="00.000.000-0" data-testid="input-client-rg" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Endereço
+                </h3>
+                <div className="grid gap-4">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <FormField
+                      control={form.control}
+                      name="cep"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CEP</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                {...field} 
+                                placeholder="00000-000" 
+                                data-testid="input-client-cep"
+                                onBlur={(e) => handleCEPBlur(e.target.value)}
+                                maxLength={9}
+                              />
+                              {isLoadingCEP && (
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="estado"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estado</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="UF" data-testid="input-client-estado" maxLength={2} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="cidade"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cidade</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Nome da cidade" data-testid="input-client-cidade" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="bairro"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bairro</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Nome do bairro" data-testid="input-client-bairro" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rua"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rua</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Nome da rua" data-testid="input-client-rua" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <FormField
+                      control={form.control}
+                      name="numero"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Nº" data-testid="input-client-numero" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} placeholder="Informações adicionais sobre o cliente" rows={3} data-testid="input-client-notes" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} placeholder="Informações adicionais sobre o cliente" rows={3} data-testid="input-client-notes" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
                 Cancelar
