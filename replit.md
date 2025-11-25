@@ -144,6 +144,17 @@ The system manages nine core entities:
   - Employee list view enhanced to display CPF and location (City - State) information
   - Search functionality expanded to include CPF and city in filter criteria
   - All new fields are optional to maintain backward compatibility with existing employee records
+- **Client Module Enhancement (November 25, 2025):** Completely redesigned client registration form with structured data collection:
+  - Added document fields: CPF and RG for client identification
+  - Implemented comprehensive address system: CEP, Rua, Bairro, Cidade, Estado, and Número
+  - Integrated ViaCEP API for automatic address completion when CEP is entered (browser-side fetch)
+  - Client form reorganized into four logical sections: Dados Básicos, Documentos, Endereço, and Observações
+  - Real-time CEP lookup with visual loading indicator and error handling
+  - Address fields auto-populate on valid CEP entry with user feedback via toast notifications
+  - Database schema migration: replaced legacy `city` field with structured `cidade` field
+  - Client list view updated to display location using new structured address data
+  - Search functionality enhanced to include new `cidade` field in filter criteria
+  - All new fields are optional to maintain backward compatibility with existing client records
 
 ### External Dependencies
 
