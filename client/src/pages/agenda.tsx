@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { EventDetailModal } from "@/components/event-detail-modal";
 import {
   startOfMonth,
   endOfMonth,
@@ -28,8 +29,10 @@ import { ptBR } from "date-fns/locale";
 export default function Agenda() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week" | "year">("month");
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const { data: events = [], isLoading } = useQuery<Event[]>({
+  const { data: events = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/events"],
   });
 
@@ -44,6 +47,11 @@ export default function Agenda() {
     return eventsWithDates.filter(event =>
       isSameDay(event.dateObj, date)
     );
+  };
+
+  const handleEventClick = (event: any) => {
+    setSelectedEvent(event);
+    setModalOpen(true);
   };
 
   const navigateDate = (direction: "prev" | "next") => {
@@ -117,24 +125,30 @@ export default function Agenda() {
             </TabsList>
 
             <TabsContent value="month" className="mt-6">
-              <MonthView currentDate={currentDate} getEventsForDate={getEventsForDate} />
+              <MonthView currentDate={currentDate} getEventsForDate={getEventsForDate} onEventClick={handleEventClick} />
             </TabsContent>
 
             <TabsContent value="week" className="mt-6">
-              <WeekView currentDate={currentDate} getEventsForDate={getEventsForDate} />
+              <WeekView currentDate={currentDate} getEventsForDate={getEventsForDate} onEventClick={handleEventClick} />
             </TabsContent>
 
             <TabsContent value="year" className="mt-6">
-              <YearView currentDate={currentDate} eventsWithDates={eventsWithDates} />
+              <YearView currentDate={currentDate} eventsWithDates={eventsWithDates} onEventClick={handleEventClick} />
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
+
+      <EventDetailModal
+        event={selectedEvent}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
     </div>
   );
 }
 
-function MonthView({ currentDate, getEventsForDate }: any) {
+function MonthView({ currentDate, getEventsForDate, onEventClick }: any) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(monthStart, { locale: ptBR });
@@ -142,7 +156,7 @@ function MonthView({ currentDate, getEventsForDate }: any) {
 
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
   return (
     <div className="space-y-2">
@@ -172,14 +186,15 @@ function MonthView({ currentDate, getEventsForDate }: any) {
               </div>
               <div className="space-y-1">
                 {dayEvents.slice(0, 3).map((event: any) => (
-                  <div
+                  <button
                     key={event.id}
-                    className="text-xs p-1 rounded bg-primary/10 text-primary truncate"
+                    className="w-full text-left text-xs p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover-elevate"
                     title={event.title}
+                    onClick={() => onEventClick(event)}
                     data-testid={`event-${event.id}`}
                   >
                     {format(event.dateObj, "HH:mm")} {event.title}
-                  </div>
+                  </button>
                 ))}
                 {dayEvents.length > 3 && (
                   <div className="text-xs text-muted-foreground">
@@ -195,12 +210,17 @@ function MonthView({ currentDate, getEventsForDate }: any) {
   );
 }
 
-function WeekView({ currentDate, getEventsForDate }: any) {
+function WeekView({ currentDate, getEventsForDate, onEventClick }: any) {
   const weekStart = startOfWeek(currentDate, { locale: ptBR });
   const weekEnd = endOfWeek(currentDate, { locale: ptBR });
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  const formatLocation = (event: any) => {
+    const parts = [event.cidade, event.estado].filter(Boolean);
+    return parts.join(' - ') || event.venueName || '';
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -237,15 +257,16 @@ function WeekView({ currentDate, getEventsForDate }: any) {
                 return (
                   <div key={day.toISOString()} className="p-1 min-h-[60px] border-r last:border-r-0">
                     {dayEvents.map((event: any) => (
-                      <div
+                      <button
                         key={event.id}
-                        className="text-xs p-1 rounded bg-primary/10 text-primary mb-1"
-                        title={`${event.title} - ${event.location}`}
+                        className="w-full text-left text-xs p-1 rounded bg-primary/10 text-primary mb-1 cursor-pointer hover-elevate"
+                        title={`${event.title} - ${formatLocation(event)}`}
+                        onClick={() => onEventClick(event)}
                         data-testid={`event-${event.id}`}
                       >
                         <div className="font-medium truncate">{event.title}</div>
-                        <div className="text-[10px] opacity-75 truncate">{event.location}</div>
-                      </div>
+                        <div className="text-[10px] opacity-75 truncate">{formatLocation(event)}</div>
+                      </button>
                     ))}
                   </div>
                 );
@@ -258,7 +279,7 @@ function WeekView({ currentDate, getEventsForDate }: any) {
   );
 }
 
-function YearView({ currentDate, eventsWithDates }: any) {
+function YearView({ currentDate, eventsWithDates, onEventClick }: any) {
   const yearStart = startOfYear(currentDate);
   const yearEnd = endOfYear(currentDate);
   const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
@@ -269,6 +290,10 @@ function YearView({ currentDate, eventsWithDates }: any) {
     return eventsWithDates.filter((event: any) =>
       event.dateObj >= monthStart && event.dateObj <= monthEnd
     );
+  };
+
+  const getEventsForDay = (day: Date) => {
+    return eventsWithDates.filter((event: any) => isSameDay(event.dateObj, day));
   };
 
   return (
@@ -300,17 +325,31 @@ function YearView({ currentDate, eventsWithDates }: any) {
                 ))}
                 {days.map((day, idx) => {
                   const isCurrentMonth = isSameMonth(day, month);
-                  const hasEvents = eventsWithDates.some((event: any) => isSameDay(event.dateObj, day));
+                  const dayEvents = getEventsForDay(day);
+                  const hasEvents = dayEvents.length > 0;
                   const isToday = isSameDay(day, new Date());
+
+                  if (hasEvents && isCurrentMonth) {
+                    return (
+                      <button
+                        key={idx}
+                        className={`text-center text-xs p-1 rounded cursor-pointer hover-elevate ${
+                          isToday ? "bg-primary text-primary-foreground" : "bg-primary/20 font-medium"
+                        }`}
+                        onClick={() => onEventClick(dayEvents[0])}
+                        title={dayEvents.map((e: any) => e.title).join(', ')}
+                      >
+                        {format(day, "d")}
+                      </button>
+                    );
+                  }
 
                   return (
                     <div
                       key={idx}
                       className={`text-center text-xs p-1 rounded ${
                         !isCurrentMonth ? "text-muted-foreground/50" : ""
-                      } ${isToday ? "bg-primary text-primary-foreground" : ""} ${
-                        hasEvents && !isToday ? "bg-primary/20 font-medium" : ""
-                      }`}
+                      } ${isToday ? "bg-primary text-primary-foreground" : ""}`}
                     >
                       {format(day, "d")}
                     </div>

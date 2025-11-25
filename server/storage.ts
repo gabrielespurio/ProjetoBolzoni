@@ -261,9 +261,16 @@ export class DatabaseStorage implements IStorage {
         rua: events.rua,
         venueName: events.venueName,
         venueNumber: events.venueNumber,
+        kmDistance: events.kmDistance,
         contractValue: events.contractValue,
+        ticketValue: events.ticketValue,
+        paymentMethod: events.paymentMethod,
+        cardType: events.cardType,
+        paymentDate: events.paymentDate,
+        installments: events.installments,
         packageId: events.packageId,
         packageName: packages.name,
+        packageNotes: events.packageNotes,
         status: events.status,
         notes: events.notes,
         createdAt: events.createdAt,
@@ -275,7 +282,7 @@ export class DatabaseStorage implements IStorage {
       .where(ne(events.status, "deleted"))
       .orderBy(desc(events.date));
     
-    const eventsWithCharacters = await Promise.all(
+    const eventsWithDetails = await Promise.all(
       allEvents.map(async (event) => {
         const characters = await db
           .select({ 
@@ -286,15 +293,43 @@ export class DatabaseStorage implements IStorage {
           .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
           .where(eq(eventCharacters.eventId, event.id));
         
+        const eventEmps = await db
+          .select({
+            employeeId: eventEmployees.employeeId,
+            employeeName: employees.name,
+            characterId: eventEmployees.characterId,
+            cacheValue: eventEmployees.cacheValue,
+          })
+          .from(eventEmployees)
+          .leftJoin(employees, eq(eventEmployees.employeeId, employees.id))
+          .where(eq(eventEmployees.eventId, event.id));
+        
+        const eventEmpsWithCharacters = await Promise.all(
+          eventEmps.map(async (emp) => {
+            if (emp.characterId) {
+              const [character] = await db
+                .select({ name: inventoryItems.name })
+                .from(inventoryItems)
+                .where(eq(inventoryItems.id, emp.characterId));
+              return {
+                ...emp,
+                characterName: character?.name || null,
+              };
+            }
+            return { ...emp, characterName: null };
+          })
+        );
+        
         return {
           ...event,
           characterIds: characters.map(c => c.characterId),
           characterNames: characters.map(c => c.characterName).filter(Boolean),
+          eventEmployees: eventEmpsWithCharacters,
         };
       })
     );
     
-    return eventsWithCharacters;
+    return eventsWithDetails;
   }
   
   async getEvent(id: string): Promise<any> {
