@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,6 +18,27 @@ import Inventory from "@/pages/inventory";
 import Purchases from "@/pages/purchases";
 import Settings from "@/pages/settings";
 import Reports from "@/pages/reports";
+
+type UserRole = 'admin' | 'employee';
+
+const employeeAllowedRoutes = ['/events', '/agenda', '/clients'];
+
+function RoleProtectedRoute({ 
+  component: Component, 
+  adminOnly = false 
+}: { 
+  component: React.ComponentType; 
+  adminOnly?: boolean;
+}) {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole: UserRole = user?.role || 'employee';
+  
+  if (adminOnly && userRole !== 'admin') {
+    return <Redirect to="/events" />;
+  }
+  
+  return <Component />;
+}
 
 function Router() {
   const [location] = useLocation();
@@ -46,16 +67,30 @@ function Router() {
             <main className="flex-1 overflow-y-auto bg-background p-8">
               <div className="mx-auto max-w-7xl">
                 <Switch>
-                  <Route path="/" component={Dashboard} />
+                  <Route path="/">
+                    <RoleProtectedRoute component={Dashboard} adminOnly />
+                  </Route>
                   <Route path="/clients" component={Clients} />
-                  <Route path="/employees" component={Employees} />
+                  <Route path="/employees">
+                    <RoleProtectedRoute component={Employees} adminOnly />
+                  </Route>
                   <Route path="/events" component={Events} />
                   <Route path="/agenda" component={Agenda} />
-                  <Route path="/financial" component={Financial} />
-                  <Route path="/inventory" component={Inventory} />
-                  <Route path="/purchases" component={Purchases} />
-                  <Route path="/reports" component={Reports} />
-                  <Route path="/settings" component={Settings} />
+                  <Route path="/financial">
+                    <RoleProtectedRoute component={Financial} adminOnly />
+                  </Route>
+                  <Route path="/inventory">
+                    <RoleProtectedRoute component={Inventory} adminOnly />
+                  </Route>
+                  <Route path="/purchases">
+                    <RoleProtectedRoute component={Purchases} adminOnly />
+                  </Route>
+                  <Route path="/reports">
+                    <RoleProtectedRoute component={Reports} adminOnly />
+                  </Route>
+                  <Route path="/settings">
+                    <RoleProtectedRoute component={Settings} adminOnly />
+                  </Route>
                   <Route component={NotFound} />
                 </Switch>
               </div>

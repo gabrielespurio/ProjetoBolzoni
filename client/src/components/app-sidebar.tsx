@@ -15,56 +15,75 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-const menuItems = [
+type UserRole = 'admin' | 'employee';
+
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: typeof Home;
+  roles: UserRole[];
+}
+
+const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
     url: "/",
     icon: Home,
+    roles: ['admin'],
   },
   {
     title: "Eventos",
     url: "/events",
     icon: Calendar,
+    roles: ['admin', 'employee'],
   },
   {
     title: "Agenda",
     url: "/agenda",
     icon: CalendarDays,
+    roles: ['admin', 'employee'],
   },
   {
     title: "Clientes",
     url: "/clients",
     icon: Users,
+    roles: ['admin', 'employee'],
   },
   {
     title: "Funcionários",
     url: "/employees",
     icon: UserCircle,
+    roles: ['admin'],
   },
   {
     title: "Estoque",
     url: "/inventory",
     icon: Package,
+    roles: ['admin'],
   },
   {
     title: "Financeiro",
     url: "/financial",
     icon: DollarSign,
+    roles: ['admin'],
   },
   {
     title: "Compras",
     url: "/purchases",
     icon: ShoppingCart,
+    roles: ['admin'],
   },
   {
     title: "Relatórios",
     url: "/reports",
     icon: FileSpreadsheet,
+    roles: ['admin'],
   },
   {
     title: "Configurações",
     url: "/settings",
     icon: Settings,
+    roles: ['admin'],
   },
 ];
 
@@ -78,6 +97,9 @@ export function AppSidebar() {
   };
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole: UserRole = user?.role || 'employee';
+  
+  const filteredMenuItems = menuItems.filter(item => item.roles.includes(userRole));
 
   return (
     <Sidebar className="border-none">
@@ -96,7 +118,7 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
-                {menuItems.map((item) => (
+                {filteredMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild

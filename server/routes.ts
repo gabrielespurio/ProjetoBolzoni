@@ -12,6 +12,7 @@ const JWT_SECRET = process.env.SESSION_SECRET || "bolzoni-secret-key-2024";
 // JWT authentication middleware
 interface AuthRequest extends Request {
   userId?: string;
+  userRole?: string;
 }
 
 async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
@@ -25,10 +26,25 @@ async function authenticateToken(req: AuthRequest, res: Response, next: NextFunc
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     req.userId = decoded.userId;
+    
+    // Get user role for authorization
+    const user = await storage.getUser(decoded.userId);
+    if (user) {
+      req.userRole = user.role;
+    }
+    
     next();
   } catch (error) {
     return res.status(403).json({ message: "Token inválido" });
   }
+}
+
+// Admin-only authorization middleware
+function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores podem acessar este recurso." });
+  }
+  next();
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -161,8 +177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Employees routes
-  app.get("/api/employees", authenticateToken, async (req, res) => {
+  // Employees routes (admin only)
+  app.get("/api/employees", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const employees = await storage.getAllEmployees();
       res.json(employees);
@@ -171,7 +187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/employees", authenticateToken, async (req, res) => {
+  app.post("/api/employees", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { userEmail, userPassword, ...employeeData } = req.body;
       let userId: string | undefined = undefined;
@@ -201,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/employees/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/employees/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { userEmail, userPassword, ...employeeData } = req.body;
       const currentEmployee = await storage.getEmployee(req.params.id);
@@ -247,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/employees/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/employees/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deleteEmployee(req.params.id);
       res.status(204).send();
@@ -257,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Employee Payments routes
-  app.get("/api/employees/:id/payments", authenticateToken, async (req, res) => {
+  app.get("/api/employees/:id/payments", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const payments = await storage.getEmployeePayments(req.params.id);
       res.json(payments);
@@ -266,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/employees/:id/payments", authenticateToken, async (req, res) => {
+  app.post("/api/employees/:id/payments", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const paymentData = insertEmployeePaymentSchema.omit({ employeeId: true }).parse({
         ...req.body,
@@ -279,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/employee-payments/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/employee-payments/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deleteEmployeePayment(req.params.id);
       res.status(204).send();
@@ -378,7 +394,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Inventory routes
-  app.get("/api/inventory", authenticateToken, async (req, res) => {
+  // Inventory routes (admin only)
+  app.get("/api/inventory", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const items = await storage.getAllInventoryItems();
       res.json(items);
@@ -387,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/inventory", authenticateToken, async (req, res) => {
+  app.post("/api/inventory", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertInventoryItemSchema.parse(req.body);
       const item = await storage.createInventoryItem(data);
@@ -397,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/inventory/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/inventory/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertInventoryItemSchema.partial().parse(req.body);
       const item = await storage.updateInventoryItem(req.params.id, data);
@@ -407,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/inventory/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/inventory/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deleteInventoryItem(req.params.id);
       res.status(204).send();
@@ -417,7 +434,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Financial transactions routes
-  app.get("/api/financial/transactions", authenticateToken, async (req, res) => {
+  // Financial routes (admin only)
+  app.get("/api/financial/transactions", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const transactions = await storage.getAllTransactions();
       res.json(transactions);
@@ -426,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/financial/transactions", authenticateToken, async (req, res) => {
+  app.post("/api/financial/transactions", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const bodyData = { ...req.body };
       if (bodyData.dueDate) bodyData.dueDate = new Date(bodyData.dueDate);
@@ -439,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/financial/transactions/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/financial/transactions/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const bodyData = { ...req.body };
       if (bodyData.dueDate) bodyData.dueDate = new Date(bodyData.dueDate);
@@ -452,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/financial/transactions/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/financial/transactions/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deleteTransaction(req.params.id);
       res.status(204).send();
@@ -462,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Mark transaction as paid (dar baixa)
-  app.post("/api/financial/transactions/:id/pay", authenticateToken, async (req, res) => {
+  app.post("/api/financial/transactions/:id/pay", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const transaction = await storage.updateTransaction(req.params.id, {
         isPaid: true,
@@ -475,7 +493,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Purchases routes
-  app.get("/api/purchases", authenticateToken, async (req, res) => {
+  // Purchases routes (admin only)
+  app.get("/api/purchases", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const purchases = await storage.getAllPurchases();
       res.json(purchases);
@@ -484,7 +503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/purchases", authenticateToken, async (req, res) => {
+  app.post("/api/purchases", authenticateToken, requireAdmin, async (req, res) => {
     try {
       // Validar os dados primeiro (ainda como strings)
       const data = validatePurchaseSchema.parse(req.body);
@@ -581,7 +600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/purchases/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/purchases/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       // Função auxiliar para converter string de data YYYY-MM-DD para Date no timezone local
       const parseLocalDate = (dateString: string): Date => {
@@ -601,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/purchases/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/purchases/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deletePurchase(req.params.id);
       res.status(204).send();
@@ -611,7 +630,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Dashboard routes
-  app.get("/api/dashboard/metrics", authenticateToken, async (req, res) => {
+  // Dashboard routes (admin only)
+  app.get("/api/dashboard/metrics", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const metrics = await storage.getDashboardMetrics();
       res.json(metrics);
@@ -620,7 +640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/dashboard/upcoming-events", authenticateToken, async (req, res) => {
+  app.get("/api/dashboard/upcoming-events", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const events = await storage.getUpcomingEvents(5);
       res.json(events);
@@ -630,7 +650,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Event Categories routes
-  app.get("/api/settings/event-categories", authenticateToken, async (req, res) => {
+  // Settings routes (admin only)
+  app.get("/api/settings/event-categories", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const categories = await storage.getAllEventCategories();
       res.json(categories);
@@ -639,7 +660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/settings/event-categories", authenticateToken, async (req, res) => {
+  app.post("/api/settings/event-categories", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertEventCategorySchema.parse(req.body);
       const category = await storage.createEventCategory(data);
@@ -649,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/settings/event-categories/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/settings/event-categories/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertEventCategorySchema.partial().parse(req.body);
       const category = await storage.updateEventCategory(req.params.id, data);
@@ -659,7 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/settings/event-categories/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/settings/event-categories/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deleteEventCategory(req.params.id);
       res.status(204).send();
@@ -669,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Employee Roles routes
-  app.get("/api/settings/employee-roles", authenticateToken, async (req, res) => {
+  app.get("/api/settings/employee-roles", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const roles = await storage.getAllEmployeeRoles();
       res.json(roles);
@@ -678,7 +699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/settings/employee-roles", authenticateToken, async (req, res) => {
+  app.post("/api/settings/employee-roles", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertEmployeeRoleSchema.parse(req.body);
       const role = await storage.createEmployeeRole(data);
@@ -688,7 +709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/settings/employee-roles/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/settings/employee-roles/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertEmployeeRoleSchema.partial().parse(req.body);
       const role = await storage.updateEmployeeRole(req.params.id, data);
@@ -698,7 +719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/settings/employee-roles/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/settings/employee-roles/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deleteEmployeeRole(req.params.id);
       res.status(204).send();
@@ -708,7 +729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Packages routes
-  app.get("/api/settings/packages", authenticateToken, async (req, res) => {
+  app.get("/api/settings/packages", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const packages = await storage.getAllPackages();
       res.json(packages);
@@ -717,7 +738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/settings/packages", authenticateToken, async (req, res) => {
+  app.post("/api/settings/packages", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertPackageSchema.parse(req.body);
       const pkg = await storage.createPackage(data);
@@ -727,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/settings/packages/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/settings/packages/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const data = insertPackageSchema.partial().parse(req.body);
       const pkg = await storage.updatePackage(req.params.id, data);
@@ -737,7 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/settings/packages/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/settings/packages/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deletePackage(req.params.id);
       res.status(204).send();
@@ -747,7 +768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // System Settings
-  app.get("/api/settings/system", authenticateToken, async (req, res) => {
+  app.get("/api/settings/system", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const settings = await storage.getAllSystemSettings();
       res.json(settings);
@@ -756,7 +777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/settings/system/:key", authenticateToken, async (req, res) => {
+  app.get("/api/settings/system/:key", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const setting = await storage.getSystemSetting(req.params.key);
       if (!setting) {
@@ -768,7 +789,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/settings/system", authenticateToken, async (req, res) => {
+  app.post("/api/settings/system", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { key, value } = req.body;
       if (!key || !value) {
@@ -782,7 +803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Taxas e Juros - Sumup Scraping
-  app.get("/api/settings/fees/sumup", authenticateToken, async (req, res) => {
+  app.get("/api/settings/fees/sumup", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const sumupUrl = "https://www.sumup.com/pt-br/maquininhas/taxas/";
       
@@ -911,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Taxas personalizadas - CRUD
-  app.get("/api/settings/fees/custom", authenticateToken, async (req, res) => {
+  app.get("/api/settings/fees/custom", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const customFees = await storage.getSystemSetting("custom_fees");
       if (!customFees) {
@@ -923,7 +944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/custom", authenticateToken, async (req, res) => {
+  app.post("/api/settings/fees/custom", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { fees } = req.body;
       if (!fees) {
@@ -938,7 +959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Configuração de tipo de taxa (sumup ou personalizado)
-  app.get("/api/settings/fees/type", authenticateToken, async (req, res) => {
+  app.get("/api/settings/fees/type", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const feeType = await storage.getSystemSetting("fee_type");
       res.json({ type: feeType?.value || "sumup" });
@@ -947,7 +968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/type", authenticateToken, async (req, res) => {
+  app.post("/api/settings/fees/type", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { type } = req.body;
       if (!type || !["sumup", "custom"].includes(type)) {
@@ -962,7 +983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tier preferencial da Sumup
-  app.get("/api/settings/fees/sumup-tier", authenticateToken, async (req, res) => {
+  app.get("/api/settings/fees/sumup-tier", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const tier = await storage.getSystemSetting("sumup_tier");
       res.json({ tier: tier?.value || "0" });
@@ -971,7 +992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/sumup-tier", authenticateToken, async (req, res) => {
+  app.post("/api/settings/fees/sumup-tier", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { tier } = req.body;
       if (tier === undefined || tier === null) {
@@ -986,7 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Taxa de juros mensal
-  app.get("/api/settings/fees/monthly-interest", authenticateToken, async (req, res) => {
+  app.get("/api/settings/fees/monthly-interest", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const interest = await storage.getSystemSetting("monthly_interest_rate");
       res.json({ monthlyInterestRate: interest?.value || "0" });
@@ -995,7 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/monthly-interest", authenticateToken, async (req, res) => {
+  app.post("/api/settings/fees/monthly-interest", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { monthlyInterestRate } = req.body;
       if (monthlyInterestRate === undefined || monthlyInterestRate === null) {
@@ -1052,7 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Calcular taxa aplicável (com juros compostos se parcelado)
-  app.post("/api/settings/fees/calculate", authenticateToken, async (req, res) => {
+  app.post("/api/settings/fees/calculate", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const { paymentMethod, cardType, installments } = req.body;
       
