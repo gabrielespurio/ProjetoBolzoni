@@ -16,12 +16,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, User, Building2 } from "lucide-react";
 
 const clientFormSchema = insertClientSchema.extend({
+  personType: z.enum(["fisica", "juridica"]).default("fisica"),
   phone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
+  cnpj: z.string().optional(),
   cpf: z.string().optional(),
   rg: z.string().optional(),
   cep: z.string().optional(),
@@ -59,7 +63,9 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
   const form = useForm<ClientForm>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
+      personType: client?.personType || "fisica",
       name: client?.name || "",
+      cnpj: client?.cnpj || "",
       phone: client?.phone || "",
       email: client?.email || "",
       cpf: client?.cpf || "",
@@ -73,6 +79,8 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
       notes: client?.notes || "",
     },
   });
+
+  const personType = form.watch("personType");
 
   const mutation = useMutation({
     mutationFn: async (data: ClientForm) => {
@@ -169,16 +177,56 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-6">
               <div>
-                <h3 className="text-sm font-medium mb-4">Dados Básicos</h3>
+                <h3 className="text-sm font-medium mb-4">Tipo de Cliente</h3>
+                <FormField
+                  control={form.control}
+                  name="personType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="flex gap-4"
+                          data-testid="radio-person-type"
+                        >
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="fisica" id="pessoa-fisica" data-testid="radio-pessoa-fisica" />
+                            <Label htmlFor="pessoa-fisica" className="flex items-center gap-2 cursor-pointer">
+                              <User className="h-4 w-4" />
+                              Pessoa Fisica
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="juridica" id="pessoa-juridica" data-testid="radio-pessoa-juridica" />
+                            <Label htmlFor="pessoa-juridica" className="flex items-center gap-2 cursor-pointer">
+                              <Building2 className="h-4 w-4" />
+                              Pessoa Juridica
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium mb-4">Dados Basicos</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nome *</FormLabel>
+                        <FormLabel>{personType === "juridica" ? "Nome da Empresa *" : "Nome *"}</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Nome do cliente" data-testid="input-client-name" />
+                          <Input 
+                            {...field} 
+                            placeholder={personType === "juridica" ? "Nome da empresa" : "Nome do cliente"} 
+                            data-testid="input-client-name" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -216,32 +264,50 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
               <div>
                 <h3 className="text-sm font-medium mb-4">Documentos</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="cpf"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CPF</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="000.000.000-00" data-testid="input-client-cpf" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="rg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>RG</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="00.000.000-0" data-testid="input-client-rg" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {personType === "juridica" ? (
+                    <FormField
+                      control={form.control}
+                      name="cnpj"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CNPJ</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="00.000.000/0000-00" data-testid="input-client-cnpj" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="cpf"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CPF</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="000.000.000-00" data-testid="input-client-cpf" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="rg"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>RG</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="00.000.000-0" data-testid="input-client-rg" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
 

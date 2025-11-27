@@ -8,6 +8,7 @@ export const userRoleEnum = pgEnum("user_role", ["admin", "employee"]);
 export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "payable"]);
 export const inventoryTypeEnum = pgEnum("inventory_type", ["consumable", "character"]);
+export const personTypeEnum = pgEnum("person_type", ["fisica", "juridica"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -20,7 +21,9 @@ export const users = pgTable("users", {
 
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  personType: personTypeEnum("person_type").notNull().default("fisica"),
   name: text("name").notNull(),
+  cnpj: text("cnpj"),
   phone: text("phone"),
   email: text("email"),
   cpf: text("cpf"),
@@ -119,6 +122,7 @@ export const financialTransactions = pgTable("financial_transactions", {
   description: text("description").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   eventId: varchar("event_id").references(() => events.id),
+  employeeId: varchar("employee_id").references(() => employees.id),
   dueDate: timestamp("due_date").notNull(),
   paidDate: timestamp("paid_date"),
   isPaid: boolean("is_paid").notNull().default(false),
