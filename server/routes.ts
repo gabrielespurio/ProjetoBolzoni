@@ -316,6 +316,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/events/:id", authenticateToken, async (req, res) => {
     try {
       const { characterIds, expenses, eventEmployees, ...eventData } = req.body;
+      
+      // Buscar o evento atual antes de atualizar para verificar mudança de status
+      const currentEvent = await storage.getEvent(req.params.id);
+      const previousStatus = currentEvent?.status;
+      
       const bodyData = { ...eventData };
       if (bodyData.date) {
         bodyData.date = new Date(bodyData.date);
@@ -325,6 +330,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const data = insertEventSchema.partial().parse(bodyData);
       const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees);
+      
+      // Se o status mudou para "completed", criar transação de contas a receber
+      if (data.status === "completed" && previousStatus !== "completed" && currentEvent) {
+        const contractValue = currentEvent.contractValue || event.contractValue;
+        if (contractValue && parseFloat(contractValue) > 0) {
+          // Buscar nome do cliente para a descrição
+          let clientName = "Cliente";
+          if (currentEvent.clientId) {
+            const client = await storage.getClient(currentEvent.clientId);
+            if (client) {
+              clientName = client.name;
+            }
+          }
+          
+          // Usar a data de pagamento do evento se existir, senão usar a data do evento
+          const eventDate = currentEvent.date instanceof Date ? currentEvent.date : new Date(currentEvent.date);
+          const paymentDate = currentEvent.paymentDate ? 
+            (currentEvent.paymentDate instanceof Date ? currentEvent.paymentDate : new Date(currentEvent.paymentDate)) : 
+            eventDate;
+          
+          await storage.createTransaction({
+            type: "receivable",
+            description: `Evento: ${currentEvent.title} - ${clientName}`,
+            amount: contractValue,
+            eventId: req.params.id,
+            dueDate: paymentDate,
+            isPaid: false,
+            notes: `Evento concluído em ${new Date().toLocaleDateString('pt-BR')}`,
+          });
+        }
+      }
+      
       res.json(event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao atualizar evento" });
