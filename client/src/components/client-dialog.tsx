@@ -271,7 +271,12 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                           <FormItem>
                             <FormLabel>Nome do Responsável</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Nome do responsável" data-testid="input-client-responsible-name" />
+                              <Input 
+                                {...field} 
+                                value={field.value || ""} 
+                                placeholder="Nome do responsável" 
+                                data-testid="input-client-responsible-name" 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -284,7 +289,12 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                           <FormItem>
                             <FormLabel>Cargo</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Cargo do responsável" data-testid="input-client-cargo" />
+                              <Input 
+                                {...field} 
+                                value={field.value || ""} 
+                                placeholder="Cargo do responsável" 
+                                data-testid="input-client-cargo" 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -306,7 +316,12 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                         <FormItem>
                           <FormLabel>CNPJ</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="00.000.000/0000-00" data-testid="input-client-cnpj" />
+                            <Input 
+                              {...field} 
+                              value={field.value || ""} 
+                              placeholder="00.000.000/0000-00" 
+                              data-testid="input-client-cnpj" 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
