@@ -29,6 +29,8 @@ import { generateContract } from "@/lib/contractGenerator";
 
 interface EventWithDetails extends Event {
   clientName?: string;
+  clientPersonType?: "fisica" | "juridica";
+  clientCnpj?: string;
   clientCpf?: string;
   clientRg?: string;
   clientPhone?: string;
@@ -219,6 +221,8 @@ export default function Events() {
       generateContract({
         eventTitle: event.title,
         clientName: event.clientName || "Cliente não informado",
+        clientPersonType: event.clientPersonType,
+        clientCnpj: event.clientCnpj,
         clientCpf: event.clientCpf,
         clientRg: event.clientRg,
         clientPhone: event.clientPhone,

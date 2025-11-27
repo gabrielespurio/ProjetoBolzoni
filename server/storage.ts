@@ -295,6 +295,8 @@ export class DatabaseStorage implements IStorage {
         notes: events.notes,
         createdAt: events.createdAt,
         clientName: clients.name,
+        clientPersonType: clients.personType,
+        clientCnpj: clients.cnpj,
         clientCpf: clients.cpf,
         clientRg: clients.rg,
         clientPhone: clients.phone,

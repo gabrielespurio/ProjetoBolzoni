@@ -10,6 +10,8 @@ if (pdfMake && pdfFonts) {
 interface ContractData {
   eventTitle: string;
   clientName: string;
+  clientPersonType?: "fisica" | "juridica";
+  clientCnpj?: string;
   clientCpf?: string;
   clientRg?: string;
   clientPhone?: string;
@@ -47,19 +49,32 @@ export function generateContract(data: ContractData) {
         margin: [0, 20, 0, 10]
       },
       {
-        text: [
-          { text: 'CONTRATANTE: ', bold: true },
-          `${data.clientName}`,
-          data.clientCpf ? `, CPF: ${data.clientCpf}` : '',
-          data.clientRg ? `, RG: ${data.clientRg}` : '',
-          data.clientRua ? `, residente à ${data.clientRua}` : '',
-          data.clientNumero ? `, nº ${data.clientNumero}` : '',
-          data.clientBairro ? `, ${data.clientBairro}` : '',
-          data.clientCidade ? `, ${data.clientCidade}` : '',
-          data.clientEstado ? `/${data.clientEstado}` : '',
-          data.clientPhone ? `, telefone: ${data.clientPhone}` : '',
-          '.'
-        ],
+        text: data.clientPersonType === "juridica" 
+          ? [
+              { text: 'CONTRATANTE: ', bold: true },
+              `${data.clientName}`,
+              data.clientCnpj ? `, inscrita no CNPJ sob nº ${data.clientCnpj}` : '',
+              data.clientRua ? `, com sede à ${data.clientRua}` : '',
+              data.clientNumero ? `, nº ${data.clientNumero}` : '',
+              data.clientBairro ? `, ${data.clientBairro}` : '',
+              data.clientCidade ? `, ${data.clientCidade}` : '',
+              data.clientEstado ? `/${data.clientEstado}` : '',
+              data.clientPhone ? `, telefone: ${data.clientPhone}` : '',
+              '.'
+            ]
+          : [
+              { text: 'CONTRATANTE: ', bold: true },
+              `${data.clientName}`,
+              data.clientCpf ? `, CPF: ${data.clientCpf}` : '',
+              data.clientRg ? `, RG: ${data.clientRg}` : '',
+              data.clientRua ? `, residente à ${data.clientRua}` : '',
+              data.clientNumero ? `, nº ${data.clientNumero}` : '',
+              data.clientBairro ? `, ${data.clientBairro}` : '',
+              data.clientCidade ? `, ${data.clientCidade}` : '',
+              data.clientEstado ? `/${data.clientEstado}` : '',
+              data.clientPhone ? `, telefone: ${data.clientPhone}` : '',
+              '.'
+            ],
         margin: [0, 0, 0, 10]
       },
       {
