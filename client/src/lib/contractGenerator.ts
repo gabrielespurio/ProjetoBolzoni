@@ -15,21 +15,419 @@ interface ContractData {
   clientCpf?: string;
   clientRg?: string;
   clientPhone?: string;
+  clientEmail?: string;
   clientRua?: string;
   clientNumero?: string;
   clientBairro?: string;
   clientCidade?: string;
   clientEstado?: string;
+  clientResponsibleName?: string;
+  clientCargo?: string;
   eventDate: Date;
   eventTime: string;
+  eventEndTime?: string;
   location: string;
   contractValue: string;
   package: string;
+  packageNotes?: string;
   characters: string[];
+  employees?: string[];
   estimatedChildren: number;
+  eventDuration?: number;
 }
 
 export function generateContract(data: ContractData) {
+  if (data.clientPersonType === "juridica") {
+    generateCorporateContract(data);
+  } else {
+    generatePartyContract(data);
+  }
+}
+
+function generateCorporateContract(data: ContractData) {
+  const formattedDate = format(new Date(data.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  const contractDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  
+  const eventDate = new Date(data.eventDate);
+  const eventHour = format(eventDate, "HH:mm");
+  
+  const duration = data.eventDuration || 3;
+  const endDate = new Date(eventDate.getTime() + duration * 60 * 60 * 1000);
+  const endHour = data.eventEndTime || format(endDate, "HH:mm");
+
+  const clientAddress = [
+    data.clientRua ? `${data.clientRua}` : '',
+    data.clientNumero ? `nº ${data.clientNumero}` : '',
+    data.clientBairro ? `no Bairro ${data.clientBairro}` : '',
+    data.clientCidade && data.clientEstado ? `em ${data.clientCidade}/${data.clientEstado}` : ''
+  ].filter(Boolean).join(', ');
+
+  const numEmployees = data.employees?.length || 1;
+  const employeeText = numEmployees > 1 ? `${numEmployees} produtores` : '1 produtor';
+
+  const docDefinition: any = {
+    pageSize: 'A4',
+    pageMargins: [60, 60, 60, 60],
+    content: [
+      {
+        text: 'CONTRATO DE PRESTAÇÃO DE SERVIÇO DE RECREAÇÃO EM EVENTO CORPORATIVO',
+        style: 'header',
+        alignment: 'center',
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'IDENTIFICAÇÃO DAS PARTES CONTRATANTES',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'CONTRATANTE: ', bold: true },
+          `${data.clientName}`,
+          data.clientCnpj ? ` inscrito no CNPJ sob o n°. ${data.clientCnpj}` : '',
+          clientAddress ? ` com sede em ${clientAddress}` : '',
+          data.clientEmail ? ` endereço eletrônico ${data.clientEmail}` : '',
+          data.clientPhone ? ` telefone ${data.clientPhone}` : '',
+          data.clientResponsibleName ? ` ${data.clientResponsibleName}` : '',
+          '.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'CONTRATADA: ', bold: true },
+          'Beatriz Bolzoni Floriano, brasileira, empresária individual, inscrita no CNPJ sob o n°.42.508.153/0001-94, com sede na Rua Carlos Medeiros Doria, nº 209, Jardim Viena em São José do Rio Preto/SP, endereço eletrônico: mundoencantadoproducoes@gmail.com, contato (17)99725-2950'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: 'As partes acima identificadas têm, entre si, justo e acertado o presente Contrato de Prestação de Serviço de Recreação em Evento Corporativo, que se regerá pelas cláusulas seguintes e pelas condições de pagamento descritas no presente.',
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'OBJETO DO CONTRATO',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 1ª. ', bold: true },
+          'O objeto do presente contrato é a prestação de serviços de recreação infantil, consistindo na ANIMAÇÃO DE EVENTO CORPORATIVO PARTICULAR, com objetivos e metodologia prévia e consensualmente estabelecidas, levando sempre em consideração a idade, as condições do local e espaço que se acordarem.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          data.eventTitle || 'Evento Corporativo',
+          data.packageNotes ? ` - ${data.packageNotes}` : ''
+        ].join(''),
+        bold: true,
+        margin: [0, 0, 0, 5]
+      },
+      {
+        text: `Com ${employeeText} para executar a atividade, com duração de ${duration} horas (com 1 pausa de 15 minutos)`,
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Segundo. ', bold: true },
+          'A lista de itens pertencente a recreação contratada será enviada pelo Contratada via email ou WhatsApp, ao qual o Contratante declara ter conhecimento.'
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'DO EVENTO CORPORATIVO',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 2ª. ', bold: true },
+          `O Evento Corporativo será realizado no dia ${formattedDate} às ${eventHour} horas, em ${data.location}.`
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo único. ', bold: true },
+          'A Contratante declara a veracidade do endereço da realização informado, estando ciente que caso a informação não esteja correta poderá ocasionar atrasos ou até mesmo o cancelamento do presente contrato.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 3ª. ', bold: true },
+          `A recreação terá início às ${eventHour} horas, encerrando-se às ${endHour} horas.`
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo primeiro. ', bold: true },
+          'O tempo previsto para início e término do serviço deverá ser respeitado e em caso de atraso no início por parte do CONTRATANTE, a CONTRATADA se reserva o direito de encerrar as atividades no horário previsto. Se houver atraso por parte da empresa CONTRATADA, esta deverá compensar ao final do horário previsto com um acréscimo de 15 minutos.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo segundo. ', bold: true },
+          'O dia e horário exato da realização do evento deverá ser informado para a CONTRATADA em 05 (cinco) dias antes da sua realização, em razão disso não poderá alterá-lo mais devido a programação de agenda e realização de possíveis eventos no mesmo dia.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 4ª. ', bold: true },
+          'Se o CONTRATANTE desejar ampliar o horário da recreação, deverá ser em comum acordo com a CONTRATADA, e caso haja acordo, será cobrada taxa extra para cada personagem, no valor de R$80,00 a cada meia hora a ser pago em dinheiro no momento do acordo.'
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'DAS OBRIGAÇÕES DO CONTRATANTE',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 5ª. ', bold: true },
+          'O(a) CONTRATANTE compromete-se a manter a disposição da CONTRATADA todos os meios necessários para execução dos serviços, ou seja, energia elétrica, iluminação e local adequado para a realização das atividades.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 6ª. ', bold: true },
+          'O(a) Contratante se compromete a disponibilizar um espaço exclusivo para a Contratada, no qual deverá dispor de água para o bem-estar dos artistas e recreadores durante o evento.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo único: ', bold: true },
+          'Fica acordado que, durante a realização do evento, os personagens terão a possibilidade de fazer pequenas pausas para garantir seu bem-estar, incluindo pausas para hidratação (beber água) e para necessidades fisiológicas. O contratante se compromete a proporcionar as condições adequadas para que essas pausas sejam realizadas de forma confortável, sem comprometer o andamento do evento.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 7ª. ', bold: true },
+          'Se o evento for realizado em condomínio ou prédio, o CONTRATANTE deverá avisar com antecedência aos seguranças e à portaria a chegada dos funcionários da CONTRATADA, facilitando a entrada com veículo nas dependências, para carga e descarga de material.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 8ª. ', bold: true },
+          'O CONTRATANTE deverá efetuar o pagamento na forma e condições estabelecidas na cláusula 12ª.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 9ª. ', bold: true },
+          'A CONTRATANTE cede as imagens da recreação do evento corporativo para serem utilizadas, em caráter gratuito, na veiculação em mídia especializada, visando a divulgação do referido evento.'
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'DAS OBRIGAÇÕES DA CONTRATADA',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 10ª. ', bold: true },
+          'Se houver atraso por parte da CONTRATADA, esta deverá compensar ao final do horário previsto com um acréscimo de 20 minutos.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 11ª. ', bold: true },
+          'A CONTRATADA deverá executar todas as atividades propostas, devendo, caso contrário, ressarcir ao CONTRATANTE o valor equivalente ao tempo previsto em cada atividade não executada, salvo em caso de pedido expresso do CONTRATANTE pela supressão de qualquer atividade.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Primeiro. ', bold: true },
+          'A equipe da empresa CONTRATADA não tem responsabilidade pela segurança das pessoas, durante todo o tempo do evento, devendo a CONTRATANTE zelar e responder pela segurança do local.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo segundo. ', bold: true },
+          'Por esta cláusula, a CONTRATANTE isenta a CONTRATADA de toda e qualquer responsabilidade pelos danos causados pelas crianças nos equipamentos, toalhas, utensílios ou qualquer outro material utilizado para a realização da festa, ficando desta forma responsável pela substituição do item danificado.'
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'VALOR E CONDIÇÕES DE PAGAMENTO',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 12ª. ', bold: true },
+          `O presente serviço será remunerado pela quantia de ${data.contractValue} devendo ser pago a título de reserva da data no ato da assinatura do contrato o percentual de 30% (trinta por cento) do valor do contrato, que será efetuado por pix no CNPJ: 42.508.153/0001-94.`
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Primeiro. ', bold: true },
+          'Caso o CONTRATANTE efetue pagamento em valor superior ao arbitrado a título de sinal, a CONTRATADA somente se obrigará a devolver a diferença entre os valores do sinal e o valor pago.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Segundo. ', bold: true },
+          'O pagamento será efetuado via deposito bancário, pix, link de pagamento ou outra forma combinada e deverá estar quitado em até 5 (cinco) dias antes da realização do evento.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Terceiro. ', bold: true },
+          'Em se tratando de rescisão contratual com pagamento nas modalidades de link de pagamento ou cartão de crédito parcelado, a CONTRATADA devolverá a quantia a CONTRATANTE da seguinte maneira: descontará os 30% do valor total que corresponde ao sinal, bem como os valores da respectiva taxa de cartão. O valor competente a CONTRATANTE será devolvido pela CONTRATA somente após o pagamento de todas as parcelas.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Quarto. ', bold: true },
+          'Ocorrendo a contratação de dois ou mais personagens, fica a CONTRATANTE responsável pelas despesas de contratação, garantindo a CONTRATADA a retenção do valor pago a título de sinal referente a este personagem, bem como as despesas para a realização da recreação.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Quinto. ', bold: true },
+          'Em caso de reagendamento a CONTRATANTE deverá avisar com antecedência de no mínimo 15 dias a CONTRATADA, e somente em caso de possibilidade e disponibilidade da data em sua agenda, reserva-se no direito de cobrança de taxa de reagendamento, no percentual de 50% (cinquenta por cento) do valor total do contrato.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo Sexto. ', bold: true },
+          'Em caso de alteração no horário do evento, a CONTRATANTE deverá avisar a CONTRATADA, com antecedência de no mínimo 48h, para que seja acordado novo horário, disponível com a agenda da CONTRATADA.'
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'DA RESCISÃO MOTIVADA',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 13ª. ', bold: true },
+          'Se a desistência for por parte do CONTRATANTE, considera-se a perda do valor pago a título de sinal, uma vez que a CONTRATADA havia recebido o referido valor a título de reserva da data e para pagamento de despesas iniciais para a data.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 14ª. ', bold: true },
+          'Se a desistência for por parte da CONTRATADA, esta deverá ressarcir o valor do sinal dado pelo CONTRATANTE, salvo se ocorrer o previsto na Cláusula 11ª, não cabendo, nesse caso, nem a devolução do sinal.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Parágrafo único. ', bold: true },
+          'Não se enquadram em rescisão motivada os motivos previstos nos itens "a", "b" e "c", ficando tal valor reservado para o próximo evento que poderá ser reagendado dentro de 12 meses conforme disponibilidade de agenda, não havendo prejuízo para nenhuma das partes.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        ul: [
+          'A ação de fenômenos naturais que comprometer e impossibilitar a prestação do serviço. Entendem-se por causas naturais: tempestades, deslizamentos, alagamentos, fechamento de vias por desabamento ou crateras, queda de árvores que impeçam o fornecimento de energia, entre outros.',
+          'Paralizações devido ao Covid 19 ou por epidemias causadas por doenças semelhantes.',
+          'Por motivo de força maior (como doença grave, acidente, falecimento, etc.), comprovado em atestado ou declaração médica por uma das partes (CONTRATANTE ou CONTRATADA).'
+        ],
+        margin: [20, 0, 0, 20]
+      },
+      {
+        text: 'CONDIÇÕES GERAIS',
+        style: 'sectionHeader',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 15ª. ', bold: true },
+          'Esse contrato é virtual, não havendo necessidade de assinaturas, tendo em vista que a partir do pagamento realizado, como consta na Cláusula 12ª, o contrato já estará sendo válido judicialmente com ambas as partes de acordo.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 16ª. ', bold: true },
+          'Fica compactuada entre as partes a total inexistência de vínculo trabalhista entre as partes contratadas, excluindo as obrigações previdenciárias e os encargos sociais, não havendo entre CONTRATADA e CONTRATANTE qualquer tipo de relação de subordinação.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 17ª. ', bold: true },
+          'Salvo com a expressa autorização do CONTRATANTE, não pode a CONTRATADA transferir ou subcontratar os serviços previstos neste instrumento, sob o risco de ocorrer a rescisão imediata.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: [
+          { text: 'Cláusula 18ª. ', bold: true },
+          'Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da comarca de São José do Rio Preto/SP.'
+        ],
+        margin: [0, 0, 0, 10]
+      },
+      {
+        text: 'Por estarem assim justos e contratados, firmam o presente instrumento, em duas vias de igual teor.',
+        margin: [0, 0, 0, 30]
+      },
+      {
+        text: `São José do Rio Preto, ${contractDate}.`,
+        margin: [0, 20, 0, 40]
+      },
+      {
+        text: '_________________________________________',
+        alignment: 'center',
+        margin: [0, 0, 0, 5]
+      },
+      {
+        text: 'Beatriz Bolzoni Floriano',
+        alignment: 'center',
+        bold: true
+      },
+      {
+        text: 'CONTRATADA',
+        alignment: 'center',
+        fontSize: 10
+      }
+    ],
+    styles: {
+      header: {
+        fontSize: 14,
+        bold: true
+      },
+      sectionHeader: {
+        fontSize: 12,
+        bold: true,
+        alignment: 'center'
+      }
+    },
+    defaultStyle: {
+      fontSize: 10,
+      alignment: 'justify'
+    }
+  };
+
+  (pdfMake as any).createPdf(docDefinition).download(`Contrato-Corporativo-${data.clientName}-${formattedDate}.pdf`);
+}
+
+function generatePartyContract(data: ContractData) {
   const formattedDate = format(new Date(data.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const contractDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   
@@ -49,32 +447,19 @@ export function generateContract(data: ContractData) {
         margin: [0, 20, 0, 10]
       },
       {
-        text: data.clientPersonType === "juridica" 
-          ? [
-              { text: 'CONTRATANTE: ', bold: true },
-              `${data.clientName}`,
-              data.clientCnpj ? `, inscrita no CNPJ sob nº ${data.clientCnpj}` : '',
-              data.clientRua ? `, com sede à ${data.clientRua}` : '',
-              data.clientNumero ? `, nº ${data.clientNumero}` : '',
-              data.clientBairro ? `, ${data.clientBairro}` : '',
-              data.clientCidade ? `, ${data.clientCidade}` : '',
-              data.clientEstado ? `/${data.clientEstado}` : '',
-              data.clientPhone ? `, telefone: ${data.clientPhone}` : '',
-              '.'
-            ]
-          : [
-              { text: 'CONTRATANTE: ', bold: true },
-              `${data.clientName}`,
-              data.clientCpf ? `, CPF: ${data.clientCpf}` : '',
-              data.clientRg ? `, RG: ${data.clientRg}` : '',
-              data.clientRua ? `, residente à ${data.clientRua}` : '',
-              data.clientNumero ? `, nº ${data.clientNumero}` : '',
-              data.clientBairro ? `, ${data.clientBairro}` : '',
-              data.clientCidade ? `, ${data.clientCidade}` : '',
-              data.clientEstado ? `/${data.clientEstado}` : '',
-              data.clientPhone ? `, telefone: ${data.clientPhone}` : '',
-              '.'
-            ],
+        text: [
+          { text: 'CONTRATANTE: ', bold: true },
+          `${data.clientName}`,
+          data.clientCpf ? `, CPF: ${data.clientCpf}` : '',
+          data.clientRg ? `, RG: ${data.clientRg}` : '',
+          data.clientRua ? `, residente à ${data.clientRua}` : '',
+          data.clientNumero ? `, nº ${data.clientNumero}` : '',
+          data.clientBairro ? `, ${data.clientBairro}` : '',
+          data.clientCidade ? `, ${data.clientCidade}` : '',
+          data.clientEstado ? `/${data.clientEstado}` : '',
+          data.clientPhone ? `, telefone: ${data.clientPhone}` : '',
+          '.'
+        ],
         margin: [0, 0, 0, 10]
       },
       {

@@ -300,11 +300,14 @@ export class DatabaseStorage implements IStorage {
         clientCpf: clients.cpf,
         clientRg: clients.rg,
         clientPhone: clients.phone,
+        clientEmail: clients.email,
         clientRua: clients.rua,
         clientNumero: clients.numero,
         clientBairro: clients.bairro,
         clientCidade: clients.cidade,
         clientEstado: clients.estado,
+        clientResponsibleName: clients.responsibleName,
+        clientCargo: clients.cargo,
       })
       .from(events)
       .leftJoin(clients, eq(events.clientId, clients.id))

@@ -34,11 +34,14 @@ interface EventWithDetails extends Event {
   clientCpf?: string;
   clientRg?: string;
   clientPhone?: string;
+  clientEmail?: string;
   clientRua?: string;
   clientNumero?: string;
   clientBairro?: string;
   clientCidade?: string;
   clientEstado?: string;
+  clientResponsibleName?: string;
+  clientCargo?: string;
   employeeNames?: string[];
   characterNames?: string[];
   packageName?: string;
@@ -226,19 +229,24 @@ export default function Events() {
         clientCpf: event.clientCpf,
         clientRg: event.clientRg,
         clientPhone: event.clientPhone,
+        clientEmail: event.clientEmail,
         clientRua: event.clientRua,
         clientNumero: event.clientNumero,
         clientBairro: event.clientBairro,
         clientCidade: event.clientCidade,
         clientEstado: event.clientEstado,
+        clientResponsibleName: event.clientResponsibleName,
+        clientCargo: event.clientCargo,
         eventDate: eventDate,
         eventTime: eventTime,
         location: location,
         contractValue: formatCurrency(event.contractValue),
         package: event.packageName || "Pacote não especificado",
+        packageNotes: event.packageNotes || undefined,
         characters: event.characterNames && event.characterNames.length > 0 
           ? event.characterNames 
           : ["Personagem não especificado"],
+        employees: event.employeeNames,
         estimatedChildren: 15,
       });
 
