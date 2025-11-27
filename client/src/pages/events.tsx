@@ -29,6 +29,14 @@ import { generateContract } from "@/lib/contractGenerator";
 
 interface EventWithDetails extends Event {
   clientName?: string;
+  clientCpf?: string;
+  clientRg?: string;
+  clientPhone?: string;
+  clientRua?: string;
+  clientNumero?: string;
+  clientBairro?: string;
+  clientCidade?: string;
+  clientEstado?: string;
   employeeNames?: string[];
   characterNames?: string[];
   packageName?: string;
@@ -211,6 +219,14 @@ export default function Events() {
       generateContract({
         eventTitle: event.title,
         clientName: event.clientName || "Cliente não informado",
+        clientCpf: event.clientCpf,
+        clientRg: event.clientRg,
+        clientPhone: event.clientPhone,
+        clientRua: event.clientRua,
+        clientNumero: event.clientNumero,
+        clientBairro: event.clientBairro,
+        clientCidade: event.clientCidade,
+        clientEstado: event.clientEstado,
         eventDate: eventDate,
         eventTime: eventTime,
         location: location,

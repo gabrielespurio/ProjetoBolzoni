@@ -10,6 +10,14 @@ if (pdfMake && pdfFonts) {
 interface ContractData {
   eventTitle: string;
   clientName: string;
+  clientCpf?: string;
+  clientRg?: string;
+  clientPhone?: string;
+  clientRua?: string;
+  clientNumero?: string;
+  clientBairro?: string;
+  clientCidade?: string;
+  clientEstado?: string;
   eventDate: Date;
   eventTime: string;
   location: string;
@@ -41,7 +49,16 @@ export function generateContract(data: ContractData) {
       {
         text: [
           { text: 'CONTRATANTE: ', bold: true },
-          `${data.clientName}, representante.`
+          `${data.clientName}`,
+          data.clientCpf ? `, CPF: ${data.clientCpf}` : '',
+          data.clientRg ? `, RG: ${data.clientRg}` : '',
+          data.clientRua ? `, residente à ${data.clientRua}` : '',
+          data.clientNumero ? `, nº ${data.clientNumero}` : '',
+          data.clientBairro ? `, ${data.clientBairro}` : '',
+          data.clientCidade ? `, ${data.clientCidade}` : '',
+          data.clientEstado ? `/${data.clientEstado}` : '',
+          data.clientPhone ? `, telefone: ${data.clientPhone}` : '',
+          '.'
         ],
         margin: [0, 0, 0, 10]
       },

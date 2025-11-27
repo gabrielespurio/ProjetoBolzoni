@@ -295,6 +295,14 @@ export class DatabaseStorage implements IStorage {
         notes: events.notes,
         createdAt: events.createdAt,
         clientName: clients.name,
+        clientCpf: clients.cpf,
+        clientRg: clients.rg,
+        clientPhone: clients.phone,
+        clientRua: clients.rua,
+        clientNumero: clients.numero,
+        clientBairro: clients.bairro,
+        clientCidade: clients.cidade,
+        clientEstado: clients.estado,
       })
       .from(events)
       .leftJoin(clients, eq(events.clientId, clients.id))
