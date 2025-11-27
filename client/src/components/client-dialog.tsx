@@ -262,27 +262,8 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                       </FormItem>
                     )}
                   />
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-4">Documentos</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {personType === "juridica" ? (
+                  {personType === "juridica" && (
                     <>
-                      <FormField
-                        control={form.control}
-                        name="cnpj"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>CNPJ</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="00.000.000/0000-00" data-testid="input-client-cnpj" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                       <FormField
                         control={form.control}
                         name="responsibleName"
@@ -310,6 +291,27 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                         )}
                       />
                     </>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium mb-4">Documentos</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {personType === "juridica" ? (
+                    <FormField
+                      control={form.control}
+                      name="cnpj"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CNPJ</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="00.000.000/0000-00" data-testid="input-client-cnpj" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   ) : (
                     <>
                       <FormField
