@@ -24,6 +24,8 @@ export const clients = pgTable("clients", {
   personType: personTypeEnum("person_type").notNull().default("fisica"),
   name: text("name").notNull(),
   cnpj: text("cnpj"),
+  responsibleName: text("responsible_name"),
+  cargo: text("cargo"),
   phone: text("phone"),
   email: text("email"),
   cpf: text("cpf"),

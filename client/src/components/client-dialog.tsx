@@ -26,6 +26,8 @@ const clientFormSchema = insertClientSchema.extend({
   phone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   cnpj: z.string().optional(),
+  responsibleName: z.string().optional(),
+  cargo: z.string().optional(),
   cpf: z.string().optional(),
   rg: z.string().optional(),
   cep: z.string().optional(),
@@ -66,6 +68,8 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
       personType: client?.personType || "fisica",
       name: client?.name || "",
       cnpj: client?.cnpj || "",
+      responsibleName: client?.responsibleName || "",
+      cargo: client?.cargo || "",
       phone: client?.phone || "",
       email: client?.email || "",
       cpf: client?.cpf || "",
@@ -265,19 +269,47 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                 <h3 className="text-sm font-medium mb-4">Documentos</h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   {personType === "juridica" ? (
-                    <FormField
-                      control={form.control}
-                      name="cnpj"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CNPJ</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="00.000.000/0000-00" data-testid="input-client-cnpj" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="cnpj"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CNPJ</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="00.000.000/0000-00" data-testid="input-client-cnpj" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="responsibleName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nome do Responsável</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Nome do responsável" data-testid="input-client-responsible-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="cargo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cargo</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Cargo do responsável" data-testid="input-client-cargo" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
                   ) : (
                     <>
                       <FormField
