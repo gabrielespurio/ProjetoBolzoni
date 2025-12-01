@@ -334,12 +334,12 @@ export default function Events() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="w-[140px]"
+                                className="gap-1.5"
                                 data-testid={`button-generate-contract-${event.id}`}
                               >
-                                <FileText className="mr-2 h-4 w-4" />
-                                Gerar Contrato
-                                <ChevronDown className="ml-1 h-3 w-3" />
+                                <FileText className="h-4 w-4 shrink-0" />
+                                <span className="whitespace-nowrap">Contrato</span>
+                                <ChevronDown className="h-3 w-3 shrink-0" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
