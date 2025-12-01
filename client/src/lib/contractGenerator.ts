@@ -36,8 +36,10 @@ interface ContractData {
   eventDuration?: number;
 }
 
-export function generateContract(data: ContractData) {
-  if (data.clientPersonType === "juridica") {
+export function generateContract(data: ContractData, forceContractType?: "fisica" | "juridica") {
+  const contractType = forceContractType || data.clientPersonType;
+  
+  if (contractType === "juridica") {
     generateCorporateContract(data);
   } else {
     generatePartyContract(data);

@@ -16,7 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, MapPin, Calendar as CalendarIcon, FileText } from "lucide-react";
+import { Plus, Search, MapPin, Calendar as CalendarIcon, FileText, ChevronDown, User, Building } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EventDialog } from "@/components/event-dialog";
 import { DateFilter, type DateFilterValue } from "@/components/date-filter";
 import { filterByDateRange } from "@/lib/date-utils";
@@ -206,9 +212,7 @@ export default function Events() {
     }).format(parseFloat(value));
   };
 
-  const handleGenerateContract = async (event: EventWithDetails, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
+  const handleGenerateContract = async (event: EventWithDetails, contractType: "fisica" | "juridica") => {
     try {
       const location = [
         event.venueName,
@@ -248,11 +252,11 @@ export default function Events() {
           : ["Personagem não especificado"],
         employees: event.employeeNames,
         estimatedChildren: 15,
-      });
+      }, contractType);
 
       toast({
         title: "Contrato gerado",
-        description: "O contrato foi gerado com sucesso!",
+        description: `O contrato de ${contractType === "fisica" ? "Pessoa Física" : "Pessoa Jurídica"} foi gerado com sucesso!`,
       });
     } catch (error) {
       console.error("Erro ao gerar contrato:", error);
@@ -325,16 +329,36 @@ export default function Events() {
                         </div>
                         <div className="flex flex-col gap-2">
                           {renderStatusSelect(event)}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => handleGenerateContract(event, e)}
-                            className="w-[140px]"
-                            data-testid={`button-generate-contract-${event.id}`}
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            Gerar Contrato
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-[140px]"
+                                data-testid={`button-generate-contract-${event.id}`}
+                              >
+                                <FileText className="mr-2 h-4 w-4" />
+                                Gerar Contrato
+                                <ChevronDown className="ml-1 h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem 
+                                onClick={() => handleGenerateContract(event, "fisica")}
+                                data-testid={`menu-contract-fisica-${event.id}`}
+                              >
+                                <User className="mr-2 h-4 w-4" />
+                                Pessoa Física
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleGenerateContract(event, "juridica")}
+                                data-testid={`menu-contract-juridica-${event.id}`}
+                              >
+                                <Building className="mr-2 h-4 w-4" />
+                                Pessoa Jurídica
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
