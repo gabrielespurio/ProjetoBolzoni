@@ -23,7 +23,14 @@ import { Loader2, X, Search, Plus } from "lucide-react";
 
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
-  date: z.string(),
+  date: z.string().min(1, "Data e hora são obrigatórios").refine((dateStr) => {
+    if (!dateStr) return false;
+    const eventDate = new Date(dateStr);
+    if (isNaN(eventDate.getTime())) return false;
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    return eventDate >= oneYearAgo;
+  }, "A data do evento não pode ser anterior a 1 ano da data atual"),
   cep: z.string().optional(),
   estado: z.string().optional(),
   cidade: z.string().optional(),

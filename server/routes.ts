@@ -437,9 +437,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/events", authenticateToken, requireEventEdit, async (req, res) => {
     try {
       const { characterIds, expenses, eventEmployees, ...eventData } = req.body;
+      
+      // Validate date is not more than 1 year in the past
+      const eventDate = new Date(eventData.date);
+      if (isNaN(eventDate.getTime())) {
+        return res.status(400).json({ message: "Data do evento inválida" });
+      }
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      if (eventDate < oneYearAgo) {
+        return res.status(400).json({ message: "A data do evento não pode ser anterior a 1 ano da data atual" });
+      }
+      
       const parsedData = insertEventSchema.parse({
         ...eventData,
-        date: new Date(eventData.date),
+        date: eventDate,
         paymentDate: eventData.paymentDate ? new Date(eventData.paymentDate) : null,
       });
       const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees);
@@ -459,7 +471,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const bodyData = { ...eventData };
       if (bodyData.date) {
-        bodyData.date = new Date(bodyData.date);
+        const eventDate = new Date(bodyData.date);
+        if (isNaN(eventDate.getTime())) {
+          return res.status(400).json({ message: "Data do evento inválida" });
+        }
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        if (eventDate < oneYearAgo) {
+          return res.status(400).json({ message: "A data do evento não pode ser anterior a 1 ano da data atual" });
+        }
+        bodyData.date = eventDate;
       }
       if (bodyData.paymentDate !== undefined) {
         bodyData.paymentDate = bodyData.paymentDate ? new Date(bodyData.paymentDate) : null;
