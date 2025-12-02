@@ -19,6 +19,13 @@ export default function Clients() {
     range: undefined,
   });
 
+  // Get user role from localStorage
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = user?.role || "employee";
+  const isAdmin = userRole === "admin";
+  const isSecretaria = userRole === "secretaria";
+  const canEdit = isAdmin || isSecretaria;
+
   const { data: clients, isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
@@ -39,11 +46,13 @@ export default function Clients() {
   }, [clients, search, dateFilter]);
 
   const handleEdit = (client: Client) => {
+    if (!canEdit) return;
     setSelectedClient(client);
     setIsDialogOpen(true);
   };
 
   const handleAdd = () => {
+    if (!canEdit) return;
     setSelectedClient(null);
     setIsDialogOpen(true);
   };
@@ -59,13 +68,15 @@ export default function Clients() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Clientes</h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie os clientes da Bolzoni Produções
+            {canEdit ? "Gerencie os clientes da Bolzoni Produções" : "Visualize os clientes da Bolzoni Produções"}
           </p>
         </div>
-        <Button onClick={handleAdd} data-testid="button-add-client">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Cliente
-        </Button>
+        {canEdit && (
+          <Button onClick={handleAdd} data-testid="button-add-client">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Cliente
+          </Button>
+        )}
       </div>
 
       <Card className="border-card-border">

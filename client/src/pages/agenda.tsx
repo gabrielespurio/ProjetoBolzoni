@@ -32,6 +32,11 @@ export default function Agenda() {
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Get user role from localStorage
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = user?.role || "employee";
+  const isAdmin = userRole === "admin";
+
   const { data: events = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/events"],
   });
