@@ -173,6 +173,7 @@ export const employeeRoles = pgTable("employee_roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
   description: text("description"),
+  profileType: text("profile_type").notNull().default("employee"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

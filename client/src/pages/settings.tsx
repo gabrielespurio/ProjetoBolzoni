@@ -26,6 +26,7 @@ const categorySchema = z.object({
 const roleSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   description: z.string().optional(),
+  profileType: z.enum(["employee", "secretary", "admin"]).default("employee"),
 });
 
 const packageSchema = z.object({
@@ -577,7 +578,7 @@ export default function Settings() {
 
   const roleForm = useForm<RoleForm>({
     resolver: zodResolver(roleSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", description: "", profileType: "employee" },
   });
 
   const packageForm = useForm<PackageForm>({
@@ -737,6 +738,7 @@ export default function Settings() {
     setEditingRole(role);
     roleForm.setValue("name", role.name);
     roleForm.setValue("description", role.description || "");
+    roleForm.setValue("profileType", (role.profileType as "employee" | "secretary" | "admin") || "employee");
     setRoleDialogOpen(true);
   };
 
@@ -1125,6 +1127,28 @@ export default function Settings() {
                     <FormControl>
                       <Textarea {...field} placeholder="Descrição da função" rows={3} data-testid="input-role-description" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={roleForm.control}
+                name="profileType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Perfil de Acesso *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-role-profile">
+                          <SelectValue placeholder="Selecione o perfil" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="employee" data-testid="profile-option-employee">Perfil Funcionário</SelectItem>
+                        <SelectItem value="secretary" data-testid="profile-option-secretary">Perfil Secretária</SelectItem>
+                        <SelectItem value="admin" data-testid="profile-option-admin">Perfil Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
