@@ -5,6 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertEmployeeSchema, type Employee, type EmployeePayment, type EmployeeRole } from "@shared/schema";
 import { z } from "zod";
 import { useEffect, useState } from "react";
+import { maskCPF, maskRG, maskCEP, maskPhone } from "@/lib/masks";
 import {
   Dialog,
   DialogContent,
@@ -285,7 +286,12 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           <FormItem>
                             <FormLabel>CPF</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="000.000.000-00" data-testid="input-employee-cpf" />
+                              <Input 
+                                {...field} 
+                                placeholder="000.000.000-00" 
+                                data-testid="input-employee-cpf"
+                                onChange={(e) => field.onChange(maskCPF(e.target.value))}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -298,7 +304,12 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           <FormItem>
                             <FormLabel>RG</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="00.000.000-0" data-testid="input-employee-rg" />
+                              <Input 
+                                {...field} 
+                                placeholder="00.000.000-0" 
+                                data-testid="input-employee-rg"
+                                onChange={(e) => field.onChange(maskRG(e.target.value))}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -317,7 +328,12 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           <FormItem>
                             <FormLabel>Telefone</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="(00) 00000-0000" data-testid="input-employee-phone" />
+                              <Input 
+                                {...field} 
+                                placeholder="(00) 00000-0000" 
+                                data-testid="input-employee-phone"
+                                onChange={(e) => field.onChange(maskPhone(e.target.value))}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -357,6 +373,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                                     data-testid="input-employee-cep"
                                     onBlur={handleCepBlur}
                                     maxLength={9}
+                                    onChange={(e) => field.onChange(maskCEP(e.target.value))}
                                   />
                                   {isLoadingCep && (
                                     <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
