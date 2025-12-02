@@ -144,16 +144,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      
+      // If user is an employee, find their employee ID
+      let employeeId: string | null = null;
+      if (user.role === 'employee') {
+        const allEmployees = await storage.getAllEmployees();
+        const linkedEmployee = allEmployees.find(emp => emp.userId === user.id);
+        if (linkedEmployee) {
+          employeeId = linkedEmployee.id;
+        }
+      }
+      
+      res.json({ ...userWithoutPassword, employeeId });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao buscar usuário" });
     }
   });
   
   // Clients routes
-  app.get("/api/clients", authenticateToken, async (req, res) => {
+  app.get("/api/clients", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const clients = await storage.getAllClients();
+      
+      // For employees, filter to show only clients from events they are linked to
+      if (req.userRole === 'employee') {
+        const allEmployees = await storage.getAllEmployees();
+        const linkedEmployee = allEmployees.find(emp => emp.userId === req.userId);
+        
+        if (linkedEmployee) {
+          // Get all events
+          const events = await storage.getAllEvents();
+          
+          // Filter events that have this employee linked
+          const employeeEvents = events.filter((event: any) => 
+            event.eventEmployees?.some((ee: any) => ee.employeeId === linkedEmployee.id)
+          );
+          
+          // Get unique client IDs from those events
+          const clientIds = new Set(employeeEvents.map((e: any) => e.clientId));
+          
+          // Filter clients
+          const filteredClients = clients.filter(client => clientIds.has(client.id));
+          return res.json(filteredClients);
+        }
+        
+        // If no linked employee found, return empty
+        return res.json([]);
+      }
+      
       res.json(clients);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao buscar clientes" });
@@ -356,6 +394,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               cardType: undefined,
               paymentDate: undefined,
               installments: undefined,
+              // Also sanitize employee cache values
+              eventEmployees: event.eventEmployees?.map((ee: any) => ({
+                ...ee,
+                cacheValue: undefined,
+              })),
             }));
             
             return res.json(sanitizedEvents);
@@ -375,6 +418,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cardType: undefined,
           paymentDate: undefined,
           installments: undefined,
+          // Also sanitize employee cache values
+          eventEmployees: event.eventEmployees?.map((ee: any) => ({
+            ...ee,
+            cacheValue: undefined,
+          })),
         }));
         return res.json(sanitizedEvents);
       }

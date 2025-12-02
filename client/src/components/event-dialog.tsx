@@ -78,9 +78,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [calculatingFee, setCalculatingFee] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const isAdmin = user?.role === 'admin';
+  const userRole = user?.role || 'employee';
+  const isAdmin = userRole === 'admin';
+  const isEmployee = userRole === 'employee';
   const canViewFinancials = isAdmin;
   const canEdit = isAdmin;
+  const isReadOnly = !canEdit;
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -480,9 +483,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar Evento" : "Novo Evento"}</DialogTitle>
+          <DialogTitle>{isReadOnly ? "Visualizar Evento" : (isEdit ? "Editar Evento" : "Novo Evento")}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Atualize as informações do evento" : "Cadastre um novo evento"}
+            {isReadOnly ? "Informações do evento (somente leitura)" : (isEdit ? "Atualize as informações do evento" : "Cadastre um novo evento")}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -722,8 +725,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium">Informações de Pagamento</h3>
+{canViewFinancials && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Informações de Pagamento</h3>
               <div className="grid gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
@@ -858,7 +862,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </FormItem>
                 )}
               />
-            </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -1477,12 +1482,14 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
-                Cancelar
+                {isReadOnly ? "Fechar" : "Cancelar"}
               </Button>
+              {canEdit && (
               <Button type="submit" disabled={mutation.isPending || calculatingFee} data-testid="button-save-event">
                 {(mutation.isPending || calculatingFee) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEdit ? "Atualizar" : "Cadastrar"}
               </Button>
+              )}
             </div>
           </form>
         </Form>

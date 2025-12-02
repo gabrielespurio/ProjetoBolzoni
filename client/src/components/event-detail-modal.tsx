@@ -65,6 +65,11 @@ interface EventDetailModalProps {
 export function EventDetailModal({ event, open, onOpenChange }: EventDetailModalProps) {
   if (!event) return null;
 
+  // Get user role from localStorage
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = user?.role || "employee";
+  const canViewFinancials = userRole === "admin";
+
   const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
   const createdAtDate = typeof event.createdAt === 'string' ? parseISO(event.createdAt) : event.createdAt;
   const paymentDateObj = event.paymentDate 
@@ -263,29 +268,33 @@ export function EventDetailModal({ event, open, onOpenChange }: EventDetailModal
               </div>
             </div>
 
-            <Separator />
+            {canViewFinancials && (
+              <>
+                <Separator />
 
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <DollarSign className="h-5 w-5 text-muted-foreground" />
-                <h3 className="font-semibold">Valores e Pagamento</h3>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Valor Total do Contrato:</span>
-                  <span className="font-bold text-lg" data-testid="text-contract-value">{formatCurrency(contractValue)}</span>
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <DollarSign className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold">Valores e Pagamento</h3>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Valor Total do Contrato:</span>
+                      <span className="font-bold text-lg" data-testid="text-contract-value">{formatCurrency(contractValue)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Forma de Pagamento:</span>
+                      <span className="font-medium">{getPaymentMethodLabel(event.paymentMethod)}</span>
+                      {event.cardType && <span className="text-sm">({event.cardType})</span>}
+                    </div>
+                    <Separator />
+                    {renderPaymentInfo()}
+                  </div>
                 </div>
-                <Separator />
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Forma de Pagamento:</span>
-                  <span className="font-medium">{getPaymentMethodLabel(event.paymentMethod)}</span>
-                  {event.cardType && <span className="text-sm">({event.cardType})</span>}
-                </div>
-                <Separator />
-                {renderPaymentInfo()}
-              </div>
-            </div>
+              </>
+            )}
 
             <Separator />
 
@@ -308,7 +317,9 @@ export function EventDetailModal({ event, open, onOpenChange }: EventDetailModal
                           Funcionario: {emp.employeeName || 'Nao atribuido'}
                         </p>
                       </div>
-                      <Badge variant="outline">{formatCurrency(parseFloat(emp.cacheValue) || 0)}</Badge>
+                      {canViewFinancials && (
+                        <Badge variant="outline">{formatCurrency(parseFloat(emp.cacheValue) || 0)}</Badge>
+                      )}
                     </div>
                   ))}
                 </div>

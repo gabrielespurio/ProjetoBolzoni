@@ -45,6 +45,7 @@ interface ClientDialogProps {
   open: boolean;
   onClose: () => void;
   client?: Client | null;
+  readOnly?: boolean;
 }
 
 interface ViaCEPResponse {
@@ -57,10 +58,15 @@ interface ViaCEPResponse {
   erro?: boolean;
 }
 
-export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
+export function ClientDialog({ open, onClose, client, readOnly = false }: ClientDialogProps) {
   const { toast } = useToast();
   const isEdit = !!client;
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+  
+  // Determine if user can edit based on role
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = user?.role || "employee";
+  const isReadOnly = readOnly || (userRole !== "admin" && isEdit);
 
   const form = useForm<ClientForm>({
     resolver: zodResolver(clientFormSchema),
@@ -172,9 +178,13 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
+          <DialogTitle>
+            {isReadOnly ? "Visualizar Cliente" : (isEdit ? "Editar Cliente" : "Novo Cliente")}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit ? "Atualize as informações do cliente" : "Cadastre um novo cliente"}
+            {isReadOnly 
+              ? "Informações do cliente (somente visualização)" 
+              : (isEdit ? "Atualize as informações do cliente" : "Cadastre um novo cliente")}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -193,6 +203,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                           onValueChange={field.onChange}
                           className="flex gap-4"
                           data-testid="radio-person-type"
+                          disabled={isReadOnly}
                         >
                           <div className="flex items-center gap-2">
                             <RadioGroupItem value="fisica" id="pessoa-fisica" data-testid="radio-pessoa-fisica" />
@@ -229,7 +240,8 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                           <Input 
                             {...field} 
                             placeholder={personType === "juridica" ? "Nome da empresa" : "Nome do cliente"} 
-                            data-testid="input-client-name" 
+                            data-testid="input-client-name"
+                            disabled={isReadOnly}
                           />
                         </FormControl>
                         <FormMessage />
@@ -243,7 +255,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                       <FormItem>
                         <FormLabel>Telefone</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="(00) 00000-0000" data-testid="input-client-phone" />
+                          <Input {...field} placeholder="(00) 00000-0000" data-testid="input-client-phone" disabled={isReadOnly} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -256,7 +268,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input {...field} type="email" placeholder="email@exemplo.com" data-testid="input-client-email" />
+                          <Input {...field} type="email" placeholder="email@exemplo.com" data-testid="input-client-email" disabled={isReadOnly} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -275,7 +287,8 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                                 {...field} 
                                 value={field.value || ""} 
                                 placeholder="Nome do responsável" 
-                                data-testid="input-client-responsible-name" 
+                                data-testid="input-client-responsible-name"
+                                disabled={isReadOnly}
                               />
                             </FormControl>
                             <FormMessage />
@@ -293,7 +306,8 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                                 {...field} 
                                 value={field.value || ""} 
                                 placeholder="Cargo do responsável" 
-                                data-testid="input-client-cargo" 
+                                data-testid="input-client-cargo"
+                                disabled={isReadOnly}
                               />
                             </FormControl>
                             <FormMessage />
@@ -320,7 +334,8 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                               {...field} 
                               value={field.value || ""} 
                               placeholder="00.000.000/0000-00" 
-                              data-testid="input-client-cnpj" 
+                              data-testid="input-client-cnpj"
+                              disabled={isReadOnly}
                             />
                           </FormControl>
                           <FormMessage />
@@ -336,7 +351,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                           <FormItem>
                             <FormLabel>CPF</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="000.000.000-00" data-testid="input-client-cpf" />
+                              <Input {...field} placeholder="000.000.000-00" data-testid="input-client-cpf" disabled={isReadOnly} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -349,7 +364,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                           <FormItem>
                             <FormLabel>RG</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="00.000.000-0" data-testid="input-client-rg" />
+                              <Input {...field} placeholder="00.000.000-0" data-testid="input-client-rg" disabled={isReadOnly} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -379,8 +394,9 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                                 {...field} 
                                 placeholder="00000-000" 
                                 data-testid="input-client-cep"
-                                onBlur={(e) => handleCEPBlur(e.target.value)}
+                                onBlur={(e) => !isReadOnly && handleCEPBlur(e.target.value)}
                                 maxLength={9}
+                                disabled={isReadOnly}
                               />
                               {isLoadingCEP && (
                                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
@@ -398,7 +414,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                         <FormItem className="w-16">
                           <FormLabel>Estado</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="UF" data-testid="input-client-estado" maxLength={2} />
+                            <Input {...field} placeholder="UF" data-testid="input-client-estado" maxLength={2} disabled={isReadOnly} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -411,7 +427,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                         <FormItem className="flex-1 min-w-48">
                           <FormLabel>Cidade</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Nome da cidade" data-testid="input-client-cidade" />
+                            <Input {...field} placeholder="Nome da cidade" data-testid="input-client-cidade" disabled={isReadOnly} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -426,7 +442,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                         <FormItem>
                           <FormLabel>Bairro</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Nome do bairro" data-testid="input-client-bairro" />
+                            <Input {...field} placeholder="Nome do bairro" data-testid="input-client-bairro" disabled={isReadOnly} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -439,7 +455,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                         <FormItem>
                           <FormLabel>Rua</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Nome da rua" data-testid="input-client-rua" />
+                            <Input {...field} placeholder="Nome da rua" data-testid="input-client-rua" disabled={isReadOnly} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -454,7 +470,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                         <FormItem>
                           <FormLabel>Número</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Nº" data-testid="input-client-numero" />
+                            <Input {...field} placeholder="Nº" data-testid="input-client-numero" disabled={isReadOnly} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -472,7 +488,7 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
                     <FormItem>
                       <FormLabel>Observações</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Informações adicionais sobre o cliente" rows={3} data-testid="input-client-notes" />
+                        <Textarea {...field} placeholder="Informações adicionais sobre o cliente" rows={3} data-testid="input-client-notes" disabled={isReadOnly} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -483,12 +499,14 @@ export function ClientDialog({ open, onClose, client }: ClientDialogProps) {
 
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
-                Cancelar
+                {isReadOnly ? "Fechar" : "Cancelar"}
               </Button>
-              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-client">
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEdit ? "Atualizar" : "Cadastrar"}
-              </Button>
+              {!isReadOnly && (
+                <Button type="submit" disabled={mutation.isPending} data-testid="button-save-client">
+                  {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEdit ? "Atualizar" : "Cadastrar"}
+                </Button>
+              )}
             </div>
           </form>
         </Form>

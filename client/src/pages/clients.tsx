@@ -44,8 +44,7 @@ export default function Clients() {
     return result;
   }, [clients, search, dateFilter]);
 
-  const handleEdit = (client: Client) => {
-    if (!canEdit) return;
+  const handleView = (client: Client) => {
     setSelectedClient(client);
     setIsDialogOpen(true);
   };
@@ -107,7 +106,7 @@ export default function Clients() {
                 <div
                   key={client.id}
                   className="p-6 hover-elevate active-elevate-2 cursor-pointer"
-                  onClick={() => handleEdit(client)}
+                  onClick={() => handleView(client)}
                   data-testid={`client-${client.id}`}
                 >
                   <div className="space-y-3">
