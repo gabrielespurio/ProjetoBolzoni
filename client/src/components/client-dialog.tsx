@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -91,6 +91,30 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
   });
 
   const personType = form.watch("personType");
+
+  // Reset form when dialog opens or client changes
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        personType: client?.personType || "fisica",
+        name: client?.name || "",
+        cnpj: client?.cnpj || "",
+        responsibleName: client?.responsibleName || "",
+        cargo: client?.cargo || "",
+        phone: client?.phone || "",
+        email: client?.email || "",
+        cpf: client?.cpf || "",
+        rg: client?.rg || "",
+        cep: client?.cep || "",
+        rua: client?.rua || "",
+        bairro: client?.bairro || "",
+        cidade: client?.cidade || "",
+        estado: client?.estado || "",
+        numero: client?.numero || "",
+        notes: client?.notes || "",
+      });
+    }
+  }, [open, client, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: ClientForm) => {
