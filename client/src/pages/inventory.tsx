@@ -37,6 +37,10 @@ export default function Inventory() {
   });
   const { toast } = useToast();
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isAdmin = user?.role === 'admin';
+  const canEdit = isAdmin;
+
   const { data: items, isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
   });
@@ -119,10 +123,12 @@ export default function Inventory() {
             Controle de produtos e personagens
           </p>
         </div>
+{canEdit && (
         <Button onClick={handleAdd} data-testid="button-add-item">
           <Plus className="mr-2 h-4 w-4" />
           Novo Item
         </Button>
+        )}
       </div>
 
       {lowStockCount > 0 && (
@@ -174,7 +180,7 @@ export default function Inventory() {
                     <TableHead className="text-right w-[120px]">Valor Custo</TableHead>
                     <TableHead className="text-right w-[120px]">Valor Venda</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="text-right w-[80px]">Ações</TableHead>
+                    {canEdit && <TableHead className="text-right w-[80px]">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -239,6 +245,7 @@ export default function Inventory() {
                           <span className="text-xs text-muted-foreground">Normal</span>
                         )}
                       </TableCell>
+                      {canEdit && (
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -269,6 +276,7 @@ export default function Inventory() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
