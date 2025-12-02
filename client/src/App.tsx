@@ -19,21 +19,19 @@ import Purchases from "@/pages/purchases";
 import Settings from "@/pages/settings";
 import Reports from "@/pages/reports";
 
-type UserRole = 'admin' | 'employee';
-
-const employeeAllowedRoutes = ['/events', '/agenda', '/clients'];
+type UserRole = 'admin' | 'employee' | 'secretaria';
 
 function RoleProtectedRoute({ 
   component: Component, 
-  adminOnly = false 
+  allowedRoles = ['admin']
 }: { 
   component: React.ComponentType; 
-  adminOnly?: boolean;
+  allowedRoles?: UserRole[];
 }) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole: UserRole = user?.role || 'employee';
   
-  if (adminOnly && userRole !== 'admin') {
+  if (!allowedRoles.includes(userRole)) {
     return <Redirect to="/events" />;
   }
   
@@ -68,28 +66,30 @@ function Router() {
               <div className="mx-auto max-w-7xl">
                 <Switch>
                   <Route path="/">
-                    <RoleProtectedRoute component={Dashboard} adminOnly />
+                    <RoleProtectedRoute component={Dashboard} allowedRoles={['admin']} />
                   </Route>
-                  <Route path="/clients" component={Clients} />
+                  <Route path="/clients">
+                    <RoleProtectedRoute component={Clients} allowedRoles={['admin', 'secretaria']} />
+                  </Route>
                   <Route path="/employees">
-                    <RoleProtectedRoute component={Employees} adminOnly />
+                    <RoleProtectedRoute component={Employees} allowedRoles={['admin']} />
                   </Route>
                   <Route path="/events" component={Events} />
                   <Route path="/agenda" component={Agenda} />
                   <Route path="/financial">
-                    <RoleProtectedRoute component={Financial} adminOnly />
+                    <RoleProtectedRoute component={Financial} allowedRoles={['admin']} />
                   </Route>
                   <Route path="/inventory">
-                    <RoleProtectedRoute component={Inventory} adminOnly />
+                    <RoleProtectedRoute component={Inventory} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/purchases">
-                    <RoleProtectedRoute component={Purchases} adminOnly />
+                    <RoleProtectedRoute component={Purchases} allowedRoles={['admin']} />
                   </Route>
                   <Route path="/reports">
-                    <RoleProtectedRoute component={Reports} adminOnly />
+                    <RoleProtectedRoute component={Reports} allowedRoles={['admin']} />
                   </Route>
                   <Route path="/settings">
-                    <RoleProtectedRoute component={Settings} adminOnly />
+                    <RoleProtectedRoute component={Settings} allowedRoles={['admin']} />
                   </Route>
                   <Route component={NotFound} />
                 </Switch>
