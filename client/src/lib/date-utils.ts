@@ -1,4 +1,4 @@
-import { isWithinInterval, parseISO } from "date-fns";
+import { isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import type { DateFilterValue } from "@/components/date-filter";
 
 /**
@@ -43,16 +43,13 @@ export function filterByDateRange<T extends Record<string, any>>(
       return false;
     }
 
-    if (!to) {
-      return isWithinInterval(itemDate, {
-        start: from,
-        end: from,
-      });
-    }
+    // Usa startOfDay para 'from' e endOfDay para 'to' para incluir o dia inteiro
+    const startDate = startOfDay(from);
+    const endDate = to ? endOfDay(to) : endOfDay(from);
 
     return isWithinInterval(itemDate, {
-      start: from,
-      end: to,
+      start: startDate,
+      end: endDate,
     });
   });
 }
