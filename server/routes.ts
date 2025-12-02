@@ -47,6 +47,30 @@ function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   next();
 }
 
+// Admin or Secretaria authorization middleware
+function requireAdminOrSecretaria(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.userRole !== 'admin' && req.userRole !== 'secretaria') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores e secretárias podem acessar este recurso." });
+  }
+  next();
+}
+
+// Middleware to check if user can create/edit events (only admin)
+function requireEventEdit(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores podem criar ou editar eventos." });
+  }
+  next();
+}
+
+// Middleware to check if user can create/edit clients (admin or secretaria)
+function requireClientEdit(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.userRole !== 'admin' && req.userRole !== 'secretaria') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores e secretárias podem criar ou editar clientes." });
+  }
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
@@ -148,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/clients", authenticateToken, async (req, res) => {
+  app.post("/api/clients", authenticateToken, requireClientEdit, async (req, res) => {
     try {
       const data = insertClientSchema.parse(req.body);
       const client = await storage.createClient(data);
@@ -158,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/clients/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/clients/:id", authenticateToken, requireClientEdit, async (req, res) => {
     try {
       const data = insertClientSchema.partial().parse(req.body);
       const client = await storage.updateClient(req.params.id, data);
@@ -168,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/clients/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/clients/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       await storage.deleteClient(req.params.id);
       res.status(204).send();
@@ -305,16 +329,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Events routes
-  app.get("/api/events", authenticateToken, async (req, res) => {
+  app.get("/api/events", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const events = await storage.getAllEvents();
+      
+      // For employees, filter to show only events they are linked to
+      if (req.userRole === 'employee') {
+        // Get the employee linked to this user
+        const user = await storage.getUser(req.userId!);
+        if (user) {
+          const allEmployees = await storage.getAllEmployees();
+          const linkedEmployee = allEmployees.find(emp => emp.userId === req.userId);
+          
+          if (linkedEmployee) {
+            // Filter events that have this employee linked
+            const filteredEvents = events.filter((event: any) => 
+              event.eventEmployees?.some((ee: any) => ee.employeeId === linkedEmployee.id)
+            );
+            
+            // Remove sensitive financial data for employees
+            const sanitizedEvents = filteredEvents.map((event: any) => ({
+              ...event,
+              contractValue: undefined,
+              ticketValue: undefined,
+              paymentMethod: undefined,
+              cardType: undefined,
+              paymentDate: undefined,
+              installments: undefined,
+            }));
+            
+            return res.json(sanitizedEvents);
+          }
+        }
+        // If no linked employee found, return empty
+        return res.json([]);
+      }
+      
+      // For secretaria, remove financial values too
+      if (req.userRole === 'secretaria') {
+        const sanitizedEvents = events.map((event: any) => ({
+          ...event,
+          contractValue: undefined,
+          ticketValue: undefined,
+          paymentMethod: undefined,
+          cardType: undefined,
+          paymentDate: undefined,
+          installments: undefined,
+        }));
+        return res.json(sanitizedEvents);
+      }
+      
+      // Admin gets all events with full data
       res.json(events);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao buscar eventos" });
     }
   });
   
-  app.post("/api/events", authenticateToken, async (req, res) => {
+  app.post("/api/events", authenticateToken, requireEventEdit, async (req, res) => {
     try {
       const { characterIds, expenses, eventEmployees, ...eventData } = req.body;
       const parsedData = insertEventSchema.parse({
@@ -329,7 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/events/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/events/:id", authenticateToken, requireEventEdit, async (req, res) => {
     try {
       const { characterIds, expenses, eventEmployees, ...eventData } = req.body;
       
@@ -384,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/events/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/events/:id", authenticateToken, requireEventEdit, async (req, res) => {
     try {
       await storage.deleteEvent(req.params.id);
       res.status(204).send();
@@ -394,8 +466,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Inventory routes
-  // Inventory routes (admin only)
-  app.get("/api/inventory", authenticateToken, requireAdmin, async (req, res) => {
+  // Inventory routes (admin and secretaria can view, only admin can modify)
+  app.get("/api/inventory", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const items = await storage.getAllInventoryItems();
       res.json(items);
