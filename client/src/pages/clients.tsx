@@ -23,8 +23,7 @@ export default function Clients() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || "employee";
   const isAdmin = userRole === "admin";
-  const isSecretaria = userRole === "secretaria";
-  const canEdit = isAdmin || isSecretaria;
+  const canEdit = isAdmin;
 
   const { data: clients, isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],

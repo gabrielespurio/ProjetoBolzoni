@@ -63,10 +63,10 @@ function requireEventEdit(req: AuthRequest, res: Response, next: NextFunction) {
   next();
 }
 
-// Middleware to check if user can create/edit clients (admin or secretaria)
+// Middleware to check if user can create/edit clients (admin only)
 function requireClientEdit(req: AuthRequest, res: Response, next: NextFunction) {
-  if (req.userRole !== 'admin' && req.userRole !== 'secretaria') {
-    return res.status(403).json({ message: "Acesso negado. Apenas administradores e secretárias podem criar ou editar clientes." });
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores podem criar ou editar clientes." });
   }
   next();
 }
