@@ -39,7 +39,8 @@ export default function Inventory() {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === 'admin';
-  const canEdit = isAdmin;
+  const isSecretaria = user?.role === 'secretaria';
+  const canEdit = isAdmin || isSecretaria;
 
   const { data: items, isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
@@ -115,16 +116,16 @@ export default function Inventory() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Estoque</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Estoque</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             Controle de produtos e personagens
           </p>
         </div>
 {canEdit && (
-        <Button onClick={handleAdd} data-testid="button-add-item">
+        <Button onClick={handleAdd} data-testid="button-add-item" className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Novo Item
         </Button>
@@ -133,11 +134,11 @@ export default function Inventory() {
 
       {lowStockCount > 0 && (
         <Card className="border-destructive/50 bg-destructive/10">
-          <CardContent className="flex items-center gap-4 p-6">
-            <AlertTriangle className="h-6 w-6 text-destructive" />
+          <CardContent className="flex items-center gap-3 md:gap-4 p-3 md:p-6">
+            <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-destructive flex-shrink-0" />
             <div>
-              <h3 className="font-semibold text-destructive">Atenção: Estoque Baixo</h3>
-              <p className="text-sm text-destructive/80">
+              <h3 className="font-semibold text-destructive text-sm md:text-base">Atenção: Estoque Baixo</h3>
+              <p className="text-xs md:text-sm text-destructive/80">
                 {lowStockCount} {lowStockCount === 1 ? "item está" : "itens estão"} com estoque abaixo do mínimo
               </p>
             </div>
@@ -146,12 +147,12 @@ export default function Inventory() {
       )}
 
       <Card className="border-card-border">
-        <CardHeader className="border-b border-border">
-          <div className="flex flex-wrap items-center gap-4">
+        <CardHeader className="border-b border-border p-3 md:p-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou tipo..."
+                placeholder="Buscar item..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -163,13 +164,14 @@ export default function Inventory() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-2 p-6">
+            <div className="space-y-2 p-3 md:p-6">
               {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
+                <Skeleton key={i} className="h-14 md:h-16 w-full" />
               ))}
             </div>
           ) : filteredItems && filteredItems.length > 0 ? (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -286,9 +288,55 @@ export default function Inventory() {
                 </TableBody>
               </Table>
             </div>
+            <div className="md:hidden divide-y divide-border">
+              {filteredItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`p-3 hover-elevate active-elevate-2 cursor-pointer ${
+                    isLowStock(item) ? "bg-destructive/5" : ""
+                  }`}
+                  onClick={() => canEdit && handleEdit(item)}
+                  data-testid={`inventory-item-mobile-${item.id}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-semibold text-foreground truncate">{item.name}</h3>
+                        <Badge variant="outline" className="text-[10px] capitalize">
+                          {item.type === "consumable" ? "Consumível" : "Personagem"}
+                        </Badge>
+                      </div>
+                      {item.unit && (
+                        <p className="text-xs text-muted-foreground mt-0.5">Unidade: {item.unit}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <span className={`font-mono font-semibold text-sm ${
+                          isLowStock(item) ? "text-destructive" : "text-foreground"
+                        }`}>
+                          {item.quantity}
+                        </span>
+                        <span className="text-xs text-muted-foreground"> / {item.minQuantity}</span>
+                      </div>
+                      {isLowStock(item) && (
+                        <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                  {canEdit && item.type === "character" && (
+                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                      <span>Custo: {formatCurrency(item.costPrice)}</span>
+                      <span>Venda: {formatCurrency(item.salePrice)}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            </>
           ) : (
-            <div className="p-12 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="p-8 md:p-12 text-center">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 {search ? "Nenhum item encontrado" : "Nenhum item cadastrado"}
               </p>
             </div>

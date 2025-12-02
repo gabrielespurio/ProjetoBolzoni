@@ -56,13 +56,13 @@ function Router() {
         <div className="flex h-screen w-full">
           <AppSidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
-            <header className="flex h-16 items-center justify-between border-b border-border px-6">
+            <header className="flex h-14 md:h-16 items-center justify-between border-b border-border px-3 md:px-6">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <h1 className="text-sm font-medium text-muted-foreground">
+              <h1 className="text-xs md:text-sm font-medium text-muted-foreground truncate ml-2">
                 Sistema de Gestão - Bolzoni Produções
               </h1>
             </header>
-            <main className="flex-1 overflow-y-auto bg-background p-8">
+            <main className="flex-1 overflow-y-auto bg-background p-3 md:p-6 lg:p-8">
               <div className="mx-auto max-w-7xl">
                 <Switch>
                   <Route path="/">

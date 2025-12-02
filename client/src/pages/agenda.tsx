@@ -74,24 +74,24 @@ export default function Agenda() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-agenda-title">Agenda</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight" data-testid="text-agenda-title">Agenda</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             Visualize seus eventos organizados por semana, mês ou ano
           </p>
         </div>
-        <Button onClick={goToToday} variant="outline" data-testid="button-today">
+        <Button onClick={goToToday} variant="outline" data-testid="button-today" className="w-full sm:w-auto">
           <CalendarIcon className="h-4 w-4 mr-2" />
           Hoje
         </Button>
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <CardHeader className="p-3 md:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center justify-center sm:justify-start gap-2 md:gap-4">
               <Button
                 variant="outline"
                 size="icon"
@@ -100,10 +100,10 @@ export default function Agenda() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <div className="min-w-[200px] text-center">
-                <CardTitle data-testid="text-current-period">
-                  {view === "month" && format(currentDate, "MMMM yyyy", { locale: ptBR })}
-                  {view === "week" && `Semana de ${format(startOfWeek(currentDate, { locale: ptBR }), "dd MMM", { locale: ptBR })} - ${format(endOfWeek(currentDate, { locale: ptBR }), "dd MMM yyyy", { locale: ptBR })}`}
+              <div className="min-w-[120px] sm:min-w-[180px] md:min-w-[200px] text-center">
+                <CardTitle className="text-sm md:text-base lg:text-lg" data-testid="text-current-period">
+                  {view === "month" && format(currentDate, "MMM yyyy", { locale: ptBR })}
+                  {view === "week" && `${format(startOfWeek(currentDate, { locale: ptBR }), "dd/MM", { locale: ptBR })} - ${format(endOfWeek(currentDate, { locale: ptBR }), "dd/MM", { locale: ptBR })}`}
                   {view === "year" && format(currentDate, "yyyy")}
                 </CardTitle>
               </div>
@@ -117,16 +117,16 @@ export default function Agenda() {
               </Button>
             </div>
           </div>
-          <CardDescription>
+          <CardDescription className="text-xs md:text-sm text-center sm:text-left">
             {eventsWithDates.length} eventos cadastrados
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 md:p-6 pt-0">
           <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-            <TabsList className="grid w-full grid-cols-3" data-testid="tabs-view-selector">
-              <TabsTrigger value="month" data-testid="tab-month">Mês</TabsTrigger>
-              <TabsTrigger value="week" data-testid="tab-week">Semana</TabsTrigger>
-              <TabsTrigger value="year" data-testid="tab-year">Ano</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 h-auto" data-testid="tabs-view-selector">
+              <TabsTrigger value="month" data-testid="tab-month" className="text-xs sm:text-sm py-2">Mês</TabsTrigger>
+              <TabsTrigger value="week" data-testid="tab-week" className="text-xs sm:text-sm py-2">Semana</TabsTrigger>
+              <TabsTrigger value="year" data-testid="tab-year" className="text-xs sm:text-sm py-2">Ano</TabsTrigger>
             </TabsList>
 
             <TabsContent value="month" className="mt-6">
@@ -161,18 +161,20 @@ function MonthView({ currentDate, getEventsForDate, onEventClick }: any) {
 
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+  const weekDays = ["D", "S", "T", "Q", "Q", "S", "S"];
+  const weekDaysFull = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-7 gap-2 mb-2">
-        {weekDays.map(day => (
-          <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
-            {day}
+    <div className="space-y-1 md:space-y-2">
+      <div className="grid grid-cols-7 gap-1 md:gap-2 mb-1 md:mb-2">
+        {weekDays.map((day, idx) => (
+          <div key={day} className="text-center text-[10px] md:text-sm font-medium text-muted-foreground p-1 md:p-2">
+            <span className="md:hidden">{day}</span>
+            <span className="hidden md:inline">{weekDaysFull[idx]}</span>
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1 md:gap-2">
         {days.map((day, idx) => {
           const dayEvents = getEventsForDate(day);
           const isCurrentMonth = isSameMonth(day, currentDate);
@@ -181,29 +183,29 @@ function MonthView({ currentDate, getEventsForDate, onEventClick }: any) {
           return (
             <div
               key={idx}
-              className={`min-h-[100px] border rounded-lg p-2 ${
+              className={`min-h-[60px] md:min-h-[100px] border rounded-md md:rounded-lg p-1 md:p-2 ${
                 !isCurrentMonth ? "bg-muted/50 text-muted-foreground" : "bg-background"
               } ${isToday ? "ring-2 ring-primary" : ""}`}
               data-testid={`day-${format(day, "yyyy-MM-dd")}`}
             >
-              <div className={`text-sm font-medium mb-1 ${isToday ? "text-primary" : ""}`}>
+              <div className={`text-xs md:text-sm font-medium mb-0.5 md:mb-1 ${isToday ? "text-primary" : ""}`}>
                 {format(day, "d")}
               </div>
-              <div className="space-y-1">
-                {dayEvents.slice(0, 3).map((event: any) => (
+              <div className="space-y-0.5 md:space-y-1">
+                {dayEvents.slice(0, 2).map((event: any) => (
                   <button
                     key={event.id}
-                    className="w-full text-left text-xs p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover-elevate"
+                    className="w-full text-left text-[9px] md:text-xs p-0.5 md:p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover-elevate"
                     title={event.title}
                     onClick={() => onEventClick(event)}
                     data-testid={`event-${event.id}`}
                   >
-                    {format(event.dateObj, "HH:mm")} {event.title}
+                    <span className="hidden md:inline">{format(event.dateObj, "HH:mm")} </span>{event.title}
                   </button>
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-xs text-muted-foreground">
-                    +{dayEvents.length - 3} mais
+                {dayEvents.length > 2 && (
+                  <div className="text-[9px] md:text-xs text-muted-foreground">
+                    +{dayEvents.length - 2}
                   </div>
                 )}
               </div>
@@ -228,59 +230,94 @@ function WeekView({ currentDate, getEventsForDate, onEventClick }: any) {
   };
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[800px]">
-        <div className="grid grid-cols-8 gap-2 mb-2">
-          <div className="text-sm font-medium text-muted-foreground p-2">Hora</div>
-          {days.map(day => {
-            const isToday = isSameDay(day, new Date());
-            return (
-              <div
-                key={day.toISOString()}
-                className={`text-center p-2 rounded ${isToday ? "bg-primary text-primary-foreground" : ""}`}
-              >
-                <div className="text-sm font-medium">
-                  {format(day, "EEE", { locale: ptBR })}
-                </div>
-                <div className="text-xs">{format(day, "dd/MM")}</div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="border rounded-lg overflow-hidden">
-          {hours.map(hour => (
-            <div key={hour} className="grid grid-cols-8 gap-2 border-b last:border-b-0">
-              <div className="text-xs text-muted-foreground p-2 border-r">
-                {String(hour).padStart(2, "0")}:00
-              </div>
-              {days.map(day => {
-                const dayEvents = getEventsForDate(day).filter((event: any) => {
-                  const eventHour = event.dateObj.getHours();
-                  return eventHour === hour;
-                });
-
-                return (
-                  <div key={day.toISOString()} className="p-1 min-h-[60px] border-r last:border-r-0">
-                    {dayEvents.map((event: any) => (
-                      <button
-                        key={event.id}
-                        className="w-full text-left text-xs p-1 rounded bg-primary/10 text-primary mb-1 cursor-pointer hover-elevate"
-                        title={`${event.title} - ${formatLocation(event)}`}
-                        onClick={() => onEventClick(event)}
-                        data-testid={`event-${event.id}`}
-                      >
-                        <div className="font-medium truncate">{event.title}</div>
-                        <div className="text-[10px] opacity-75 truncate">{formatLocation(event)}</div>
-                      </button>
-                    ))}
+    <>
+      <div className="hidden md:block overflow-x-auto">
+        <div className="min-w-[800px]">
+          <div className="grid grid-cols-8 gap-2 mb-2">
+            <div className="text-sm font-medium text-muted-foreground p-2">Hora</div>
+            {days.map(day => {
+              const isToday = isSameDay(day, new Date());
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`text-center p-2 rounded ${isToday ? "bg-primary text-primary-foreground" : ""}`}
+                >
+                  <div className="text-sm font-medium">
+                    {format(day, "EEE", { locale: ptBR })}
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                  <div className="text-xs">{format(day, "dd/MM")}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            {hours.map(hour => (
+              <div key={hour} className="grid grid-cols-8 gap-2 border-b last:border-b-0">
+                <div className="text-xs text-muted-foreground p-2 border-r">
+                  {String(hour).padStart(2, "0")}:00
+                </div>
+                {days.map(day => {
+                  const dayEvents = getEventsForDate(day).filter((event: any) => {
+                    const eventHour = event.dateObj.getHours();
+                    return eventHour === hour;
+                  });
+
+                  return (
+                    <div key={day.toISOString()} className="p-1 min-h-[60px] border-r last:border-r-0">
+                      {dayEvents.map((event: any) => (
+                        <button
+                          key={event.id}
+                          className="w-full text-left text-xs p-1 rounded bg-primary/10 text-primary mb-1 cursor-pointer hover-elevate"
+                          title={`${event.title} - ${formatLocation(event)}`}
+                          onClick={() => onEventClick(event)}
+                          data-testid={`event-${event.id}`}
+                        >
+                          <div className="font-medium truncate">{event.title}</div>
+                          <div className="text-[10px] opacity-75 truncate">{formatLocation(event)}</div>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+      <div className="md:hidden space-y-2">
+        {days.map(day => {
+          const dayEvents = getEventsForDate(day);
+          const isToday = isSameDay(day, new Date());
+          return (
+            <div
+              key={day.toISOString()}
+              className={`border rounded-lg p-2 ${isToday ? "ring-2 ring-primary" : ""}`}
+            >
+              <div className={`text-sm font-medium mb-2 ${isToday ? "text-primary" : ""}`}>
+                {format(day, "EEEE, dd/MM", { locale: ptBR })}
+              </div>
+              {dayEvents.length > 0 ? (
+                <div className="space-y-1">
+                  {dayEvents.map((event: any) => (
+                    <button
+                      key={event.id}
+                      className="w-full text-left text-xs p-2 rounded bg-primary/10 text-primary cursor-pointer hover-elevate"
+                      onClick={() => onEventClick(event)}
+                      data-testid={`event-mobile-${event.id}`}
+                    >
+                      <div className="font-medium truncate">{format(event.dateObj, "HH:mm")} - {event.title}</div>
+                      <div className="text-[10px] opacity-75 truncate">{formatLocation(event)}</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">Sem eventos</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -302,7 +339,7 @@ function YearView({ currentDate, eventsWithDates, onEventClick }: any) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
       {months.map(month => {
         const monthEvents = getEventsForMonth(month);
         const monthStart = startOfMonth(month);
@@ -313,18 +350,18 @@ function YearView({ currentDate, eventsWithDates, onEventClick }: any) {
 
         return (
           <Card key={month.toISOString()} className="overflow-hidden">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {format(month, "MMMM", { locale: ptBR })}
+            <CardHeader className="p-2 md:p-4 pb-1 md:pb-3">
+              <CardTitle className="text-xs md:text-base capitalize">
+                {format(month, "MMM", { locale: ptBR })}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-[10px] md:text-xs">
                 {monthEvents.length} eventos
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-3">
-              <div className="grid grid-cols-7 gap-1">
+            <CardContent className="p-2 md:p-3">
+              <div className="grid grid-cols-7 gap-0.5 md:gap-1">
                 {["D", "S", "T", "Q", "Q", "S", "S"].map((day, idx) => (
-                  <div key={idx} className="text-center text-[10px] font-medium text-muted-foreground">
+                  <div key={idx} className="text-center text-[8px] md:text-[10px] font-medium text-muted-foreground">
                     {day}
                   </div>
                 ))}
@@ -338,7 +375,7 @@ function YearView({ currentDate, eventsWithDates, onEventClick }: any) {
                     return (
                       <button
                         key={idx}
-                        className={`text-center text-xs p-1 rounded cursor-pointer hover-elevate ${
+                        className={`text-center text-[9px] md:text-xs p-0.5 md:p-1 rounded cursor-pointer hover-elevate ${
                           isToday ? "bg-primary text-primary-foreground" : "bg-primary/20 font-medium"
                         }`}
                         onClick={() => onEventClick(dayEvents[0])}
@@ -352,7 +389,7 @@ function YearView({ currentDate, eventsWithDates, onEventClick }: any) {
                   return (
                     <div
                       key={idx}
-                      className={`text-center text-xs p-1 rounded ${
+                      className={`text-center text-[9px] md:text-xs p-0.5 md:p-1 rounded ${
                         !isCurrentMonth ? "text-muted-foreground/50" : ""
                       } ${isToday ? "bg-primary text-primary-foreground" : ""}`}
                     >

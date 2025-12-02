@@ -60,25 +60,25 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-3 sm:px-4">
       <Card className="w-full max-w-md border-card-border shadow-lg">
-        <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto mb-4 flex items-center justify-center">
+        <CardHeader className="space-y-2 text-center px-4 sm:px-6">
+          <div className="mx-auto mb-2 sm:mb-4 flex items-center justify-center">
             <img 
               src={bolzoniLogo} 
               alt="Bolzoni Produções" 
-              className="h-24 w-auto"
+              className="h-16 sm:h-24 w-auto"
               data-testid="img-logo"
             />
           </div>
-          <CardTitle className="text-2xl font-semibold">HAVR Tecnologia</CardTitle>
-          <CardDescription className="text-sm">
+          <CardTitle className="text-xl sm:text-2xl font-semibold">HAVR Tecnologia</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
             Faça login para acessar a plataforma de gestão
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
               <FormField
                 control={form.control}
                 name="username"

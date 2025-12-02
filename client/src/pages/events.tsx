@@ -279,16 +279,16 @@ export default function Events() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Eventos</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Eventos</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             {isAdmin ? "Gerencie os eventos da Bolzoni Produções" : "Visualize os eventos"}
           </p>
         </div>
         {canEdit && (
-          <Button onClick={handleAdd} data-testid="button-add-event">
+          <Button onClick={handleAdd} data-testid="button-add-event" className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Novo Evento
           </Button>
@@ -296,12 +296,12 @@ export default function Events() {
       </div>
 
       <Card className="border-card-border">
-        <CardHeader className="border-b border-border">
-          <div className="flex flex-wrap items-center gap-4">
+        <CardHeader className="border-b border-border p-3 md:p-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por título, cliente ou local..."
+                placeholder="Buscar evento..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -313,9 +313,9 @@ export default function Events() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-4 p-6">
+            <div className="space-y-3 md:space-y-4 p-3 md:p-6">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full" />
+                <Skeleton key={i} className="h-28 md:h-32 w-full" />
               ))}
             </div>
           ) : filteredEvents && filteredEvents.length > 0 ? (
@@ -323,25 +323,25 @@ export default function Events() {
               {filteredEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="p-6 hover-elevate active-elevate-2 cursor-pointer"
+                  className="p-3 md:p-6 hover-elevate active-elevate-2 cursor-pointer"
                   onClick={() => handleEdit(event)}
                   data-testid={`event-${event.id}`}
                 >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 flex-1">
-                        <h3 className="text-base font-semibold text-foreground">{event.title}</h3>
-                        <p className="text-sm text-muted-foreground">{event.clientName}</p>
+                  <div className="space-y-2 md:space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <h3 className="text-sm md:text-base font-semibold text-foreground truncate">{event.title}</h3>
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">{event.clientName}</p>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
                         {canViewFinancials && event.contractValue && (
-                          <div className="text-right">
-                            <p className="text-base font-bold font-mono text-foreground">
+                          <div className="text-left sm:text-right">
+                            <p className="text-sm md:text-base font-bold font-mono text-foreground">
                               {formatCurrency(event.contractValue)}
                             </p>
                           </div>
                         )}
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-row sm:flex-col gap-2">
                           {canEdit ? (
                             renderStatusSelect(event)
                           ) : (
@@ -355,11 +355,11 @@ export default function Events() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="gap-1.5"
+                                  className="gap-1 sm:gap-1.5"
                                   data-testid={`button-generate-contract-${event.id}`}
                                 >
-                                  <FileText className="h-4 w-4 shrink-0" />
-                                  <span className="whitespace-nowrap">Contrato</span>
+                                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                                  <span className="whitespace-nowrap hidden sm:inline">Contrato</span>
                                   <ChevronDown className="h-3 w-3 shrink-0" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -384,27 +384,32 @@ export default function Events() {
                         </div>
                       </div>
                     </div>
-                    <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                    <div className="grid gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground grid-cols-1 sm:grid-cols-2">
                       <div className="flex items-center gap-2">
-                        <CalendarIcon className="h-4 w-4" />
-                        <span>{format(new Date(event.date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                        <CalendarIcon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                        <span className="truncate">{format(new Date(event.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        <span>
-                          {[event.rua, event.bairro, event.cidade, event.estado]
+                        <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                        <span className="truncate">
+                          {[event.cidade, event.estado]
                             .filter(Boolean)
-                            .join(", ") || "Endereço não informado"}
+                            .join(" - ") || "Local não informado"}
                         </span>
                       </div>
                     </div>
                     {event.characterNames && event.characterNames.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {event.characterNames.map((name, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
+                      <div className="flex flex-wrap gap-1.5 md:gap-2">
+                        {event.characterNames.slice(0, 3).map((name, index) => (
+                          <Badge key={index} variant="outline" className="text-[10px] md:text-xs">
                             {name}
                           </Badge>
                         ))}
+                        {event.characterNames.length > 3 && (
+                          <Badge variant="outline" className="text-[10px] md:text-xs">
+                            +{event.characterNames.length - 3}
+                          </Badge>
+                        )}
                       </div>
                     )}
                   </div>
@@ -412,8 +417,8 @@ export default function Events() {
               ))}
             </div>
           ) : (
-            <div className="p-12 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="p-8 md:p-12 text-center">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 {search ? "Nenhum evento encontrado" : "Nenhum evento cadastrado"}
               </p>
             </div>

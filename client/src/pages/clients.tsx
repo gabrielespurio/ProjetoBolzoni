@@ -61,16 +61,16 @@ export default function Clients() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Clientes</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Clientes</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             {canEdit ? "Gerencie os clientes da Bolzoni Produções" : "Visualize os clientes da Bolzoni Produções"}
           </p>
         </div>
         {canEdit && (
-          <Button onClick={handleAdd} data-testid="button-add-client">
+          <Button onClick={handleAdd} data-testid="button-add-client" className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Novo Cliente
           </Button>
@@ -78,12 +78,12 @@ export default function Clients() {
       </div>
 
       <Card className="border-card-border">
-        <CardHeader className="border-b border-border">
-          <div className="flex flex-wrap items-center gap-4">
+        <CardHeader className="border-b border-border p-3 md:p-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, cidade, telefone ou email..."
+                placeholder="Buscar cliente..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -95,9 +95,9 @@ export default function Clients() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-4 p-6">
+            <div className="space-y-3 md:space-y-4 p-3 md:p-6">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full" />
+                <Skeleton key={i} className="h-20 md:h-24 w-full" />
               ))}
             </div>
           ) : filteredClients && filteredClients.length > 0 ? (
@@ -105,44 +105,44 @@ export default function Clients() {
               {filteredClients.map((client) => (
                 <div
                   key={client.id}
-                  className="p-6 hover-elevate active-elevate-2 cursor-pointer"
+                  className="p-3 md:p-6 hover-elevate active-elevate-2 cursor-pointer"
                   onClick={() => handleView(client)}
                   data-testid={`client-${client.id}`}
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-2 md:space-y-3">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-base font-semibold text-foreground">{client.name}</h3>
+                      <h3 className="text-sm md:text-base font-semibold text-foreground">{client.name}</h3>
                     </div>
-                    <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+                    <div className="grid gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                       {client.phone && (
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          <span>{client.phone}</span>
+                          <Phone className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                          <span className="truncate">{client.phone}</span>
                         </div>
                       )}
                       {client.email && (
                         <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
+                          <Mail className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                           <span className="truncate">{client.email}</span>
                         </div>
                       )}
                       {client.cidade && (
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          <span>{client.cidade}</span>
+                          <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                          <span className="truncate">{client.cidade}</span>
                         </div>
                       )}
                     </div>
                     {client.notes && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">{client.notes}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{client.notes}</p>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-12 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="p-8 md:p-12 text-center">
+              <p className="text-xs md:text-sm text-muted-foreground">
                 {search ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
               </p>
             </div>
