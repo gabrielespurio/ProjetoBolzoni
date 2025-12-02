@@ -20,6 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MapPin, User, Building2 } from "lucide-react";
+import { maskCNPJ, maskCPF, maskRG, maskCEP, maskPhone } from "@/lib/masks";
 
 const clientFormSchema = insertClientSchema.extend({
   personType: z.enum(["fisica", "juridica"]).default("fisica"),
@@ -279,7 +280,13 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                       <FormItem>
                         <FormLabel>Telefone</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="(00) 00000-0000" data-testid="input-client-phone" disabled={isReadOnly} />
+                          <Input 
+                            {...field} 
+                            placeholder="(00) 00000-0000" 
+                            data-testid="input-client-phone" 
+                            disabled={isReadOnly}
+                            onChange={(e) => field.onChange(maskPhone(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -360,6 +367,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                               placeholder="00.000.000/0000-00" 
                               data-testid="input-client-cnpj"
                               disabled={isReadOnly}
+                              onChange={(e) => field.onChange(maskCNPJ(e.target.value))}
                             />
                           </FormControl>
                           <FormMessage />
@@ -375,7 +383,13 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                           <FormItem>
                             <FormLabel>CPF</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="000.000.000-00" data-testid="input-client-cpf" disabled={isReadOnly} />
+                              <Input 
+                                {...field} 
+                                placeholder="000.000.000-00" 
+                                data-testid="input-client-cpf" 
+                                disabled={isReadOnly}
+                                onChange={(e) => field.onChange(maskCPF(e.target.value))}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -388,7 +402,13 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                           <FormItem>
                             <FormLabel>RG</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="00.000.000-0" data-testid="input-client-rg" disabled={isReadOnly} />
+                              <Input 
+                                {...field} 
+                                placeholder="00.000.000-0" 
+                                data-testid="input-client-rg" 
+                                disabled={isReadOnly}
+                                onChange={(e) => field.onChange(maskRG(e.target.value))}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -421,6 +441,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                                 onBlur={(e) => !isReadOnly && handleCEPBlur(e.target.value)}
                                 maxLength={9}
                                 disabled={isReadOnly}
+                                onChange={(e) => field.onChange(maskCEP(e.target.value))}
                               />
                               {isLoadingCEP && (
                                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
