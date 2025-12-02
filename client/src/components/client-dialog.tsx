@@ -93,6 +93,18 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
 
   const personType = form.watch("personType");
 
+  // Clear document fields when person type changes
+  useEffect(() => {
+    if (personType === "juridica") {
+      form.setValue("cpf", "");
+      form.setValue("rg", "");
+    } else if (personType === "fisica") {
+      form.setValue("cnpj", "");
+      form.setValue("responsibleName", "");
+      form.setValue("cargo", "");
+    }
+  }, [personType, form]);
+
   // Reset form when dialog opens or client changes
   useEffect(() => {
     if (open) {
@@ -353,8 +365,9 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
               <div>
                 <h3 className="text-sm font-medium mb-4">Documentos</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {personType === "juridica" ? (
+                  {personType === "juridica" && (
                     <FormField
+                      key="cnpj-field"
                       control={form.control}
                       name="cnpj"
                       render={({ field }) => (
@@ -362,21 +375,25 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                           <FormLabel>CNPJ</FormLabel>
                           <FormControl>
                             <Input 
-                              {...field} 
                               value={field.value || ""} 
                               placeholder="00.000.000/0000-00" 
                               data-testid="input-client-cnpj"
                               disabled={isReadOnly}
                               onChange={(e) => field.onChange(maskCNPJ(e.target.value))}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  ) : (
+                  )}
+                  {personType === "fisica" && (
                     <>
                       <FormField
+                        key="cpf-field"
                         control={form.control}
                         name="cpf"
                         render={({ field }) => (
@@ -384,11 +401,14 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                             <FormLabel>CPF</FormLabel>
                             <FormControl>
                               <Input 
-                                {...field} 
+                                value={field.value || ""} 
                                 placeholder="000.000.000-00" 
                                 data-testid="input-client-cpf" 
                                 disabled={isReadOnly}
                                 onChange={(e) => field.onChange(maskCPF(e.target.value))}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                ref={field.ref}
                               />
                             </FormControl>
                             <FormMessage />
@@ -396,6 +416,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                         )}
                       />
                       <FormField
+                        key="rg-field"
                         control={form.control}
                         name="rg"
                         render={({ field }) => (
@@ -403,11 +424,14 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                             <FormLabel>RG</FormLabel>
                             <FormControl>
                               <Input 
-                                {...field} 
+                                value={field.value || ""} 
                                 placeholder="00.000.000-0" 
                                 data-testid="input-client-rg" 
                                 disabled={isReadOnly}
                                 onChange={(e) => field.onChange(maskRG(e.target.value))}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                ref={field.ref}
                               />
                             </FormControl>
                             <FormMessage />
