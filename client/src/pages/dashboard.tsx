@@ -7,12 +7,30 @@ import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
+interface DashboardMetrics {
+  cashBalance: number;
+  monthlyRevenue: number;
+  eventsThisMonth: number;
+  lowStockItems: number;
+  monthlyRevenueChart: Array<{ month: string; revenue: number }>;
+  cashFlowChart: Array<{ date: string; balance: number }>;
+}
+
+interface UpcomingEvent {
+  id: string;
+  title: string;
+  clientName: string;
+  date: string;
+  contractValue: string;
+  status: string;
+}
+
 export default function Dashboard() {
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery<DashboardMetrics>({
     queryKey: ["/api/dashboard/metrics"],
   });
 
-  const { data: upcomingEvents, isLoading: eventsLoading } = useQuery({
+  const { data: upcomingEvents, isLoading: eventsLoading } = useQuery<UpcomingEvent[]>({
     queryKey: ["/api/dashboard/upcoming-events"],
   });
 

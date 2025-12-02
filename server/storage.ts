@@ -564,12 +564,34 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
-    const [newPurchase] = await db.insert(purchases).values(purchase).returning();
+    const purchaseData = {
+      ...purchase,
+      purchaseDate: purchase.purchaseDate instanceof Date 
+        ? purchase.purchaseDate 
+        : new Date(purchase.purchaseDate),
+      firstInstallmentDate: purchase.firstInstallmentDate 
+        ? (purchase.firstInstallmentDate instanceof Date 
+            ? purchase.firstInstallmentDate 
+            : new Date(purchase.firstInstallmentDate))
+        : null,
+    };
+    const [newPurchase] = await db.insert(purchases).values(purchaseData).returning();
     return newPurchase;
   }
   
   async updatePurchase(id: string, purchase: Partial<InsertPurchase>): Promise<Purchase> {
-    const [updated] = await db.update(purchases).set(purchase).where(eq(purchases.id, id)).returning();
+    const purchaseData = { ...purchase };
+    if (purchase.purchaseDate) {
+      purchaseData.purchaseDate = purchase.purchaseDate instanceof Date 
+        ? purchase.purchaseDate 
+        : new Date(purchase.purchaseDate);
+    }
+    if (purchase.firstInstallmentDate) {
+      purchaseData.firstInstallmentDate = purchase.firstInstallmentDate instanceof Date 
+        ? purchase.firstInstallmentDate 
+        : new Date(purchase.firstInstallmentDate);
+    }
+    const [updated] = await db.update(purchases).set(purchaseData as any).where(eq(purchases.id, id)).returning();
     return updated;
   }
   

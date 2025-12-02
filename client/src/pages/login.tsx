@@ -90,6 +90,7 @@ export default function Login() {
                         {...field}
                         placeholder="Digite seu usuário"
                         disabled={loginMutation.isPending}
+                        autoComplete="username"
                         data-testid="input-username"
                       />
                     </FormControl>
@@ -109,6 +110,7 @@ export default function Login() {
                         type="password"
                         placeholder="Digite sua senha"
                         disabled={loginMutation.isPending}
+                        autoComplete="current-password"
                         data-testid="input-password"
                       />
                     </FormControl>
