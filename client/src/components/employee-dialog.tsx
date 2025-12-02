@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { insertEmployeeSchema, type Employee, type EmployeePayment } from "@shared/schema";
+import { insertEmployeeSchema, type Employee, type EmployeePayment, type EmployeeRole } from "@shared/schema";
 import { z } from "zod";
 import { useEffect, useState } from "react";
 import {
@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useViaCep } from "@/hooks/use-viacep";
 import { Loader2, Plus, Trash2 } from "lucide-react";
@@ -80,6 +81,10 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
   const { data: payments, isLoading: isLoadingPayments } = useQuery<EmployeePayment[]>({
     queryKey: ["/api/employees", employee?.id, "payments"],
     enabled: isEdit && activeTab === "payments",
+  });
+
+  const { data: employeeRoles, isLoading: isLoadingRoles } = useQuery<EmployeeRole[]>({
+    queryKey: ["/api/settings/employee-roles"],
   });
 
   const handleCepBlur = async () => {
@@ -243,9 +248,26 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Função *</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Ex: Recreador, Caracterista" data-testid="input-employee-role" />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-employee-role">
+                                  <SelectValue placeholder={isLoadingRoles ? "Carregando..." : "Selecione uma função"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {employeeRoles && employeeRoles.length > 0 ? (
+                                  employeeRoles.map((role) => (
+                                    <SelectItem key={role.id} value={role.name} data-testid={`role-option-${role.id}`}>
+                                      {role.name}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="" disabled>
+                                    Nenhuma função cadastrada
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
