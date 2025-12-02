@@ -768,34 +768,34 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mx-auto max-w-6xl space-y-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="mx-auto max-w-6xl space-y-6 md:space-y-8">
         <div className="flex items-center gap-3">
-          <SettingsIcon className="h-8 w-8 text-primary" />
+          <SettingsIcon className="h-6 w-6 md:h-8 md:w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
-            <p className="text-muted-foreground">Gerencie categorias e funções do sistema</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Configurações</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Gerencie categorias e funções do sistema</p>
           </div>
         </div>
 
         <Tabs defaultValue="categories" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="categories" data-testid="tab-categories">Categorias de Eventos</TabsTrigger>
-            <TabsTrigger value="roles" data-testid="tab-roles">Funções de Funcionários</TabsTrigger>
-            <TabsTrigger value="packages" data-testid="tab-packages">Pacotes</TabsTrigger>
-            <TabsTrigger value="km-value" data-testid="tab-km-value">Valor por km</TabsTrigger>
-            <TabsTrigger value="fees" data-testid="tab-fees">Taxas e Juros</TabsTrigger>
+          <TabsList className="flex w-full h-auto flex-wrap md:grid md:grid-cols-5 gap-1">
+            <TabsTrigger value="categories" className="flex-1 min-w-[120px] text-xs md:text-sm" data-testid="tab-categories">Categorias</TabsTrigger>
+            <TabsTrigger value="roles" className="flex-1 min-w-[120px] text-xs md:text-sm" data-testid="tab-roles">Funções</TabsTrigger>
+            <TabsTrigger value="packages" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-packages">Pacotes</TabsTrigger>
+            <TabsTrigger value="km-value" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-km-value">Valor/km</TabsTrigger>
+            <TabsTrigger value="fees" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-fees">Taxas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="categories" className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle>Categorias de Eventos</CardTitle>
                     <CardDescription>Gerencie as categorias disponíveis para classificar eventos</CardDescription>
                   </div>
-                  <Button onClick={() => setCategoryDialogOpen(true)} data-testid="button-new-category">
+                  <Button onClick={() => setCategoryDialogOpen(true)} className="w-full sm:w-auto" data-testid="button-new-category">
                     <Plus className="mr-2 h-4 w-4" />
                     Nova Categoria
                   </Button>
@@ -854,12 +854,12 @@ export default function Settings() {
           <TabsContent value="roles" className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle>Funções de Funcionários</CardTitle>
                     <CardDescription>Gerencie as funções disponíveis para funcionários</CardDescription>
                   </div>
-                  <Button onClick={() => setRoleDialogOpen(true)} data-testid="button-new-role">
+                  <Button onClick={() => setRoleDialogOpen(true)} className="w-full sm:w-auto" data-testid="button-new-role">
                     <Plus className="mr-2 h-4 w-4" />
                     Nova Função
                   </Button>
@@ -918,12 +918,12 @@ export default function Settings() {
           <TabsContent value="packages" className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle>Pacotes</CardTitle>
                     <CardDescription>Gerencie os pacotes disponíveis da empresa</CardDescription>
                   </div>
-                  <Button onClick={() => setPackageDialogOpen(true)} data-testid="button-new-package">
+                  <Button onClick={() => setPackageDialogOpen(true)} className="w-full sm:w-auto" data-testid="button-new-package">
                     <Plus className="mr-2 h-4 w-4" />
                     Novo Pacote
                   </Button>
