@@ -65,6 +65,14 @@ export default function Events() {
   });
   const { toast } = useToast();
 
+  // Get user role from localStorage
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = user?.role || "employee";
+  const isAdmin = userRole === "admin";
+  const canEdit = isAdmin;
+  const canViewFinancials = isAdmin;
+  const canGenerateContract = isAdmin;
+
   const { data: events, isLoading } = useQuery<EventWithDetails[]>({
     queryKey: ["/api/events"],
   });
@@ -106,11 +114,13 @@ export default function Events() {
   }, [events, search, dateFilter]);
 
   const handleEdit = (event: EventWithDetails) => {
+    // For non-admins, we still open the dialog but it will be read-only
     setSelectedEvent(event);
     setIsDialogOpen(true);
   };
 
   const handleAdd = () => {
+    if (!canEdit) return;
     setSelectedEvent(null);
     setIsDialogOpen(true);
   };
@@ -274,13 +284,15 @@ export default function Events() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Eventos</h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie os eventos da Bolzoni Produções
+            {isAdmin ? "Gerencie os eventos da Bolzoni Produções" : "Visualize os eventos"}
           </p>
         </div>
-        <Button onClick={handleAdd} data-testid="button-add-event">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Evento
-        </Button>
+        {canEdit && (
+          <Button onClick={handleAdd} data-testid="button-add-event">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Evento
+          </Button>
+        )}
       </div>
 
       <Card className="border-card-border">
@@ -322,43 +334,53 @@ export default function Events() {
                         <p className="text-sm text-muted-foreground">{event.clientName}</p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-base font-bold font-mono text-foreground">
-                            {formatCurrency(event.contractValue)}
-                          </p>
-                        </div>
+                        {canViewFinancials && event.contractValue && (
+                          <div className="text-right">
+                            <p className="text-base font-bold font-mono text-foreground">
+                              {formatCurrency(event.contractValue)}
+                            </p>
+                          </div>
+                        )}
                         <div className="flex flex-col gap-2">
-                          {renderStatusSelect(event)}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5"
-                                data-testid={`button-generate-contract-${event.id}`}
-                              >
-                                <FileText className="h-4 w-4 shrink-0" />
-                                <span className="whitespace-nowrap">Contrato</span>
-                                <ChevronDown className="h-3 w-3 shrink-0" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenuItem 
-                                onClick={() => handleGenerateContract(event, "fisica")}
-                                data-testid={`menu-contract-fisica-${event.id}`}
-                              >
-                                <User className="mr-2 h-4 w-4" />
-                                Pessoa Física
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleGenerateContract(event, "juridica")}
-                                data-testid={`menu-contract-juridica-${event.id}`}
-                              >
-                                <Building className="mr-2 h-4 w-4" />
-                                Pessoa Jurídica
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {canEdit ? (
+                            renderStatusSelect(event)
+                          ) : (
+                            <Badge className={getStatusColor(event.status)}>
+                              {getStatusLabel(event.status)}
+                            </Badge>
+                          )}
+                          {canGenerateContract && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5"
+                                  data-testid={`button-generate-contract-${event.id}`}
+                                >
+                                  <FileText className="h-4 w-4 shrink-0" />
+                                  <span className="whitespace-nowrap">Contrato</span>
+                                  <ChevronDown className="h-3 w-3 shrink-0" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem 
+                                  onClick={() => handleGenerateContract(event, "fisica")}
+                                  data-testid={`menu-contract-fisica-${event.id}`}
+                                >
+                                  <User className="mr-2 h-4 w-4" />
+                                  Pessoa Física
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleGenerateContract(event, "juridica")}
+                                  data-testid={`menu-contract-juridica-${event.id}`}
+                                >
+                                  <Building className="mr-2 h-4 w-4" />
+                                  Pessoa Jurídica
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </div>
                     </div>
