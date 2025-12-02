@@ -15,7 +15,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-type UserRole = 'admin' | 'employee';
+type UserRole = 'admin' | 'employee' | 'secretaria';
 
 interface MenuItem {
   title: string;
@@ -35,19 +35,19 @@ const menuItems: MenuItem[] = [
     title: "Eventos",
     url: "/events",
     icon: Calendar,
-    roles: ['admin', 'employee'],
+    roles: ['admin', 'employee', 'secretaria'],
   },
   {
     title: "Agenda",
     url: "/agenda",
     icon: CalendarDays,
-    roles: ['admin', 'employee'],
+    roles: ['admin', 'employee', 'secretaria'],
   },
   {
     title: "Clientes",
     url: "/clients",
     icon: Users,
-    roles: ['admin', 'employee'],
+    roles: ['admin', 'secretaria'],
   },
   {
     title: "Funcionários",
@@ -59,7 +59,7 @@ const menuItems: MenuItem[] = [
     title: "Estoque",
     url: "/inventory",
     icon: Package,
-    roles: ['admin'],
+    roles: ['admin', 'secretaria'],
   },
   {
     title: "Financeiro",
@@ -153,7 +153,7 @@ export function AppSidebar() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/70 font-medium">Perfil</span>
                   <span className="text-xs text-white font-semibold">
-                    {user?.role === 'admin' ? 'Admin' : 'Funcionário'}
+                    {user?.role === 'admin' ? 'Admin' : user?.role === 'secretaria' ? 'Secretária' : 'Funcionário'}
                   </span>
                 </div>
               </div>
@@ -173,7 +173,7 @@ export function AppSidebar() {
                 {user?.name || "Usuário"}
               </p>
               <p className="text-xs text-white/60 truncate">
-                {user?.role === 'admin' ? 'Administrador' : 'Funcionário'}
+                {user?.role === 'admin' ? 'Administrador' : user?.role === 'secretaria' ? 'Secretária' : 'Funcionário'}
               </p>
             </div>
             <Button
