@@ -77,6 +77,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [hasInstallmentInterest, setHasInstallmentInterest] = useState(false);
   const [calculatingFee, setCalculatingFee] = useState(false);
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isAdmin = user?.role === 'admin';
+  const canViewFinancials = isAdmin;
+  const canEdit = isAdmin;
+
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
     enabled: open,
@@ -1268,9 +1273,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               </div>
             </div>
 
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">Resumo do Contrato</h3>
-              <div className="space-y-3 bg-muted/50 rounded-lg p-4">
+            {canViewFinancials && (
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Resumo do Contrato</h3>
+                <div className="space-y-3 bg-muted/50 rounded-lg p-4">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Personagens ({selectedCharacters.length})</span>
                   <span className="font-medium">R$ {charactersTotal.toFixed(2)}</span>
@@ -1465,8 +1471,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     }}
                   />
                 </div>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
