@@ -177,8 +177,8 @@ export default function Inventory() {
                     <TableHead className="w-[120px]">Tipo</TableHead>
                     <TableHead className="text-right w-[100px]">Quantidade</TableHead>
                     <TableHead className="text-right w-[120px]">Estoque Mín.</TableHead>
-                    <TableHead className="text-right w-[120px]">Valor Custo</TableHead>
-                    <TableHead className="text-right w-[120px]">Valor Venda</TableHead>
+{canEdit && <TableHead className="text-right w-[120px]">Valor Custo</TableHead>}
+                    {canEdit && <TableHead className="text-right w-[120px]">Valor Venda</TableHead>}
                     <TableHead className="w-[100px]">Status</TableHead>
                     {canEdit && <TableHead className="text-right w-[80px]">Ações</TableHead>}
                   </TableRow>
@@ -217,6 +217,7 @@ export default function Inventory() {
                           {item.minQuantity}
                         </span>
                       </TableCell>
+{canEdit && (
                       <TableCell className="text-right">
                         {item.type === "character" ? (
                           <span className="font-mono text-sm">
@@ -226,6 +227,8 @@ export default function Inventory() {
                           <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </TableCell>
+                      )}
+                      {canEdit && (
                       <TableCell className="text-right">
                         {item.type === "character" ? (
                           <span className="font-mono text-sm">
@@ -235,6 +238,7 @@ export default function Inventory() {
                           <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </TableCell>
+                      )}
                       <TableCell>
                         {isLowStock(item) ? (
                           <div className="flex items-center gap-1.5">
