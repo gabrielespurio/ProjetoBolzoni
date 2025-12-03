@@ -126,9 +126,9 @@ export function AppSidebar() {
                       className="h-9 md:h-10 px-3 text-white/90 hover:bg-white/15 hover:text-white data-[active=true]:bg-white/25 data-[active=true]:text-white rounded-lg font-medium transition-all"
                       data-testid={`link-${item.title.toLowerCase()}`}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} className="flex items-center gap-2 w-full overflow-hidden">
                         <item.icon className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
-                        <span className="ml-2 md:ml-3 text-sm">{item.title}</span>
+                        <span className="truncate text-sm flex-1">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
