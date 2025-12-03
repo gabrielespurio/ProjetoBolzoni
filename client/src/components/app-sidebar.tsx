@@ -113,22 +113,22 @@ export function AppSidebar() {
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="px-4 overflow-hidden">
+        <SidebarContent className="px-4 overflow-hidden flex-1">
 
           <SidebarGroup className="p-0">
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-0.5">
+              <SidebarMenu className="space-y-1">
                 {filteredMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
                       isActive={location === item.url}
-                      className="h-9 px-3 text-white/90 hover:bg-white/15 hover:text-white data-[active=true]:bg-white/25 data-[active=true]:text-white rounded-lg font-medium transition-all"
+                      className="h-10 px-3 text-white/90 hover:bg-white/15 hover:text-white data-[active=true]:bg-white/25 data-[active=true]:text-white rounded-lg font-medium transition-all"
                       data-testid={`link-${item.title.toLowerCase()}`}
                     >
                       <Link href={item.url}>
-                        <item.icon className="h-4 w-4 flex-shrink-0" />
-                        <span className="ml-2 text-sm">{item.title}</span>
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="ml-3">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -139,7 +139,7 @@ export function AppSidebar() {
 
         </SidebarContent>
 
-        <SidebarFooter className="p-4 mt-auto border-t border-white/10">
+        <SidebarFooter className="p-4 border-t border-white/10">
           <div className="flex items-center gap-3 px-2">
             <Avatar className="h-9 w-9 border-2 border-white/20 shadow-md">
               <AvatarFallback className="bg-white text-[#6C5584] text-sm font-bold">
