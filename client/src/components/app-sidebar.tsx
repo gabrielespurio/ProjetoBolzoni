@@ -113,22 +113,22 @@ export function AppSidebar() {
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="px-4">
+        <SidebarContent className="px-4 overflow-hidden">
 
-          <SidebarGroup>
+          <SidebarGroup className="p-0">
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
+              <SidebarMenu className="space-y-0.5">
                 {filteredMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
                       isActive={location === item.url}
-                      className="h-10 px-3 text-white/90 hover:bg-white/15 hover:text-white data-[active=true]:bg-white/25 data-[active=true]:text-white rounded-lg font-medium transition-all"
+                      className="h-9 px-3 text-white/90 hover:bg-white/15 hover:text-white data-[active=true]:bg-white/25 data-[active=true]:text-white rounded-lg font-medium transition-all"
                       data-testid={`link-${item.title.toLowerCase()}`}
                     >
                       <Link href={item.url}>
-                        <item.icon className="h-5 w-5 flex-shrink-0" />
-                        <span className="ml-3">{item.title}</span>
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="ml-2 text-sm">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -137,28 +137,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <div className="mt-8 mb-4">
-            <SidebarGroupLabel className="px-3 mb-3 text-[11px] font-bold uppercase tracking-wider text-white/50">
-              Informações do Sistema
-            </SidebarGroupLabel>
-            <div className="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/70 font-medium">Usuário Ativo</span>
-                  <span className="text-xs text-white font-semibold truncate ml-2 max-w-[120px]">
-                    {user?.name || "Carregando..."}
-                  </span>
-                </div>
-                <div className="w-full h-px bg-white/10"></div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/70 font-medium">Perfil</span>
-                  <span className="text-xs text-white font-semibold">
-                    {user?.role === 'admin' ? 'Admin' : user?.role === 'secretaria' ? 'Secretária' : 'Funcionário'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
         </SidebarContent>
 
         <SidebarFooter className="p-4 mt-auto border-t border-white/10">
