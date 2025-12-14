@@ -377,7 +377,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const onSubmit = (data: EventForm) => {
     const eventData = {
       ...data,
-      date: new Date(data.date),
+      date: new Date(data.date + "T00:00:00"),
+      startTime: data.startTime || null,
+      endTime: data.endTime || null,
       categoryId: data.categoryId || undefined,
       kmDistance: data.kmDistance && data.kmDistance !== "" ? data.kmDistance : null,
       ticketValue: data.ticketValue && data.ticketValue !== "" ? data.ticketValue : null,
