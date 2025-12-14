@@ -25,6 +25,7 @@ import { maskCNPJ, maskCPF, maskRG, maskCEP, maskPhone } from "@/lib/masks";
 const clientFormSchema = insertClientSchema.extend({
   personType: z.enum(["fisica", "juridica"]).default("fisica"),
   phone: z.string().optional(),
+  phone2: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   cnpj: z.string().optional(),
   responsibleName: z.string().optional(),
@@ -78,6 +79,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
       responsibleName: client?.responsibleName || "",
       cargo: client?.cargo || "",
       phone: client?.phone || "",
+      phone2: client?.phone2 || "",
       email: client?.email || "",
       cpf: client?.cpf || "",
       rg: client?.rg || "",
@@ -115,6 +117,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
         responsibleName: client?.responsibleName || "",
         cargo: client?.cargo || "",
         phone: client?.phone || "",
+        phone2: client?.phone2 || "",
         email: client?.email || "",
         cpf: client?.cpf || "",
         rg: client?.rg || "",
@@ -296,6 +299,25 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                             {...field} 
                             placeholder="(00) 00000-0000" 
                             data-testid="input-client-phone" 
+                            disabled={isReadOnly}
+                            onChange={(e) => field.onChange(maskPhone(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone2"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone 2</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="(00) 00000-0000" 
+                            data-testid="input-client-phone2" 
                             disabled={isReadOnly}
                             onChange={(e) => field.onChange(maskPhone(e.target.value))}
                           />
