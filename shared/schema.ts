@@ -75,6 +75,8 @@ export const events = pgTable("events", {
   categoryId: varchar("category_id").references(() => eventCategories.id),
   title: text("title").notNull(),
   date: timestamp("date").notNull(),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
   cep: text("cep"),
   estado: text("estado"),
   cidade: text("cidade"),

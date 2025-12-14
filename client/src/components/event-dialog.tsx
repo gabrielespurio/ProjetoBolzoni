@@ -23,7 +23,7 @@ import { Loader2, X, Search, Plus } from "lucide-react";
 
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
-  date: z.string().min(1, "Data e hora são obrigatórios").refine((dateStr) => {
+  date: z.string().min(1, "Data é obrigatória").refine((dateStr) => {
     if (!dateStr) return false;
     const eventDate = new Date(dateStr);
     if (isNaN(eventDate.getTime())) return false;
@@ -31,6 +31,8 @@ const eventFormSchema = insertEventSchema.extend({
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     return eventDate >= oneYearAgo;
   }, "A data do evento não pode ser anterior a 1 ano da data atual"),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   cep: z.string().optional(),
   estado: z.string().optional(),
   cidade: z.string().optional(),
@@ -236,7 +238,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         title: event.title || "",
         clientId: event.clientId || "",
         categoryId: event.categoryId || undefined,
-        date: event.date ? new Date(event.date).toISOString().slice(0, 16) : "",
+        date: event.date ? new Date(event.date).toISOString().slice(0, 10) : "",
+        startTime: (event as any).startTime || "",
+        endTime: (event as any).endTime || "",
         cep: (event as any).cep || "",
         estado: (event as any).estado || "",
         cidade: (event as any).cidade || "",
@@ -270,6 +274,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         clientId: "",
         categoryId: undefined,
         date: "",
+        startTime: "",
+        endTime: "",
         cep: "",
         estado: "",
         cidade: "",
@@ -564,9 +570,35 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data e Hora *</FormLabel>
+                    <FormLabel>Data *</FormLabel>
                     <FormControl>
-                      <Input {...field} type="datetime-local" data-testid="input-event-date" />
+                      <Input {...field} type="date" data-testid="input-event-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="startTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Horário de Início</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="time" data-testid="input-event-start-time" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="endTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Horário de Fim</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="time" data-testid="input-event-end-time" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
