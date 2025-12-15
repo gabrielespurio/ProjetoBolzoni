@@ -14,6 +14,7 @@ import {
   eventCategories,
   employeeRoles,
   packages,
+  skills,
   eventExpenses,
   systemSettings,
   type User,
@@ -44,6 +45,8 @@ import {
   type InsertEmployeeRole,
   type Package,
   type InsertPackage,
+  type Skill,
+  type InsertSkill,
   type EventExpense,
   type InsertEventExpense,
   type SystemSetting,
@@ -167,6 +170,13 @@ export interface IStorage {
   createPackage(pkg: InsertPackage): Promise<Package>;
   updatePackage(id: string, pkg: Partial<InsertPackage>): Promise<Package>;
   deletePackage(id: string): Promise<void>;
+  
+  // Settings - Skills
+  getAllSkills(): Promise<Skill[]>;
+  getSkill(id: string): Promise<Skill | undefined>;
+  createSkill(skill: InsertSkill): Promise<Skill>;
+  updateSkill(id: string, skill: Partial<InsertSkill>): Promise<Skill>;
+  deleteSkill(id: string): Promise<void>;
   
   // Settings - System Settings
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
@@ -760,6 +770,37 @@ export class DatabaseStorage implements IStorage {
   
   async deletePackage(id: string): Promise<void> {
     await db.delete(packages).where(eq(packages.id, id));
+  }
+  
+  // Skills
+  async getAllSkills(): Promise<Skill[]> {
+    return await db.select().from(skills).orderBy(skills.name);
+  }
+  
+  async getSkill(id: string): Promise<Skill | undefined> {
+    const [skill] = await db.select().from(skills).where(eq(skills.id, id));
+    return skill || undefined;
+  }
+  
+  async createSkill(skill: InsertSkill): Promise<Skill> {
+    const [newSkill] = await db.insert(skills).values(skill).returning();
+    return newSkill;
+  }
+  
+  async updateSkill(id: string, skill: Partial<InsertSkill>): Promise<Skill> {
+    const [updated] = await db.update(skills).set(skill).where(eq(skills.id, id)).returning();
+    if (!updated) {
+      throw new Error("Habilidade não encontrada");
+    }
+    return updated;
+  }
+  
+  async deleteSkill(id: string): Promise<void> {
+    const existing = await this.getSkill(id);
+    if (!existing) {
+      throw new Error("Habilidade não encontrada");
+    }
+    await db.delete(skills).where(eq(skills.id, id));
   }
   
   // Event Expenses

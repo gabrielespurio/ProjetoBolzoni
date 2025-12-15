@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertEmployeePaymentSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertEmployeePaymentSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -905,6 +905,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao deletar pacote" });
+    }
+  });
+  
+  // Skills routes
+  app.get("/api/settings/skills", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const skills = await storage.getAllSkills();
+      res.json(skills);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar habilidades" });
+    }
+  });
+  
+  app.post("/api/settings/skills", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const data = insertSkillSchema.parse(req.body);
+      const skill = await storage.createSkill(data);
+      res.status(201).json(skill);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar habilidade" });
+    }
+  });
+  
+  app.patch("/api/settings/skills/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const existingSkill = await storage.getSkill(req.params.id);
+      if (!existingSkill) {
+        return res.status(404).json({ message: "Habilidade não encontrada" });
+      }
+      const data = insertSkillSchema.partial().parse(req.body);
+      const skill = await storage.updateSkill(req.params.id, data);
+      res.json(skill);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao atualizar habilidade" });
+    }
+  });
+  
+  app.delete("/api/settings/skills/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const existingSkill = await storage.getSkill(req.params.id);
+      if (!existingSkill) {
+        return res.status(404).json({ message: "Habilidade não encontrada" });
+      }
+      await storage.deleteSkill(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar habilidade" });
     }
   });
   

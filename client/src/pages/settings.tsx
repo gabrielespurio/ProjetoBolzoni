@@ -16,7 +16,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon, RefreshCw, ExternalLink } from "lucide-react";
-import type { EventCategory, EmployeeRole, Package } from "@shared/schema";
+import type { EventCategory, EmployeeRole, Package, Skill } from "@shared/schema";
+import { insertSkillSchema } from "@shared/schema";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -34,9 +35,14 @@ const packageSchema = z.object({
   description: z.string().optional(),
 });
 
+const skillFormSchema = insertSkillSchema.extend({
+  name: z.string().min(1, "Nome é obrigatório"),
+});
+
 type CategoryForm = z.infer<typeof categorySchema>;
 type RoleForm = z.infer<typeof roleSchema>;
 type PackageForm = z.infer<typeof packageSchema>;
+type SkillForm = z.infer<typeof skillFormSchema>;
 
 // Tipos para Taxas e Juros
 interface SumupFeeData {
@@ -507,9 +513,11 @@ export default function Settings() {
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
+  const [skillDialogOpen, setSkillDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<EventCategory | null>(null);
   const [editingRole, setEditingRole] = useState<EmployeeRole | null>(null);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [kmValue, setKmValue] = useState<string>("");
 
   // Event Categories
@@ -525,6 +533,11 @@ export default function Settings() {
   // Packages
   const { data: packages = [], isLoading: loadingPackages } = useQuery<Package[]>({
     queryKey: ["/api/settings/packages"],
+  });
+
+  // Skills
+  const { data: skills = [], isLoading: loadingSkills } = useQuery<Skill[]>({
+    queryKey: ["/api/settings/skills"],
   });
 
   // System Settings - Kilometragem
@@ -583,6 +596,11 @@ export default function Settings() {
 
   const packageForm = useForm<PackageForm>({
     resolver: zodResolver(packageSchema),
+    defaultValues: { name: "", description: "" },
+  });
+
+  const skillForm = useForm<SkillForm>({
+    resolver: zodResolver(skillFormSchema),
     defaultValues: { name: "", description: "" },
   });
 
@@ -727,6 +745,53 @@ export default function Settings() {
     },
   });
 
+  // Skill mutations
+  const skillMutation = useMutation({
+    mutationFn: async (data: SkillForm) => {
+      if (editingSkill) {
+        return apiRequest("PATCH", `/api/settings/skills/${editingSkill.id}`, data);
+      }
+      return apiRequest("POST", "/api/settings/skills", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/skills"] });
+      toast({
+        title: editingSkill ? "Habilidade atualizada" : "Habilidade criada",
+        description: "Operação realizada com sucesso.",
+      });
+      setSkillDialogOpen(false);
+      setEditingSkill(null);
+      skillForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Ocorreu um erro ao salvar a habilidade.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSkillMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/settings/skills/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/skills"] });
+      toast({
+        title: "Habilidade deletada",
+        description: "Habilidade deletada com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao deletar habilidade.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditCategory = (category: EventCategory) => {
     setEditingCategory(category);
     categoryForm.setValue("name", category.name);
@@ -767,6 +832,19 @@ export default function Settings() {
     packageForm.reset();
   };
 
+  const handleEditSkill = (skill: Skill) => {
+    setEditingSkill(skill);
+    skillForm.setValue("name", skill.name);
+    skillForm.setValue("description", skill.description || "");
+    setSkillDialogOpen(true);
+  };
+
+  const handleCloseSkillDialog = () => {
+    setSkillDialogOpen(false);
+    setEditingSkill(null);
+    skillForm.reset();
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6 md:space-y-8">
@@ -779,10 +857,11 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="categories" className="w-full">
-          <TabsList className="flex w-full h-auto flex-wrap md:grid md:grid-cols-5 gap-1">
-            <TabsTrigger value="categories" className="flex-1 min-w-[120px] text-xs md:text-sm" data-testid="tab-categories">Categorias</TabsTrigger>
-            <TabsTrigger value="roles" className="flex-1 min-w-[120px] text-xs md:text-sm" data-testid="tab-roles">Funções</TabsTrigger>
+          <TabsList className="flex w-full h-auto flex-wrap md:grid md:grid-cols-6 gap-1">
+            <TabsTrigger value="categories" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-categories">Categorias</TabsTrigger>
+            <TabsTrigger value="roles" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-roles">Funções</TabsTrigger>
             <TabsTrigger value="packages" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-packages">Pacotes</TabsTrigger>
+            <TabsTrigger value="skills" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-skills">Habilidades</TabsTrigger>
             <TabsTrigger value="km-value" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-km-value">Valor/km</TabsTrigger>
             <TabsTrigger value="fees" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-fees">Taxas</TabsTrigger>
           </TabsList>
@@ -965,6 +1044,70 @@ export default function Settings() {
                                 size="icon"
                                 onClick={() => deletePackageMutation.mutate(pkg.id)}
                                 data-testid={`button-delete-package-${pkg.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="skills" className="mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <CardTitle>Habilidades</CardTitle>
+                    <CardDescription>Gerencie as habilidades disponíveis para funcionários</CardDescription>
+                  </div>
+                  <Button onClick={() => setSkillDialogOpen(true)} className="w-full sm:w-auto" data-testid="button-new-skill">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nova Habilidade
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingSkills ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : skills.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhuma habilidade cadastrada</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {skills.map((skill) => (
+                        <TableRow key={skill.id}>
+                          <TableCell className="font-medium">{skill.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{skill.description || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditSkill(skill)}
+                                data-testid={`button-edit-skill-${skill.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteSkillMutation.mutate(skill.id)}
+                                data-testid={`button-delete-skill-${skill.id}`}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -1211,6 +1354,57 @@ export default function Settings() {
                 <Button type="submit" disabled={packageMutation.isPending} data-testid="button-save-package">
                   {packageMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingPackage ? "Atualizar" : "Cadastrar"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Skill Dialog */}
+      <Dialog open={skillDialogOpen} onOpenChange={handleCloseSkillDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingSkill ? "Editar Habilidade" : "Nova Habilidade"}</DialogTitle>
+            <DialogDescription>
+              {editingSkill ? "Atualize as informações da habilidade" : "Cadastre uma nova habilidade para funcionários"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...skillForm}>
+            <form onSubmit={skillForm.handleSubmit((data) => skillMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={skillForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: Animação" data-testid="input-skill-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={skillForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ""} placeholder="Descrição da habilidade" rows={3} data-testid="input-skill-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={handleCloseSkillDialog} data-testid="button-cancel-skill">
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={skillMutation.isPending} data-testid="button-save-skill">
+                  {skillMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingSkill ? "Atualizar" : "Cadastrar"}
                 </Button>
               </div>
             </form>
