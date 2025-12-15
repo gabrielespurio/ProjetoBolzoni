@@ -49,6 +49,7 @@ const eventFormSchema = insertEventSchema.extend({
   cardType: z.string().optional(),
   paymentDate: z.string().optional(),
   packageId: z.string().optional(),
+  packageNotes: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
   expenses: z.array(z.object({
     title: z.string(),
@@ -174,6 +175,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       cardType: "",
       paymentDate: "",
       packageId: "",
+      packageNotes: "",
       status: "scheduled",
       notes: "",
       characterIds: [],
@@ -242,7 +244,13 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         title: event.title || "",
         clientId: event.clientId || "",
         categoryId: event.categoryId || undefined,
-        date: event.date ? new Date(event.date).toISOString().slice(0, 10) : "",
+        date: event.date ? (() => {
+          const d = new Date(event.date);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        })() : "",
         startTime: (event as any).startTime || "",
         endTime: (event as any).endTime || "",
         cep: (event as any).cep || "",
@@ -260,6 +268,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         installments: (event as any).installments || 1,
         paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
         packageId: (event as any).packageId || "",
+        packageNotes: (event as any).packageNotes || "",
         status: event.status || "scheduled",
         notes: event.notes || "",
         characterIds: [],
@@ -295,6 +304,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         installments: 1,
         paymentDate: "",
         packageId: "",
+        packageNotes: "",
         status: "scheduled",
         notes: "",
         characterIds: [],
