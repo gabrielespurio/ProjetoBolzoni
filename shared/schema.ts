@@ -194,6 +194,12 @@ export const skills = pgTable("skills", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const employeeSkills = pgTable("employee_skills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  skillId: varchar("skill_id").notNull().references(() => skills.id),
+});
+
 export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   key: text("key").notNull().unique(),
@@ -241,6 +247,22 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
   }),
   eventEmployees: many(eventEmployees),
   payments: many(employeePayments),
+  employeeSkills: many(employeeSkills),
+}));
+
+export const employeeSkillsRelations = relations(employeeSkills, ({ one }) => ({
+  employee: one(employees, {
+    fields: [employeeSkills.employeeId],
+    references: [employees.id],
+  }),
+  skill: one(skills, {
+    fields: [employeeSkills.skillId],
+    references: [skills.id],
+  }),
+}));
+
+export const skillsRelations = relations(skills, ({ many }) => ({
+  employeeSkills: many(employeeSkills),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -402,6 +424,10 @@ export const insertSkillSchema = createInsertSchema(skills).omit({
   createdAt: true,
 });
 
+export const insertEmployeeSkillSchema = createInsertSchema(employeeSkills).omit({
+  id: true,
+});
+
 export const insertEventExpenseSchema = createInsertSchema(eventExpenses).omit({
   id: true,
   createdAt: true,
@@ -453,6 +479,9 @@ export type InsertPackage = z.infer<typeof insertPackageSchema>;
 
 export type Skill = typeof skills.$inferSelect;
 export type InsertSkill = z.infer<typeof insertSkillSchema>;
+
+export type EmployeeSkill = typeof employeeSkills.$inferSelect;
+export type InsertEmployeeSkill = z.infer<typeof insertEmployeeSkillSchema>;
 
 export type EventExpense = typeof eventExpenses.$inferSelect;
 export type InsertEventExpense = z.infer<typeof insertEventExpenseSchema>;

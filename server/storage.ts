@@ -15,6 +15,7 @@ import {
   employeeRoles,
   packages,
   skills,
+  employeeSkills,
   eventExpenses,
   systemSettings,
   type User,
@@ -47,6 +48,8 @@ import {
   type InsertPackage,
   type Skill,
   type InsertSkill,
+  type EmployeeSkill,
+  type InsertEmployeeSkill,
   type EventExpense,
   type InsertEventExpense,
   type SystemSetting,
@@ -803,6 +806,35 @@ export class DatabaseStorage implements IStorage {
     await db.delete(skills).where(eq(skills.id, id));
   }
   
+  // Employee Skills
+  async getEmployeeSkills(employeeId: string): Promise<EmployeeSkill[]> {
+    return await db.select().from(employeeSkills).where(eq(employeeSkills.employeeId, employeeId));
+  }
+
+  async getEmployeeSkillsWithDetails(employeeId: string): Promise<(EmployeeSkill & { skill: Skill })[]> {
+    const results = await db
+      .select({
+        id: employeeSkills.id,
+        employeeId: employeeSkills.employeeId,
+        skillId: employeeSkills.skillId,
+        skill: skills,
+      })
+      .from(employeeSkills)
+      .innerJoin(skills, eq(employeeSkills.skillId, skills.id))
+      .where(eq(employeeSkills.employeeId, employeeId));
+    return results;
+  }
+
+  async setEmployeeSkills(employeeId: string, skillIds: string[]): Promise<void> {
+    // Remove existing skills
+    await db.delete(employeeSkills).where(eq(employeeSkills.employeeId, employeeId));
+    // Add new skills
+    if (skillIds.length > 0) {
+      const values = skillIds.map(skillId => ({ employeeId, skillId }));
+      await db.insert(employeeSkills).values(values);
+    }
+  }
+
   // Event Expenses
   async getEventExpenses(eventId: string): Promise<EventExpense[]> {
     return await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, eventId));

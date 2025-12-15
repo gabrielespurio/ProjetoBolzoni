@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { insertEmployeeSchema, type Employee, type EmployeePayment, type EmployeeRole } from "@shared/schema";
+import { insertEmployeeSchema, type Employee, type EmployeePayment, type EmployeeRole, type Skill } from "@shared/schema";
 import { z } from "zod";
 import { useEffect, useState } from "react";
 import { maskCPF, maskRG, maskCEP, maskPhone } from "@/lib/masks";
@@ -20,13 +20,16 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useViaCep } from "@/hooks/use-viacep";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, X, Check } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PaymentDialog } from "./payment-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const employeeFormSchema = insertEmployeeSchema.extend({
   phone: z.string().optional(),
@@ -57,6 +60,8 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
   const { fetchAddress, isLoading: isLoadingCep } = useViaCep();
   const [activeTab, setActiveTab] = useState("personal");
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+  const [skillsPopoverOpen, setSkillsPopoverOpen] = useState(false);
 
   const form = useForm<EmployeeForm>({
     resolver: zodResolver(employeeFormSchema),
@@ -86,6 +91,15 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
 
   const { data: employeeRoles, isLoading: isLoadingRoles } = useQuery<EmployeeRole[]>({
     queryKey: ["/api/settings/employee-roles"],
+  });
+
+  const { data: allSkills, isLoading: isLoadingSkills } = useQuery<Skill[]>({
+    queryKey: ["/api/settings/skills"],
+  });
+
+  const { data: employeeSkillsData } = useQuery<{ skillId: string }[]>({
+    queryKey: ["/api/employees", employee?.id, "skills"],
+    enabled: isEdit && !!employee?.id,
   });
 
   const handleCepBlur = async () => {
@@ -141,8 +155,27 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
     }
     if (open) {
       setActiveTab("personal");
+      // Reset skills when opening for new employee
+      if (!employee) {
+        setSelectedSkillIds([]);
+      }
+    } else {
+      // Reset when closing
+      setSelectedSkillIds([]);
     }
   }, [open, employee, form]);
+
+  useEffect(() => {
+    if (open && employee && employeeSkillsData) {
+      setSelectedSkillIds(employeeSkillsData.map(es => es.skillId));
+    }
+  }, [open, employee, employeeSkillsData]);
+
+  const skillsMutation = useMutation({
+    mutationFn: async ({ employeeId, skillIds }: { employeeId: string; skillIds: string[] }) => {
+      return apiRequest("PUT", `/api/employees/${employeeId}/skills`, { skillIds });
+    },
+  });
 
   const mutation = useMutation({
     mutationFn: async (data: EmployeeForm) => {
@@ -152,14 +185,24 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         return apiRequest("POST", "/api/employees", data);
       }
     },
-    onSuccess: () => {
+    onSuccess: async (response) => {
+      const employeeData = await response.json();
+      const employeeId = isEdit ? employee!.id : employeeData.id;
+      
+      // Save skills
+      if (employeeId) {
+        await skillsMutation.mutateAsync({ employeeId, skillIds: selectedSkillIds });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees", employeeId, "skills"] });
       toast({
         title: isEdit ? "Funcionário atualizado" : "Funcionário criado",
         description: isEdit ? "Funcionário atualizado com sucesso." : "Novo funcionário cadastrado com sucesso.",
       });
       onClose();
       form.reset();
+      setSelectedSkillIds([]);
     },
     onError: (error: any) => {
       toast({
@@ -273,6 +316,94 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           </FormItem>
                         )}
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Habilidades
+                      </label>
+                      <Popover open={skillsPopoverOpen} onOpenChange={setSkillsPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                            data-testid="button-select-skills"
+                          >
+                            {selectedSkillIds.length > 0 ? (
+                              <span className="text-muted-foreground">
+                                {selectedSkillIds.length} habilidade(s) selecionada(s)
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {isLoadingSkills ? "Carregando..." : "Selecione as habilidades"}
+                              </span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="start">
+                          <div className="p-2">
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Selecione as habilidades do funcionário
+                            </p>
+                            <ScrollArea className="h-48">
+                              <div className="space-y-1">
+                                {allSkills && allSkills.length > 0 ? (
+                                  allSkills.map((skill) => (
+                                    <div
+                                      key={skill.id}
+                                      className="flex items-center space-x-2 p-2 rounded-md hover-elevate cursor-pointer"
+                                      onClick={() => {
+                                        if (selectedSkillIds.includes(skill.id)) {
+                                          setSelectedSkillIds(selectedSkillIds.filter(id => id !== skill.id));
+                                        } else {
+                                          setSelectedSkillIds([...selectedSkillIds, skill.id]);
+                                        }
+                                      }}
+                                      data-testid={`skill-option-${skill.id}`}
+                                    >
+                                      <Checkbox
+                                        checked={selectedSkillIds.includes(skill.id)}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedSkillIds([...selectedSkillIds, skill.id]);
+                                          } else {
+                                            setSelectedSkillIds(selectedSkillIds.filter(id => id !== skill.id));
+                                          }
+                                        }}
+                                      />
+                                      <span className="text-sm">{skill.name}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-sm text-muted-foreground p-2">
+                                    Nenhuma habilidade cadastrada
+                                  </p>
+                                )}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      {selectedSkillIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {selectedSkillIds.map((skillId) => {
+                            const skill = allSkills?.find(s => s.id === skillId);
+                            return skill ? (
+                              <Badge
+                                key={skillId}
+                                variant="secondary"
+                                className="cursor-pointer"
+                                onClick={() => setSelectedSkillIds(selectedSkillIds.filter(id => id !== skillId))}
+                                data-testid={`badge-skill-${skillId}`}
+                              >
+                                {skill.name}
+                                <X className="h-3 w-3 ml-1" />
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 

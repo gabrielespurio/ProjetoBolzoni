@@ -365,6 +365,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message || "Erro ao deletar pagamento" });
     }
   });
+
+  // Employee Skills routes
+  app.get("/api/employees/:id/skills", authenticateToken, async (req, res) => {
+    try {
+      const skills = await storage.getEmployeeSkillsWithDetails(req.params.id);
+      res.json(skills);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar habilidades" });
+    }
+  });
+
+  app.put("/api/employees/:id/skills", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const { skillIds } = req.body;
+      if (!Array.isArray(skillIds)) {
+        return res.status(400).json({ message: "skillIds deve ser um array" });
+      }
+      await storage.setEmployeeSkills(req.params.id, skillIds);
+      const skills = await storage.getEmployeeSkillsWithDetails(req.params.id);
+      res.json(skills);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar habilidades" });
+    }
+  });
   
   // Events routes
   app.get("/api/events", authenticateToken, async (req: AuthRequest, res) => {
