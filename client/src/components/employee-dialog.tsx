@@ -185,8 +185,7 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         return apiRequest("POST", "/api/employees", data);
       }
     },
-    onSuccess: async (response) => {
-      const employeeData = await response.json();
+    onSuccess: async (employeeData) => {
       const employeeId = isEdit ? employee!.id : employeeData.id;
       
       // Save skills
