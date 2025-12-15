@@ -19,7 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X, Search, Plus } from "lucide-react";
+import { Loader2, X, Search, Plus, Check, ChevronsUpDown } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
@@ -85,6 +88,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [monthlyInterestRate, setMonthlyInterestRate] = useState<number>(0);
   const [hasInstallmentInterest, setHasInstallmentInterest] = useState(false);
   const [calculatingFee, setCalculatingFee] = useState(false);
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || 'employee';
@@ -523,22 +527,58 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 control={form.control}
                 name="clientId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Cliente *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-event-client">
-                          <SelectValue placeholder="Selecione um cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients?.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={clientPopoverOpen}
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="select-event-client"
+                          >
+                            {field.value
+                              ? clients?.find((client) => client.id === field.value)?.name
+                              : "Selecione um cliente"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar cliente..." data-testid="input-search-client" />
+                          <CommandList>
+                            <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              {clients?.map((client) => (
+                                <CommandItem
+                                  key={client.id}
+                                  value={client.name}
+                                  onSelect={() => {
+                                    field.onChange(client.id);
+                                    setClientPopoverOpen(false);
+                                  }}
+                                  data-testid={`client-option-${client.id}`}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === client.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {client.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
