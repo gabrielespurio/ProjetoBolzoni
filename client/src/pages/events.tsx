@@ -233,7 +233,8 @@ export default function Events() {
       ].filter(Boolean).join(", ") || "Local não informado";
 
       const eventDate = new Date(event.date);
-      const eventTime = format(eventDate, "HH:mm");
+      const eventTime = (event as any).startTime || format(eventDate, "HH:mm");
+      const eventEndTime = (event as any).endTime || undefined;
 
       generateContract({
         eventTitle: event.title,
@@ -253,6 +254,7 @@ export default function Events() {
         clientCargo: event.clientCargo,
         eventDate: eventDate,
         eventTime: eventTime,
+        eventEndTime: eventEndTime,
         location: location,
         contractValue: formatCurrency(event.contractValue),
         package: event.packageName || "Pacote não especificado",

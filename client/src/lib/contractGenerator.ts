@@ -50,12 +50,18 @@ function generateCorporateContract(data: ContractData) {
   const formattedDate = format(new Date(data.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const contractDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   
-  const eventDate = new Date(data.eventDate);
-  const eventHour = format(eventDate, "HH:mm");
+  const eventHour = data.eventTime || "00:00";
+  const endHour = data.eventEndTime || (() => {
+    const duration = data.eventDuration || 3;
+    const [hours, minutes] = eventHour.split(':').map(Number);
+    const startMinutes = hours * 60 + minutes;
+    const endMinutes = startMinutes + duration * 60;
+    const endH = Math.floor(endMinutes / 60) % 24;
+    const endM = endMinutes % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  })();
   
   const duration = data.eventDuration || 3;
-  const endDate = new Date(eventDate.getTime() + duration * 60 * 60 * 1000);
-  const endHour = data.eventEndTime || format(endDate, "HH:mm");
 
   const clientAddress = [
     data.clientRua ? `${data.clientRua}` : '',
