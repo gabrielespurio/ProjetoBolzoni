@@ -368,11 +368,14 @@ export class DatabaseStorage implements IStorage {
           })
         );
         
+        const expenses = await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, event.id));
+        
         return {
           ...event,
           characterIds: characters.map(c => c.characterId),
           characterNames: characters.map(c => c.characterName).filter(Boolean),
           eventEmployees: eventEmpsWithCharacters,
+          expenses: expenses,
         };
       })
     );
