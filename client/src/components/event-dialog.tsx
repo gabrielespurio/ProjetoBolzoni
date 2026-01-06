@@ -283,7 +283,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         characterIds: [],
       });
       setSelectedCharacters((event as any).characterIds || []);
-      setExpenses((event as any).expenses || []);
+      setExpenses((event as any).expenses?.map((exp: any) => ({
+        ...exp,
+        amount: exp.amount.toString()
+      })) || []);
       setKmDistance((event as any).kmDistance || "");
       setSelectedEmployees((event as any).eventEmployees?.map((ee: any) => ({
         employeeId: ee.employeeId,
