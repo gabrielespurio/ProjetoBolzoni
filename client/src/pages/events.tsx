@@ -389,7 +389,14 @@ export default function Events() {
                     <div className="grid gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground grid-cols-1 sm:grid-cols-2">
                       <div className="flex items-center gap-2">
                         <CalendarIcon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-                        <span className="truncate">{format(new Date(event.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                        <span className="truncate">
+                          {(() => {
+                            const d = new Date(event.date);
+                            const datePart = format(d, "dd/MM/yyyy", { locale: ptBR });
+                            const timePart = (event as any).startTime || format(d, "HH:mm");
+                            return `${datePart} às ${timePart}`;
+                          })()}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />

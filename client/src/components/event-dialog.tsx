@@ -389,9 +389,20 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const onSubmit = (data: EventForm) => {
+    // Combine date and time correctly for the 'date' field
+    const [year, month, day] = data.date.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day);
+
+    if (data.startTime) {
+      const [hours, minutes] = data.startTime.split(":").map(Number);
+      dateObj.setHours(hours, minutes, 0, 0);
+    } else {
+      dateObj.setHours(0, 0, 0, 0);
+    }
+
     const eventData = {
       ...data,
-      date: new Date(data.date + "T00:00:00"),
+      date: dateObj,
       startTime: data.startTime || null,
       endTime: data.endTime || null,
       categoryId: data.categoryId || undefined,
