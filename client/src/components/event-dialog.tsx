@@ -414,6 +414,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       ticketValue: data.ticketValue && data.ticketValue !== "" ? data.ticketValue : null,
       paymentDate: data.paymentDate && data.paymentDate !== "" ? new Date(data.paymentDate) : null,
       paymentMethod: data.paymentMethod || null,
+      cardType: data.cardType || null,
       packageId: data.packageId || null,
       venueName: data.venueName || null,
       venueNumber: data.venueNumber || null,
