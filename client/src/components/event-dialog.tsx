@@ -285,10 +285,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       setSelectedCharacters((event as any).characterIds || []);
       // Garantir que as despesas sejam carregadas corretamente
       const loadedExpenses = (event as any).expenses || [];
-      console.log("Despesas carregadas do evento:", loadedExpenses);
+      console.log("Despesas brutas do evento:", (event as any).expenses);
       setExpenses(loadedExpenses.map((exp: any) => ({
-        ...exp,
-        amount: exp.amount?.toString() || "0"
+        title: exp.title || "",
+        amount: exp.amount?.toString() || "0",
+        description: exp.description || ""
       })));
       setKmDistance((event as any).kmDistance || "");
       setSelectedEmployees((event as any).eventEmployees?.map((ee: any) => ({

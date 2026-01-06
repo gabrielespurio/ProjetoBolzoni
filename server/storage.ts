@@ -389,7 +389,8 @@ export class DatabaseStorage implements IStorage {
       .from(eventCharacters)
       .where(eq(eventCharacters.eventId, id));
     
-    const expenses = await this.getEventExpenses(id);
+    // Explicitly fetching expenses for this event
+    const expenses = await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, id));
     
     const eventEmps = await db
       .select({
