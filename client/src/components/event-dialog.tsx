@@ -256,7 +256,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
           if (d.getHours() === 0 && d.getMinutes() === 0) return "";
           return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         })() : ""),
-        endTime: (event as any).endTime || "",
+        endTime: (event as any).endTime || (event.date ? (() => {
+          const d = new Date(event.date);
+          // Only use date time if it's NOT midnight (00:00), which usually means date only
+          if (d.getHours() === 0 && d.getMinutes() === 0) return "";
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        })() : ""),
         cep: (event as any).cep || "",
         estado: (event as any).estado || "",
         cidade: (event as any).cidade || "",
