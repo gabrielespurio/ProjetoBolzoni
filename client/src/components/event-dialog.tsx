@@ -251,7 +251,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
           const day = String(d.getDate()).padStart(2, '0');
           return `${year}-${month}-${day}`;
         })() : "",
-        startTime: (event as any).startTime || "",
+        startTime: (event as any).startTime || (event.date ? (() => {
+          const d = new Date(event.date);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return "";
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        })() : ""),
         endTime: (event as any).endTime || "",
         cep: (event as any).cep || "",
         estado: (event as any).estado || "",
