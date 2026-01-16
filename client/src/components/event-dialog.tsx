@@ -35,6 +35,7 @@ const eventFormSchema = insertEventSchema.extend({
     return eventDate >= oneYearAgo;
   }, "A data do evento não pode ser anterior a 1 ano da data atual"),
   partyStartTime: z.string().optional(),
+  eventDuration: z.string().optional(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   cep: z.string().optional(),
@@ -253,6 +254,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
           return `${year}-${month}-${day}`;
         })() : "",
         partyStartTime: (event as any).partyStartTime || "",
+        eventDuration: (event as any).eventDuration || "",
         startTime: (event as any).startTime || (event.date ? (() => {
           const d = new Date(event.date);
           if (d.getHours() === 0 && d.getMinutes() === 0) return "";
@@ -324,6 +326,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         packageId: "",
         packageNotes: "",
         partyStartTime: "",
+        eventDuration: "",
         status: "scheduled",
         notes: "",
         characterIds: [],
@@ -423,6 +426,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       ...data,
       date: dateObj,
       partyStartTime: data.partyStartTime || null,
+      eventDuration: data.eventDuration || null,
       startTime: data.startTime || null,
       endTime: data.endTime || null,
       categoryId: data.categoryId || undefined,
@@ -447,6 +451,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     setShowExpenseForm(false);
     setKmDistance("");
     form.setValue("partyStartTime", "");
+    form.setValue("eventDuration", "");
     setSelectedEmployees([]);
     setNewEmployee({ employeeId: "", characterId: "", cacheValue: "" });
     setShowEmployeeForm(false);
@@ -697,6 +702,19 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     <FormLabel>Início da Festa</FormLabel>
                     <FormControl>
                       <Input {...field} type="time" data-testid="input-party-start-time" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="eventDuration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duração do Evento</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: 4 horas" data-testid="input-event-duration" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

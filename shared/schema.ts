@@ -85,6 +85,7 @@ export const events = pgTable("events", {
   venueName: text("venue_name"),
   venueNumber: text("venue_number"),
   partyStartTime: text("party_start_time"),
+  eventDuration: text("event_duration"),
   kmDistance: decimal("km_distance", { precision: 10, scale: 2 }),
   contractValue: decimal("contract_value", { precision: 10, scale: 2 }).notNull(),
   ticketValue: decimal("ticket_value", { precision: 10, scale: 2 }),
