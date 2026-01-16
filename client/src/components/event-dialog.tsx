@@ -252,7 +252,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const contractValue = form.watch("contractValue");
 
   const totalPaid = useMemo(() => {
-    return eventInstallments.reduce((sum, inst) => sum + parseFloat(inst.amount || "0"), 0);
+    return (eventInstallments || []).reduce((sum, inst) => sum + parseFloat(inst?.amount || "0"), 0);
   }, [eventInstallments]);
 
   const pendingValue = useMemo(() => {
@@ -352,7 +352,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         packageNotes: "",
         partyStartTime: "",
         eventDuration: "",
-        status: "scheduled",
+        status: "scheduled" as const,
         notes: "",
         characterIds: [],
       });
@@ -393,9 +393,13 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   }, [selectedEmployees]);
 
   useEffect(() => {
-    const total = charactersTotal + expensesTotal + kmTotal;
-    form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
-  }, [charactersTotal, expensesTotal, kmTotal, form]);
+    // Only calculate if not in edit mode or if the contract value is currently "0"
+    // This allows the initial calculation for new events but preserves manual overrides or loaded values for edits
+    if (!isEdit || form.getValues("contractValue") === "0") {
+      const total = charactersTotal + expensesTotal + kmTotal;
+      form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
+    }
+  }, [charactersTotal, expensesTotal, kmTotal, form, isEdit]);
 
   const mutation = useMutation({
     mutationFn: async (data: EventForm) => {
@@ -1083,25 +1087,25 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 )}
 
                 <div className="space-y-2">
-                  {eventInstallments.map((inst, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-background">
-                      <div className="text-sm">
-                        <span className="font-medium">R$ {parseFloat(inst.amount).toFixed(2)}</span>
-                        <span className="mx-2">•</span>
-                        <span>{new Date(inst.paymentDate).toLocaleDateString("pt-BR")}</span>
-                        <span className="mx-2">•</span>
-                        <span className="capitalize">{inst.paymentMethod.replace("_", " ")}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEventInstallments(eventInstallments.filter((_, i) => i !== index))}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                      {eventInstallments.map((inst, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-background">
+                          <div className="text-sm">
+                            <span className="font-medium">R$ {parseFloat(inst?.amount || "0").toFixed(2)}</span>
+                            <span className="mx-2">•</span>
+                            <span>{inst?.paymentDate ? new Date(inst.paymentDate).toLocaleDateString("pt-BR") : ""}</span>
+                            <span className="mx-2">•</span>
+                            <span className="capitalize">{(inst?.paymentMethod || "").replace("_", " ")}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEventInstallments(eventInstallments.filter((_, i) => i !== index))}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
                   {eventInstallments.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-2">Nenhuma parcela registrada</p>
                   )}
