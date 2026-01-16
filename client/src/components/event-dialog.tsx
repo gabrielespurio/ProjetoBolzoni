@@ -100,6 +100,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [hasInstallmentInterest, setHasInstallmentInterest] = useState(false);
   const [calculatingFee, setCalculatingFee] = useState(false);
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
+  const [packagePopoverOpen, setPackagePopoverOpen] = useState(false);
+  const [methodPopoverOpen, setMethodPopoverOpen] = useState(false);
+  const [cardPopoverOpen, setCardPopoverOpen] = useState(false);
+  const [installmentMethodPopoverOpen, setInstallmentMethodPopoverOpen] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || 'employee';
@@ -666,22 +672,56 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 control={form.control}
                 name="categoryId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || undefined}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-event-category">
-                          <SelectValue placeholder="Selecione uma categoria" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories?.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="select-event-category"
+                          >
+                            {field.value
+                              ? categories?.find((c) => c.id === field.value)?.name
+                              : "Selecione uma categoria"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar categoria..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {categories?.map((category) => (
+                                <CommandItem
+                                  key={category.id}
+                                  value={category.name}
+                                  onSelect={() => {
+                                    field.onChange(category.id);
+                                    setCategoryPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === category.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {category.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -870,21 +910,58 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 control={form.control}
                 name="status"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Status *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-event-status">
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="scheduled">Agendado</SelectItem>
-                        <SelectItem value="completed">Concluído</SelectItem>
-                        <SelectItem value="cancelled">Cancelado</SelectItem>
-                        <SelectItem value="deleted">Excluído</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between"
+                            data-testid="select-event-status"
+                          >
+                            {field.value === "scheduled" ? "Agendado" :
+                             field.value === "completed" ? "Concluído" :
+                             field.value === "cancelled" ? "Cancelado" :
+                             field.value === "deleted" ? "Excluído" : "Selecione o status"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar status..." />
+                          <CommandList>
+                            <CommandGroup>
+                              {[
+                                { value: "scheduled", label: "Agendado" },
+                                { value: "completed", label: "Concluído" },
+                                { value: "cancelled", label: "Cancelado" },
+                                { value: "deleted", label: "Excluído" }
+                              ].map((item) => (
+                                <CommandItem
+                                  key={item.value}
+                                  value={item.label}
+                                  onSelect={() => {
+                                    field.onChange(item.value);
+                                    setStatusPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === item.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {item.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -942,21 +1019,61 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   control={form.control}
                   name="paymentMethod"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Forma de Pagamento</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || undefined}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-payment-method">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                          <SelectItem value="pix">PIX</SelectItem>
-                          <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                          <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Popover open={methodPopoverOpen} onOpenChange={setMethodPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              data-testid="select-payment-method"
+                            >
+                              {field.value === "dinheiro" ? "Dinheiro" :
+                               field.value === "pix" ? "PIX" :
+                               field.value === "cartao_credito" ? "Cartão de Crédito" :
+                               field.value === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar forma..." />
+                            <CommandList>
+                              <CommandGroup>
+                                {[
+                                  { value: "dinheiro", label: "Dinheiro" },
+                                  { value: "pix", label: "PIX" },
+                                  { value: "cartao_credito", label: "Cartão de Crédito" },
+                                  { value: "cartao_debito", label: "Cartão de Débito" }
+                                ].map((item) => (
+                                  <CommandItem
+                                    key={item.value}
+                                    value={item.label}
+                                    onSelect={() => {
+                                      field.onChange(item.value);
+                                      setMethodPopoverOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === item.value ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {item.label}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -966,19 +1083,57 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     control={form.control}
                     name="cardType"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col">
                         <FormLabel>Tipo de Cartão</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || undefined}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-card-type">
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="visa_master">Visa/Master</SelectItem>
-                            <SelectItem value="outros">Outros</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Popover open={cardPopoverOpen} onOpenChange={setCardPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                data-testid="select-card-type"
+                              >
+                                {field.value === "visa_master" ? "Visa/Master" :
+                                 field.value === "outros" ? "Outros" : "Selecione"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar tipo..." />
+                              <CommandList>
+                                <CommandGroup>
+                                  {[
+                                    { value: "visa_master", label: "Visa/Master" },
+                                    { value: "outros", label: "Outros" }
+                                  ].map((item) => (
+                                    <CommandItem
+                                      key={item.value}
+                                      value={item.label}
+                                      onSelect={() => {
+                                        field.onChange(item.value);
+                                        setCardPopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === item.value ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {item.label}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1051,22 +1206,58 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                           onChange={(e) => setNewInstallment({ ...newInstallment, paymentDate: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 flex flex-col">
                         <FormLabel>Forma</FormLabel>
-                        <Select
-                          value={newInstallment.paymentMethod}
-                          onValueChange={(val) => setNewInstallment({ ...newInstallment, paymentMethod: val })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                            <SelectItem value="pix">PIX</SelectItem>
-                            <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                            <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Popover open={installmentMethodPopoverOpen} onOpenChange={setInstallmentMethodPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !newInstallment.paymentMethod && "text-muted-foreground"
+                              )}
+                            >
+                              {newInstallment.paymentMethod === "dinheiro" ? "Dinheiro" :
+                               newInstallment.paymentMethod === "pix" ? "PIX" :
+                               newInstallment.paymentMethod === "cartao_credito" ? "Cartão de Crédito" :
+                               newInstallment.paymentMethod === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[200px] p-0">
+                            <Command>
+                              <CommandInput placeholder="Buscar forma..." />
+                              <CommandList>
+                                <CommandGroup>
+                                  {[
+                                    { value: "dinheiro", label: "Dinheiro" },
+                                    { value: "pix", label: "PIX" },
+                                    { value: "cartao_credito", label: "Cartão de Crédito" },
+                                    { value: "cartao_debito", label: "Cartão de Débito" }
+                                  ].map((item) => (
+                                    <CommandItem
+                                      key={item.value}
+                                      value={item.label}
+                                      onSelect={() => {
+                                        setNewInstallment({ ...newInstallment, paymentMethod: item.value });
+                                        setInstallmentMethodPopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          newInstallment.paymentMethod === item.value ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {item.label}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
                     <Button
@@ -1116,28 +1307,57 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 control={form.control}
                 name="packageId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Pacote</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-event-package">
-                          <SelectValue placeholder="Selecione o pacote" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {packages && packages.length > 0 ? (
-                          packages.map((pkg) => (
-                            <SelectItem key={pkg.id} value={pkg.id} data-testid={`package-option-${pkg.id}`}>
-                              {pkg.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="no-packages" disabled>
-                            Nenhum pacote cadastrado
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            data-testid="select-event-package"
+                          >
+                            {field.value
+                              ? packages?.find((pkg) => pkg.id === field.value)?.name
+                              : "Selecione o pacote"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar pacote..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
+                            <CommandGroup>
+                              {packages?.map((pkg) => (
+                                <CommandItem
+                                  key={pkg.id}
+                                  value={pkg.name}
+                                  onSelect={() => {
+                                    field.onChange(pkg.id);
+                                    setPackagePopoverOpen(false);
+                                  }}
+                                  data-testid={`package-option-${pkg.id}`}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === pkg.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {pkg.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
