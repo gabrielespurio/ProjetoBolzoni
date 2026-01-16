@@ -294,6 +294,7 @@ export class DatabaseStorage implements IStorage {
         rua: events.rua,
         venueName: events.venueName,
         venueNumber: events.venueNumber,
+        partyStartTime: events.partyStartTime,
         startTime: events.startTime,
         endTime: events.endTime,
         kmDistance: events.kmDistance,
