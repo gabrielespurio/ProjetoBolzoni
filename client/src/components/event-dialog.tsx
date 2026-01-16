@@ -589,7 +589,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>{isReadOnly ? "Visualizar Evento" : (isEdit ? "Editar Evento" : "Novo Evento")}</DialogTitle>
           <DialogDescription>
@@ -597,8 +597,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 flex flex-col h-full">
+            <div className="grid gap-6 md:grid-cols-2 flex-grow">
               <FormField
                 control={form.control}
                 name="title"
