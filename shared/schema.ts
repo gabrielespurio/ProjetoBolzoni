@@ -95,6 +95,7 @@ export const events = pgTable("events", {
   installments: integer("installments"),
   packageId: varchar("package_id").references(() => packages.id),
   packageNotes: text("package_notes"),
+  childrenCount: integer("children_count"),
   status: eventStatusEnum("status").notNull().default("scheduled"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

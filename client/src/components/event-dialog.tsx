@@ -52,6 +52,7 @@ const eventFormSchema = insertEventSchema.extend({
   paymentDate: z.string().optional(),
   packageId: z.string().optional(),
   packageNotes: z.string().optional(),
+  childrenCount: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
   expenses: z.array(z.object({
     title: z.string(),
@@ -281,6 +282,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         })() : "",
         partyStartTime: (event as any).partyStartTime || "",
         eventDuration: (event as any).eventDuration || "",
+        childrenCount: (event as any).childrenCount?.toString() || "",
         startTime: (event as any).startTime || (event.date ? (() => {
           const d = new Date(event.date);
           if (d.getHours() === 0 && d.getMinutes() === 0) return "";
@@ -303,9 +305,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         contractValue: event.contractValue || "0",
         ticketValue: (event as any).ticketValue || "",
         paymentMethod: (event as any).paymentMethod || "",
-        cardType: (event as any).cardType || "",
-        installments: (event as any).installments || 1,
-        paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
+        cardType: "",
+        installments: 1,
+        paymentDate: "",
         packageId: (event as any).packageId || "",
         packageNotes: (event as any).packageNotes || "",
         status: event.status || "scheduled",
@@ -348,6 +350,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         venueName: "",
         venueNumber: "",
         kmDistance: "",
+        childrenCount: "",
         contractValue: "0",
         ticketValue: "",
         paymentMethod: "",
@@ -462,6 +465,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     const eventData = {
       ...data,
       date: dateObj,
+      childrenCount: data.childrenCount ? parseInt(data.childrenCount) : null,
       partyStartTime: data.partyStartTime || null,
       eventDuration: data.eventDuration || null,
       startTime: data.startTime || null,
@@ -786,6 +790,19 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     <FormLabel>Duração do Evento</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder="Ex: 4 horas" data-testid="input-event-duration" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="childrenCount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantidade de Crianças</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" placeholder="0" data-testid="input-children-count" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
