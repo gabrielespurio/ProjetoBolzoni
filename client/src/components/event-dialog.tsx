@@ -248,6 +248,18 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     calculateFee();
   }, [paymentMethod, cardType, installments]);
 
+  const packageId = form.watch("packageId");
+  const contractValue = form.watch("contractValue");
+
+  const totalPaid = useMemo(() => {
+    return eventInstallments.reduce((sum, inst) => sum + parseFloat(inst.amount || "0"), 0);
+  }, [eventInstallments]);
+
+  const pendingValue = useMemo(() => {
+    const total = parseFloat(contractValue || "0");
+    return Math.max(0, total - totalPaid);
+  }, [contractValue, totalPaid]);
+
   useEffect(() => {
     if (open && event) {
       form.reset({
@@ -995,6 +1007,23 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   >
                     {showInstallmentForm ? "Cancelar" : "Adicionar Parcela"}
                   </Button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 py-2 border-b">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Valor do Contrato</p>
+                    <p className="text-sm font-semibold text-primary">R$ {parseFloat(contractValue || "0").toFixed(2)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Total Pago</p>
+                    <p className="text-sm font-semibold text-green-600">R$ {totalPaid.toFixed(2)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Pendente</p>
+                    <p className={`text-sm font-semibold ${pendingValue > 0 ? "text-destructive" : "text-green-600"}`}>
+                      R$ {pendingValue.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
 
                 {showInstallmentForm && (
