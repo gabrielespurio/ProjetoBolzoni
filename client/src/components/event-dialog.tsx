@@ -663,7 +663,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 name="startTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Horário de Início</FormLabel>
+                    <FormLabel>Horário de Início da Recreação</FormLabel>
                     <FormControl>
                       <Input {...field} type="time" data-testid="input-event-start-time" />
                     </FormControl>
@@ -676,7 +676,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 name="endTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Horário de Fim</FormLabel>
+                    <FormLabel>Horário de Fim da Recreação</FormLabel>
                     <FormControl>
                       <Input {...field} type="time" data-testid="input-event-end-time" />
                     </FormControl>
