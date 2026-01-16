@@ -58,6 +58,11 @@ const eventFormSchema = insertEventSchema.extend({
     amount: z.string(),
     description: z.string().optional(),
   })).optional(),
+  installments: z.array(z.object({
+    amount: z.string(),
+    paymentDate: z.string(),
+    paymentMethod: z.string(),
+  })).optional(),
 });
 
 type EventForm = z.infer<typeof eventFormSchema>;
@@ -83,6 +88,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [newExpense, setNewExpense] = useState<EventExpense>({ title: "", amount: "", description: "" });
   const [loadingCep, setLoadingCep] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [eventInstallments, setEventInstallments] = useState<Array<{ amount: string, paymentDate: string, paymentMethod: string }>>([]);
+  const [showInstallmentForm, setShowInstallmentForm] = useState(false);
+  const [newInstallment, setNewInstallment] = useState<{ amount: string, paymentDate: string, paymentMethod: string }>({ amount: "", paymentDate: "", paymentMethod: "" });
   const [kmDistance, setKmDistance] = useState<string>("");
   const [selectedEmployees, setSelectedEmployees] = useState<Array<{ employeeId: string; characterId: string; cacheValue: string }>>([]);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
@@ -296,6 +304,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         description: exp.description || ""
       })));
       setKmDistance((event as any).kmDistance || "");
+      setEventInstallments((event as any).eventInstallments?.map((inst: any) => ({
+        amount: inst.amount?.toString() || "0",
+        paymentDate: inst.paymentDate ? new Date(inst.paymentDate).toISOString().slice(0, 10) : "",
+        paymentMethod: inst.paymentMethod || ""
+      })) || []);
       setSelectedEmployees((event as any).eventEmployees?.map((ee: any) => ({
         employeeId: ee.employeeId,
         characterId: ee.characterId || "",
@@ -334,6 +347,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       setSelectedCharacters([]);
       setExpenses([]);
       setKmDistance("");
+      setEventInstallments([]);
       setSelectedEmployees([]);
     }
   }, [open, event]);
@@ -377,6 +391,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         ...data,
         characterIds: selectedCharacters,
         expenses: expenses,
+        eventInstallments: eventInstallments,
         eventEmployees: selectedEmployees.map(emp => ({
           employeeId: emp.employeeId,
           characterId: emp.characterId || null,
@@ -967,6 +982,103 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   )}
                 />
               </div>
+
+              <div className="space-y-4 border rounded-md p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Parcelas Pagas</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowInstallmentForm(!showInstallmentForm)}
+                    data-testid="button-add-installment"
+                  >
+                    {showInstallmentForm ? "Cancelar" : "Adicionar Parcela"}
+                  </Button>
+                </div>
+
+                {showInstallmentForm && (
+                  <div className="grid gap-4 p-4 border rounded-md bg-muted/50">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <FormLabel>Valor</FormLabel>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={newInstallment.amount}
+                          onChange={(e) => setNewInstallment({ ...newInstallment, amount: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <FormLabel>Data</FormLabel>
+                        <Input
+                          type="date"
+                          value={newInstallment.paymentDate}
+                          onChange={(e) => setNewInstallment({ ...newInstallment, paymentDate: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <FormLabel>Forma</FormLabel>
+                        <Select
+                          value={newInstallment.paymentMethod}
+                          onValueChange={(val) => setNewInstallment({ ...newInstallment, paymentMethod: val })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                            <SelectItem value="pix">PIX</SelectItem>
+                            <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                            <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!newInstallment.amount || !newInstallment.paymentDate || !newInstallment.paymentMethod) {
+                          toast({ title: "Erro", description: "Preencha todos os campos da parcela.", variant: "destructive" });
+                          return;
+                        }
+                        setEventInstallments([...eventInstallments, newInstallment]);
+                        setNewInstallment({ amount: "", paymentDate: "", paymentMethod: "" });
+                        setShowInstallmentForm(false);
+                      }}
+                    >
+                      Confirmar Parcela
+                    </Button>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {eventInstallments.map((inst, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-background">
+                      <div className="text-sm">
+                        <span className="font-medium">R$ {parseFloat(inst.amount).toFixed(2)}</span>
+                        <span className="mx-2">•</span>
+                        <span>{new Date(inst.paymentDate).toLocaleDateString("pt-BR")}</span>
+                        <span className="mx-2">•</span>
+                        <span className="capitalize">{inst.paymentMethod.replace("_", " ")}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEventInstallments(eventInstallments.filter((_, i) => i !== index))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {eventInstallments.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">Nenhuma parcela registrada</p>
+                  )}
+                </div>
+              </div>
+
               <FormField
                 control={form.control}
                 name="packageId"

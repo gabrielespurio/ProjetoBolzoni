@@ -218,6 +218,15 @@ export const eventExpenses = pgTable("event_expenses", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const eventInstallments = pgTable("event_installments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").notNull().references(() => events.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const eventsRelations = relations(events, ({ one, many }) => ({
   client: one(clients, {
     fields: [events.clientId],
@@ -234,9 +243,25 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   eventEmployees: many(eventEmployees),
   eventCharacters: many(eventCharacters),
   eventExpenses: many(eventExpenses),
+  eventInstallments: many(eventInstallments),
   transactions: many(financialTransactions),
   stockMovements: many(stockMovements),
 }));
+
+export const eventInstallmentsRelations = relations(eventInstallments, ({ one }) => ({
+  event: one(events, {
+    fields: [eventInstallments.eventId],
+    references: [events.id],
+  }),
+}));
+
+export const insertEventInstallmentSchema = createInsertSchema(eventInstallments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type EventInstallment = typeof eventInstallments.$inferSelect;
+export type InsertEventInstallment = z.infer<typeof insertEventInstallmentSchema>;
 
 export const clientsRelations = relations(clients, ({ many }) => ({
   events: many(events),
