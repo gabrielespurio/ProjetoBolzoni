@@ -589,29 +589,30 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-4">
+      <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="p-6 pb-2">
           <DialogTitle>{isReadOnly ? "Visualizar Evento" : (isEdit ? "Editar Evento" : "Novo Evento")}</DialogTitle>
           <DialogDescription>
             {isReadOnly ? "Informações do evento (somente leitura)" : (isEdit ? "Atualize as informações do evento" : "Cadastre um novo evento")}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Título *</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Título do evento" data-testid="input-event-title" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 py-2 space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Título *</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Título do evento" data-testid="input-event-title" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               <FormField
                 control={form.control}
                 name="clientId"
@@ -2019,7 +2020,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               </div>
             )}
 
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-end gap-4 p-6 border-t bg-background mt-auto">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
                 {isReadOnly ? "Fechar" : "Cancelar"}
               </Button>
