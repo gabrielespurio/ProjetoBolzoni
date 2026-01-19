@@ -133,6 +133,7 @@ export default function Events() {
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       scheduled: "bg-blue-500 text-white",
+      rescheduled: "bg-purple-500 text-white",
       completed: "bg-green-500 text-white",
       cancelled: "bg-red-500 text-white",
       deleted: "bg-gray-500 text-white",
@@ -143,6 +144,7 @@ export default function Events() {
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       scheduled: "Agendado",
+      rescheduled: "Reagendado",
       completed: "Concluído",
       cancelled: "Cancelado",
       deleted: "Excluído",
@@ -190,6 +192,12 @@ export default function Events() {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500" />
               Agendado
+            </div>
+          </SelectItem>
+          <SelectItem value="rescheduled" data-testid="status-rescheduled">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-purple-500" />
+              Reagendado
             </div>
           </SelectItem>
           <SelectItem value="completed" data-testid="status-completed">
