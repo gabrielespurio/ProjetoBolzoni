@@ -1,15 +1,13 @@
 import * as React from "react"
-
 import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
-    // h-9 to match icon buttons and default buttons.
     return (
       <input
         type={type}
         className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          "flex h-12 w-full rounded-xl border border-input bg-card px-4 py-2 text-sm transition-all duration-200 placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:ring-4 focus:ring-primary/10 outline-none disabled:cursor-not-allowed disabled:opacity-50 shadow-sm hover:border-input/80",
           className
         )}
         ref={ref}
