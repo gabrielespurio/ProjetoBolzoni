@@ -255,8 +255,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const contractValue = form.watch("contractValue");
 
   const totalPaid = useMemo(() => {
-    return (eventInstallments || []).reduce((sum, inst) => sum + parseFloat(inst?.amount || "0"), 0);
-  }, [eventInstallments]);
+    const installmentsTotal = (eventInstallments || []).reduce((sum, inst) => sum + parseFloat(inst?.amount || "0"), 0);
+    const entryValue = parseFloat(form.getValues("ticketValue") || "0");
+    return installmentsTotal + entryValue;
+  }, [eventInstallments, form.watch("ticketValue")]);
 
   const pendingValue = useMemo(() => {
     const total = parseFloat(contractValue || "0");
