@@ -590,7 +590,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="p-6 pb-2">
+        <DialogHeader className="p-6 pb-2 shrink-0">
           <DialogTitle>{isReadOnly ? "Visualizar Evento" : (isEdit ? "Editar Evento" : "Novo Evento")}</DialogTitle>
           <DialogDescription>
             {isReadOnly ? "Informações do evento (somente leitura)" : (isEdit ? "Atualize as informações do evento" : "Cadastre um novo evento")}
@@ -2020,15 +2020,15 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               </div>
             )}
 
-            <div className="flex justify-end gap-4 p-6 border-t bg-background mt-auto">
+            <div className="flex justify-end gap-4 p-6 border-t bg-background mt-auto shrink-0">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
                 {isReadOnly ? "Fechar" : "Cancelar"}
               </Button>
               {canEdit && (
-              <Button type="submit" disabled={mutation.isPending || calculatingFee} data-testid="button-save-event">
-                {(mutation.isPending || calculatingFee) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEdit ? "Atualizar" : "Cadastrar"}
-              </Button>
+                <Button type="submit" disabled={mutation.isPending || calculatingFee} data-testid="button-save-event">
+                  {(mutation.isPending || calculatingFee) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEdit ? "Atualizar" : "Cadastrar"}
+                </Button>
               )}
             </div>
           </form>
