@@ -414,13 +414,14 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         ...data,
         characterIds: selectedCharacters,
         expenses: expenses,
-        eventInstallments: eventInstallments,
+        eventInstallments: eventInstallments, // Certificando que as parcelas do estado local sejam enviadas
         eventEmployees: selectedEmployees.map(emp => ({
           employeeId: emp.employeeId,
           characterId: emp.characterId || null,
           cacheValue: emp.cacheValue,
         })),
       };
+      console.log("Enviando payload do evento:", payload);
       if (isEdit) {
         return apiRequest("PATCH", `/api/events/${event.id}`, payload);
       } else {

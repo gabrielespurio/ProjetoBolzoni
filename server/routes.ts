@@ -487,7 +487,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/events/:id", authenticateToken, requireEventEdit, async (req, res) => {
     try {
-      const { characterIds, expenses, eventEmployees, eventInstallments: installments, ...eventData } = req.body;
+      const { characterIds, expenses, eventEmployees, eventInstallments, ...eventData } = req.body;
+      console.log("Recebido PATCH para evento:", req.params.id);
+      console.log("Parcelas recebidas:", eventInstallments);
       
       // Buscar o evento atual antes de atualizar para verificar mudança de status
       const currentEvent = await storage.getEvent(req.params.id);
@@ -510,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bodyData.paymentDate = bodyData.paymentDate ? new Date(bodyData.paymentDate) : null;
       }
       const data = insertEventSchema.partial().parse(bodyData);
-      const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees, installments);
+      const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees, eventInstallments);
       
       // Se o status mudou para "completed", criar transação de contas a receber
       if (data.status === "completed" && previousStatus !== "completed" && currentEvent) {
