@@ -939,6 +939,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                             data-testid="select-event-status"
                           >
                             {field.value === "scheduled" ? "Agendado" :
+                             field.value === "rescheduled" ? "Reagendado" :
                              field.value === "completed" ? "Concluído" :
                              field.value === "cancelled" ? "Cancelado" :
                              field.value === "deleted" ? "Excluído" : "Selecione o status"}
@@ -953,6 +954,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                             <CommandGroup>
                               {[
                                 { value: "scheduled", label: "Agendado" },
+                                { value: "rescheduled", label: "Reagendado" },
                                 { value: "completed", label: "Concluído" },
                                 { value: "cancelled", label: "Cancelado" },
                                 { value: "deleted", label: "Excluído" }
