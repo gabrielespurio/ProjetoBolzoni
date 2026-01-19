@@ -59,11 +59,7 @@ const eventFormSchema = insertEventSchema.extend({
     amount: z.string(),
     description: z.string().optional(),
   })).optional(),
-  installments: z.array(z.object({
-    amount: z.string(),
-    paymentDate: z.string(),
-    paymentMethod: z.string(),
-  })).optional(),
+  installments: z.coerce.number().int().min(1).optional(),
 });
 
 type EventForm = z.infer<typeof eventFormSchema>;
@@ -1822,7 +1818,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold mb-4">Resumo do Contrato</h3>
                 <div className="space-y-3 bg-muted/50 rounded-lg p-4">
-                <div className="flex justify-between items-center text-sm">
+                  <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Personagens ({selectedCharacters.length})</span>
                   <span className="font-medium">R$ {charactersTotal.toFixed(2)}</span>
                 </div>
@@ -2019,6 +2015,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 </div>
               </div>
             )}
+            </div>
 
             <div className="flex justify-end gap-4 p-6 border-t bg-background mt-auto shrink-0">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
