@@ -216,7 +216,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border-none shadow-2xl">
         <DialogHeader>
           <DialogTitle>
             {isReadOnly ? "Visualizar Cliente" : (isEdit ? "Editar Cliente" : "Novo Cliente")}
