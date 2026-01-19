@@ -815,6 +815,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Event Categories routes
+  app.delete("/api/financial/transactions/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteTransaction(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar transação" });
+    }
+  });
+
   // Settings routes (admin only)
   app.get("/api/settings/event-categories", authenticateToken, requireAdmin, async (req, res) => {
     try {

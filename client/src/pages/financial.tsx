@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Check } from "lucide-react";
+import { Plus, Search, DollarSign, TrendingUp, TrendingDown, Check, Trash2 } from "lucide-react";
 import { FinancialDialog } from "@/components/financial-dialog";
 import { DateFilter, type DateFilterValue } from "@/components/date-filter";
 import { filterByDateRange } from "@/lib/date-utils";
@@ -15,6 +15,16 @@ import { ptBR } from "date-fns/locale";
 import type { FinancialTransaction } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Financial() {
   const [search, setSearch] = useState("");
@@ -25,6 +35,7 @@ export default function Financial() {
     preset: "custom",
     range: undefined,
   });
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: transactions, isLoading } = useQuery<FinancialTransaction[]>({
@@ -46,6 +57,27 @@ export default function Financial() {
       toast({
         title: "Erro",
         description: error.message || "Erro ao dar baixa no pagamento.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/financial/transactions/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/financial/transactions"] });
+      toast({
+        title: "Transação excluída",
+        description: "A transação foi removida com sucesso.",
+      });
+      setTransactionToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao excluir",
+        description: error.message || "Não foi possível excluir a transação.",
         variant: "destructive",
       });
     },
@@ -103,6 +135,17 @@ export default function Financial() {
   const handleMarkAsPaid = (e: React.MouseEvent, transactionId: string) => {
     e.stopPropagation();
     markAsPaidMutation.mutate(transactionId);
+  };
+
+  const handleDelete = (e: React.MouseEvent, transactionId: string) => {
+    e.stopPropagation();
+    setTransactionToDelete(transactionId);
+  };
+
+  const confirmDelete = () => {
+    if (transactionToDelete) {
+      deleteMutation.mutate(transactionToDelete);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -172,6 +215,16 @@ export default function Financial() {
                     <span className="sm:hidden">Baixa</span>
                   </Button>
                 )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => handleDelete(e, transaction.id)}
+                  disabled={deleteMutation.isPending}
+                  data-testid={`button-delete-${transaction.id}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 <Badge 
                   variant={transaction.isPaid ? "outline" : "destructive"} 
                   className={transaction.isPaid ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700" : ""}
@@ -329,6 +382,26 @@ export default function Financial() {
         onClose={handleClose}
         transaction={selectedTransaction}
       />
+
+      <AlertDialog open={!!transactionToDelete} onOpenChange={() => setTransactionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente a transação financeira do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
