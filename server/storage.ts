@@ -374,6 +374,7 @@ export class DatabaseStorage implements IStorage {
         );
         
         const expenses = await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, event.id));
+        const installments = await db.select().from(eventInstallments).where(eq(eventInstallments.eventId, event.id));
         
         return {
           ...event,
@@ -381,6 +382,7 @@ export class DatabaseStorage implements IStorage {
           characterNames: characters.map(c => c.characterName).filter(Boolean),
           eventEmployees: eventEmpsWithCharacters,
           expenses: expenses,
+          eventInstallments: installments,
         };
       })
     );
