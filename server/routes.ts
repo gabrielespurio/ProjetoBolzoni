@@ -460,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/events", authenticateToken, requireEventEdit, async (req, res) => {
     try {
-      const { characterIds, expenses, eventEmployees, ...eventData } = req.body;
+      const { characterIds, expenses, eventEmployees, eventInstallments, ...eventData } = req.body;
       
       // Validate date is not more than 1 year in the past
       const eventDate = new Date(eventData.date);
@@ -478,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: eventDate,
         paymentDate: eventData.paymentDate ? new Date(eventData.paymentDate) : null,
       });
-      const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees);
+      const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees, eventInstallments);
       res.status(201).json(event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar evento" });
