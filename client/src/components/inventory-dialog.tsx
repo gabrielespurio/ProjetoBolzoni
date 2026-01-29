@@ -25,6 +25,7 @@ const inventoryFormSchema = insertInventoryItemSchema.extend({
   salePrice: z.string().optional(),
   notes: z.string().optional(),
   parentId: z.string().optional(),
+  partType: z.enum(["head", "body", "feet"]).optional().nullable(),
 });
 
 type InventoryForm = z.infer<typeof inventoryFormSchema>;
@@ -72,6 +73,7 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           salePrice: item.salePrice?.toString() || "",
           notes: item.notes || "",
           parentId: item.parentId || undefined,
+          partType: item.partType as any || undefined,
         });
       } else {
         form.reset({
@@ -83,6 +85,7 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           salePrice: "",
           notes: "",
           parentId: undefined,
+          partType: undefined,
         });
       }
     }
@@ -181,31 +184,55 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                 )}
               />
               {selectedType === "part" && (
-                <FormField
-                  control={form.control}
-                  name="parentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Pertence ao Personagem</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || "none"}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um personagem" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum (Peça avulsa)</SelectItem>
-                          {characters?.map((char) => (
-                            <SelectItem key={char.id} value={char.id}>
-                              {char.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <>
+                  <FormField
+                    control={form.control}
+                    name="partType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de Peça *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o tipo de peça" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="head">Cabeça</SelectItem>
+                            <SelectItem value="body">Corpo</SelectItem>
+                            <SelectItem value="feet">Pés</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="parentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pertence ao Personagem</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "none"}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um personagem" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum (Peça avulsa)</SelectItem>
+                            {characters?.map((char) => (
+                              <SelectItem key={char.id} value={char.id}>
+                                {char.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
               <FormField
                 control={form.control}
@@ -256,19 +283,21 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="salePrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor de Venda</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-sale-price" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {selectedType !== "part" && (
+                <FormField
+                  control={form.control}
+                  name="salePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor de Venda</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-sale-price" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <FormField
               control={form.control}

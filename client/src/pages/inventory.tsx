@@ -242,9 +242,16 @@ export default function Inventory() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {getTypeName(item.type)}
-                            </Badge>
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="text-xs capitalize w-fit">
+                                {getTypeName(item.type)}
+                              </Badge>
+                              {item.type === "part" && item.partType && (
+                                <Badge variant="secondary" className="text-[10px] w-fit">
+                                  {item.partType === "head" ? "Cabeça" : item.partType === "body" ? "Corpo" : "Pés"}
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <span className={`font-mono font-semibold ${

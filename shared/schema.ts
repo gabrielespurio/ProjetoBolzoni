@@ -8,6 +8,7 @@ export const userRoleEnum = pgEnum("user_role", ["admin", "employee", "secretari
 export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted", "rescheduled"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "payable"]);
 export const inventoryTypeEnum = pgEnum("inventory_type", ["consumable", "character", "part", "material", "accessory"]);
+export const partTypeEnum = pgEnum("part_type", ["head", "body", "feet"]);
 
 export const personTypeEnum = pgEnum("person_type", ["fisica", "juridica"]);
 
@@ -106,6 +107,7 @@ export const inventoryItems = pgTable("inventory_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   type: inventoryTypeEnum("type").notNull(),
+  partType: partTypeEnum("part_type"),
   parentId: varchar("parent_id"),
   quantity: integer("quantity").notNull().default(0),
   minQuantity: integer("min_quantity").notNull().default(0),
