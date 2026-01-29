@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertInventoryItemSchema, type InventoryItem } from "@shared/schema";
@@ -24,6 +24,7 @@ const inventoryFormSchema = insertInventoryItemSchema.extend({
   costPrice: z.string().optional(),
   salePrice: z.string().optional(),
   notes: z.string().optional(),
+  parentId: z.string().optional(),
 });
 
 type InventoryForm = z.infer<typeof inventoryFormSchema>;
@@ -38,6 +39,11 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
   const { toast } = useToast();
   const isEdit = !!item;
 
+  const { data: characters } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/inventory"],
+    select: (items) => items.filter(i => i.type === "character"),
+  });
+
   const form = useForm<InventoryForm>({
     resolver: zodResolver(inventoryFormSchema),
     defaultValues: {
@@ -48,35 +54,35 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
       costPrice: "",
       salePrice: "",
       notes: "",
+      parentId: undefined,
     },
   });
 
   const selectedType = form.watch("type");
 
-  // Atualizar o formulário quando o item ou o estado do diálogo mudar
   useEffect(() => {
     if (open) {
       if (item) {
-        // Modo edição: preencher com os dados do item
         form.reset({
           name: item.name,
           type: item.type,
           quantity: item.quantity,
           minQuantity: item.minQuantity,
-          costPrice: item.costPrice || "",
-          salePrice: item.salePrice || "",
+          costPrice: item.costPrice?.toString() || "",
+          salePrice: item.salePrice?.toString() || "",
           notes: item.notes || "",
+          parentId: item.parentId || undefined,
         });
       } else {
-        // Modo criação: resetar para valores padrão
         form.reset({
           name: "",
-          type: "consumable",
+          type: "character",
           quantity: 0,
           minQuantity: 0,
           costPrice: "",
           salePrice: "",
           notes: "",
+          parentId: undefined,
         });
       }
     }
@@ -110,12 +116,12 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
   });
 
   const onSubmit = (data: InventoryForm) => {
-    // Limpar campos vazios para evitar erros de validação no backend
     const cleanedData = {
       ...data,
       costPrice: data.costPrice && data.costPrice !== "" ? data.costPrice : undefined,
       salePrice: data.salePrice && data.salePrice !== "" ? data.salePrice : undefined,
       notes: data.notes && data.notes !== "" ? data.notes : undefined,
+      parentId: data.parentId === "none" ? undefined : data.parentId,
     };
     mutation.mutate(cleanedData);
   };
@@ -163,14 +169,44 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="character">Personagem Completo</SelectItem>
+                        <SelectItem value="part">Peça</SelectItem>
+                        <SelectItem value="material">Material</SelectItem>
+                        <SelectItem value="accessory">Acessório</SelectItem>
                         <SelectItem value="consumable">Consumível</SelectItem>
-                        <SelectItem value="character">Personagem</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              {selectedType === "part" && (
+                <FormField
+                  control={form.control}
+                  name="parentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pertence ao Personagem</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || "none"}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um personagem" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum (Peça avulsa)</SelectItem>
+                          {characters?.map((char) => (
+                            <SelectItem key={char.id} value={char.id}>
+                              {char.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
                 name="quantity"
@@ -189,56 +225,50 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                   </FormItem>
                 )}
               />
-              {selectedType !== "character" && (
-                <FormField
-                  control={form.control}
-                  name="minQuantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estoque Mínimo *</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          data-testid="input-item-min-quantity"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-              {selectedType === "character" && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="costPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor de Custo</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-cost-price" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="salePrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor de Venda</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-sale-price" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
+              <FormField
+                control={form.control}
+                name="minQuantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estoque Mínimo *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        data-testid="input-item-min-quantity"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="costPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor de Custo</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-cost-price" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="salePrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor de Venda</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-sale-price" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             <FormField
               control={form.control}

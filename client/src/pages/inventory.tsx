@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -19,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, AlertTriangle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, AlertTriangle, MoreHorizontal, Pencil, Trash2, Package, Ruler, Scissors, Box } from "lucide-react";
 import { InventoryDialog } from "@/components/inventory-dialog";
 import { DateFilter, type DateFilterValue } from "@/components/date-filter";
 import { filterByDateRange } from "@/lib/date-utils";
@@ -29,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Inventory() {
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("character");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilterValue>({
@@ -73,12 +75,13 @@ export default function Inventory() {
     result = filterByDateRange(result, "createdAt", dateFilter);
     
     result = result.filter((item) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.type.toLowerCase().includes(search.toLowerCase())
+      (item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.type.toLowerCase().includes(search.toLowerCase())) &&
+      (activeTab === "all" || item.type === activeTab)
     );
     
     return result;
-  }, [items, search, dateFilter]);
+  }, [items, search, dateFilter, activeTab]);
 
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);
@@ -115,6 +118,17 @@ export default function Inventory() {
     }).format(parseFloat(value));
   };
 
+  const getTypeName = (type: string) => {
+    switch (type) {
+      case "character": return "Personagem Completo";
+      case "part": return "Peça";
+      case "material": return "Material";
+      case "accessory": return "Acessório";
+      case "consumable": return "Consumível";
+      default: return type;
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -124,11 +138,11 @@ export default function Inventory() {
             Controle de produtos e personagens
           </p>
         </div>
-{canEdit && (
-        <Button onClick={handleAdd} data-testid="button-add-item" className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Item
-        </Button>
+        {canEdit && (
+          <Button onClick={handleAdd} data-testid="button-add-item" className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Item
+          </Button>
         )}
       </div>
 
@@ -146,203 +160,221 @@ export default function Inventory() {
         </Card>
       )}
 
-      <Card className="border-card-border">
-        <CardHeader className="border-b border-border p-3 md:p-6">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar item..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-inventory"
-              />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto gap-1">
+          <TabsTrigger value="character" className="flex items-center gap-2 py-2">
+            <Package className="h-4 w-4" />
+            <span className="hidden md:inline">Personagens</span>
+            <span className="md:hidden">Person.</span>
+          </TabsTrigger>
+          <TabsTrigger value="part" className="flex items-center gap-2 py-2">
+            <Scissors className="h-4 w-4" />
+            <span>Peças</span>
+          </TabsTrigger>
+          <TabsTrigger value="material" className="flex items-center gap-2 py-2">
+            <Ruler className="h-4 w-4" />
+            <span>Material</span>
+          </TabsTrigger>
+          <TabsTrigger value="accessory" className="flex items-center gap-2 py-2">
+            <Box className="h-4 w-4" />
+            <span>Acessórios</span>
+          </TabsTrigger>
+          <TabsTrigger value="consumable" className="flex items-center gap-2 py-2">
+            <Search className="h-4 w-4" />
+            <span>Consumíveis</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <Card className="border-card-border mt-4">
+          <CardHeader className="border-b border-border p-3 md:p-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar item..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search-inventory"
+                />
+              </div>
+              <DateFilter value={dateFilter} onChange={setDateFilter} />
             </div>
-            <DateFilter value={dateFilter} onChange={setDateFilter} />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-2 p-3 md:p-6">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-14 md:h-16 w-full" />
-              ))}
-            </div>
-          ) : filteredItems && filteredItems.length > 0 ? (
-            <>
-            <div className="hidden md:block overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]">Nome</TableHead>
-                    <TableHead className="w-[120px]">Tipo</TableHead>
-                    <TableHead className="text-right w-[100px]">Quantidade</TableHead>
-                    <TableHead className="text-right w-[120px]">Estoque Mín.</TableHead>
-{canEdit && <TableHead className="text-right w-[120px]">Valor Custo</TableHead>}
-                    {canEdit && <TableHead className="text-right w-[120px]">Valor Venda</TableHead>}
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    {canEdit && <TableHead className="text-right w-[80px]">Ações</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="space-y-2 p-3 md:p-6">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-14 md:h-16 w-full" />
+                ))}
+              </div>
+            ) : filteredItems && filteredItems.length > 0 ? (
+              <>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">Nome</TableHead>
+                        <TableHead className="w-[120px]">Tipo</TableHead>
+                        <TableHead className="text-right w-[100px]">Quantidade</TableHead>
+                        <TableHead className="text-right w-[120px]">Estoque Mín.</TableHead>
+                        {canEdit && <TableHead className="text-right w-[120px]">Valor Custo</TableHead>}
+                        {canEdit && <TableHead className="text-right w-[120px]">Valor Venda</TableHead>}
+                        <TableHead className="w-[100px]">Status</TableHead>
+                        {canEdit && <TableHead className="text-right w-[80px]">Ações</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredItems.map((item) => (
+                        <TableRow
+                          key={item.id}
+                          className={`cursor-pointer ${
+                            isLowStock(item) ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/50"
+                          }`}
+                          data-testid={`inventory-item-${item.id}`}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                              <span className="text-foreground">{item.name}</span>
+                              {item.unit && (
+                                <span className="text-xs text-muted-foreground">Unidade: {item.unit}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {getTypeName(item.type)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={`font-mono font-semibold ${
+                              isLowStock(item) ? "text-destructive" : "text-foreground"
+                            }`}>
+                              {item.quantity}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-mono text-muted-foreground">
+                              {item.minQuantity}
+                            </span>
+                          </TableCell>
+                          {canEdit && (
+                            <TableCell className="text-right">
+                              <span className="font-mono text-sm">
+                                {formatCurrency(item.costPrice)}
+                              </span>
+                            </TableCell>
+                          )}
+                          {canEdit && (
+                            <TableCell className="text-right">
+                              <span className="font-mono text-sm">
+                                {formatCurrency(item.salePrice)}
+                              </span>
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            {isLowStock(item) ? (
+                              <div className="flex items-center gap-1.5">
+                                <AlertTriangle className="h-4 w-4 text-destructive" />
+                                <span className="text-xs font-medium text-destructive">Baixo</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Normal</span>
+                            )}
+                          </TableCell>
+                          {canEdit && (
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    data-testid={`button-actions-${item.id}`}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => handleEdit(item)}
+                                    data-testid={`button-edit-${item.id}`}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(item.id)}
+                                    className="text-destructive focus:text-destructive"
+                                    data-testid={`button-delete-${item.id}`}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="md:hidden divide-y divide-border">
                   {filteredItems.map((item) => (
-                    <TableRow
+                    <div
                       key={item.id}
-                      className={`cursor-pointer ${
-                        isLowStock(item) ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/50"
+                      className={`p-3 hover-elevate active-elevate-2 cursor-pointer ${
+                        isLowStock(item) ? "bg-destructive/5" : ""
                       }`}
-                      data-testid={`inventory-item-${item.id}`}
+                      onClick={() => canEdit && handleEdit(item)}
+                      data-testid={`inventory-item-mobile-${item.id}`}
                     >
-                      <TableCell className="font-medium">
-                        <div className="flex flex-col">
-                          <span className="text-foreground">{item.name}</span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-sm font-semibold text-foreground truncate">{item.name}</h3>
+                            <Badge variant="outline" className="text-[10px] capitalize">
+                              {getTypeName(item.type)}
+                            </Badge>
+                          </div>
                           {item.unit && (
-                            <span className="text-xs text-muted-foreground">Unidade: {item.unit}</span>
+                            <p className="text-xs text-muted-foreground mt-0.5">Unidade: {item.unit}</p>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {item.type === "consumable" ? "Consumível" : "Personagem"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={`font-mono font-semibold ${
-                          isLowStock(item) ? "text-destructive" : "text-foreground"
-                        }`}>
-                          {item.quantity}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="font-mono text-muted-foreground">
-                          {item.minQuantity}
-                        </span>
-                      </TableCell>
-{canEdit && (
-                      <TableCell className="text-right">
-                        {item.type === "character" ? (
-                          <span className="font-mono text-sm">
-                            {formatCurrency(item.costPrice)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
-                        )}
-                      </TableCell>
-                      )}
-                      {canEdit && (
-                      <TableCell className="text-right">
-                        {item.type === "character" ? (
-                          <span className="font-mono text-sm">
-                            {formatCurrency(item.salePrice)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
-                        )}
-                      </TableCell>
-                      )}
-                      <TableCell>
-                        {isLowStock(item) ? (
-                          <div className="flex items-center gap-1.5">
-                            <AlertTriangle className="h-4 w-4 text-destructive" />
-                            <span className="text-xs font-medium text-destructive">Baixo</span>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <span className={`font-mono font-semibold text-sm ${
+                              isLowStock(item) ? "text-destructive" : "text-foreground"
+                            }`}>
+                              {item.quantity}
+                            </span>
+                            <span className="text-xs text-muted-foreground"> / {item.minQuantity}</span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Normal</span>
-                        )}
-                      </TableCell>
+                          {isLowStock(item) && (
+                            <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                          )}
+                        </div>
+                      </div>
                       {canEdit && (
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              data-testid={`button-actions-${item.id}`}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(item)}
-                              data-testid={`button-edit-${item.id}`}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(item.id)}
-                              className="text-destructive focus:text-destructive"
-                              data-testid={`button-delete-${item.id}`}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                        <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                          <span>Custo: {formatCurrency(item.costPrice)}</span>
+                          <span>Venda: {formatCurrency(item.salePrice)}</span>
+                        </div>
                       )}
-                    </TableRow>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="md:hidden divide-y divide-border">
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`p-3 hover-elevate active-elevate-2 cursor-pointer ${
-                    isLowStock(item) ? "bg-destructive/5" : ""
-                  }`}
-                  onClick={() => canEdit && handleEdit(item)}
-                  data-testid={`inventory-item-mobile-${item.id}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-semibold text-foreground truncate">{item.name}</h3>
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {item.type === "consumable" ? "Consumível" : "Personagem"}
-                        </Badge>
-                      </div>
-                      {item.unit && (
-                        <p className="text-xs text-muted-foreground mt-0.5">Unidade: {item.unit}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <span className={`font-mono font-semibold text-sm ${
-                          isLowStock(item) ? "text-destructive" : "text-foreground"
-                        }`}>
-                          {item.quantity}
-                        </span>
-                        <span className="text-xs text-muted-foreground"> / {item.minQuantity}</span>
-                      </div>
-                      {isLowStock(item) && (
-                        <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
-                      )}
-                    </div>
-                  </div>
-                  {canEdit && item.type === "character" && (
-                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
-                      <span>Custo: {formatCurrency(item.costPrice)}</span>
-                      <span>Venda: {formatCurrency(item.salePrice)}</span>
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-            </>
-          ) : (
-            <div className="p-8 md:p-12 text-center">
-              <p className="text-xs md:text-sm text-muted-foreground">
-                {search ? "Nenhum item encontrado" : "Nenhum item cadastrado"}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </>
+            ) : (
+              <div className="p-8 md:p-12 text-center">
+                <p className="text-xs md:text-sm text-muted-foreground">
+                  {search ? "Nenhum item encontrado" : "Nenhum item cadastrado nesta categoria"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </Tabs>
 
       <InventoryDialog
         open={isDialogOpen}
