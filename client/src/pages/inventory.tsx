@@ -179,10 +179,6 @@ export default function Inventory() {
             <Box className="h-4 w-4" />
             <span>Acessórios</span>
           </TabsTrigger>
-          <TabsTrigger value="consumable" className="flex items-center gap-2 py-2">
-            <Search className="h-4 w-4" />
-            <span>Consumíveis</span>
-          </TabsTrigger>
         </TabsList>
 
         <Card className="border-card-border mt-4">

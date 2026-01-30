@@ -7,7 +7,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["admin", "employee", "secretaria"]);
 export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted", "rescheduled"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "payable"]);
-export const inventoryTypeEnum = pgEnum("inventory_type", ["consumable", "character", "part", "material", "accessory"]);
+export const inventoryTypeEnum = pgEnum("inventory_type", ["character", "part", "material", "accessory"]);
 export const partTypeEnum = pgEnum("part_type", ["head", "body", "feet"]);
 
 export const personTypeEnum = pgEnum("person_type", ["fisica", "juridica"]);

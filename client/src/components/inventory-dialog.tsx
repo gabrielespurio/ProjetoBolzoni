@@ -49,7 +49,7 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
     resolver: zodResolver(inventoryFormSchema),
     defaultValues: {
       name: "",
-      type: "consumable",
+      type: "character",
       quantity: 0,
       minQuantity: 0,
       costPrice: "",
@@ -175,7 +175,6 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                         <SelectItem value="part">Peça</SelectItem>
                         <SelectItem value="material">Material</SelectItem>
                         <SelectItem value="accessory">Acessório</SelectItem>
-                        <SelectItem value="consumable">Consumível</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
