@@ -617,127 +617,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="eventType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Evento</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                        disabled={isReadOnly}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="package">Pacote</SelectItem>
-                          <SelectItem value="service">Serviço</SelectItem>
-                          <SelectItem value="both">Ambos (Pacote e Serviço)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {(eventType === "package" || eventType === "both") && (
-                  <FormField
-                    control={form.control}
-                    name="packageId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Pacote</FormLabel>
-                        <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                  "w-full justify-between",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isReadOnly}
-                              >
-                                {field.value
-                                  ? packages?.find((p) => p.id === field.value)?.name
-                                  : "Selecione um pacote"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                            <Command>
-                              <CommandInput placeholder="Buscar pacote..." />
-                              <CommandList>
-                                <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
-                                <CommandGroup>
-                                  {packages?.map((p) => (
-                                    <CommandItem
-                                      key={p.id}
-                                      value={p.name}
-                                      onSelect={() => {
-                                        form.setValue("packageId", p.id);
-                                        setPackagePopoverOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          p.id === field.value ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      {p.name}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {(eventType === "service" || eventType === "both") && (
-                  <FormField
-                    control={form.control}
-                    name="serviceId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Serviço</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                          disabled={isReadOnly}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um serviço" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {services?.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <FormField
-                  control={form.control}
                   name="title"
                   render={({ field }) => (
                     <FormItem>
@@ -945,6 +824,125 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="eventType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Evento</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      disabled={isReadOnly}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="package">Pacote</SelectItem>
+                        <SelectItem value="service">Serviço</SelectItem>
+                        <SelectItem value="both">Ambos (Pacote e Serviço)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {(eventType === "package" || eventType === "both") && (
+                <FormField
+                  control={form.control}
+                  name="packageId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pacote</FormLabel>
+                      <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={isReadOnly}
+                            >
+                              {field.value
+                                ? packages?.find((p) => p.id === field.value)?.name
+                                : "Selecione um pacote"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                          <Command>
+                            <CommandInput placeholder="Buscar pacote..." />
+                            <CommandList>
+                              <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {packages?.map((p) => (
+                                  <CommandItem
+                                    key={p.id}
+                                    value={p.name}
+                                    onSelect={() => {
+                                      form.setValue("packageId", p.id);
+                                      setPackagePopoverOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        p.id === field.value ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {p.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {(eventType === "service" || eventType === "both") && (
+                <FormField
+                  control={form.control}
+                  name="serviceId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Serviço</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        disabled={isReadOnly}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um serviço" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {services?.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <div className="space-y-4">
