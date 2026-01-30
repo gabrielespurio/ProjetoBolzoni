@@ -16,8 +16,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon, RefreshCw, ExternalLink } from "lucide-react";
-import type { EventCategory, EmployeeRole, Package, Skill, Service } from "@shared/schema";
+import type { EventCategory, EmployeeRole, Package, Skill, Service, InventoryItem, PackageService, PackageMaterial } from "@shared/schema";
 import { insertSkillSchema, insertServiceSchema } from "@shared/schema";
+
+interface PackageWithRelations extends Package {
+  services: PackageService[];
+  materials: PackageMaterial[];
+}
 
 const categorySchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -33,6 +38,12 @@ const roleSchema = z.object({
 const packageSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   description: z.string().optional(),
+  characterCount: z.number().min(0).default(0),
+  serviceIds: z.array(z.string()).optional().default([]),
+  materialIds: z.array(z.object({
+    materialId: z.string(),
+    quantity: z.number().min(1).default(1),
+  })).optional().default([]),
 });
 
 const skillFormSchema = insertSkillSchema.extend({
@@ -523,7 +534,7 @@ export default function Settings() {
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<EventCategory | null>(null);
   const [editingRole, setEditingRole] = useState<EmployeeRole | null>(null);
-  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [editingPackage, setEditingPackage] = useState<PackageWithRelations | null>(null);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [kmValue, setKmValue] = useState<string>("");
@@ -539,7 +550,7 @@ export default function Settings() {
   });
 
   // Packages
-  const { data: packages = [], isLoading: loadingPackages } = useQuery<Package[]>({
+  const { data: packages = [], isLoading: loadingPackages } = useQuery<PackageWithRelations[]>({
     queryKey: ["/api/settings/packages"],
   });
 
@@ -552,6 +563,14 @@ export default function Settings() {
   const { data: services = [], isLoading: loadingServices } = useQuery<Service[]>({
     queryKey: ["/api/settings/services"],
   });
+
+  // Inventory Items for materials selection
+  const { data: inventoryItems = [] } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/inventory"],
+  });
+
+  // Filter materials (type = 'material')
+  const materials = inventoryItems.filter(item => item.type === "material");
 
   // System Settings - Kilometragem
   const { data: kmSetting } = useQuery({
@@ -609,7 +628,7 @@ export default function Settings() {
 
   const packageForm = useForm<PackageForm>({
     resolver: zodResolver(packageSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", description: "", characterCount: 0, serviceIds: [], materialIds: [] },
   });
 
   const skillForm = useForm<SkillForm>({
@@ -884,10 +903,13 @@ export default function Settings() {
     roleForm.reset();
   };
 
-  const handleEditPackage = (pkg: Package) => {
+  const handleEditPackage = (pkg: PackageWithRelations) => {
     setEditingPackage(pkg);
     packageForm.setValue("name", pkg.name);
     packageForm.setValue("description", pkg.description || "");
+    packageForm.setValue("characterCount", pkg.characterCount || 0);
+    packageForm.setValue("serviceIds", pkg.services?.map(s => s.serviceId) || []);
+    packageForm.setValue("materialIds", pkg.materials?.map(m => ({ materialId: m.materialId, quantity: m.quantity })) || []);
     setPackageDialogOpen(true);
   };
 
@@ -1455,7 +1477,7 @@ export default function Settings() {
 
       {/* Package Dialog */}
       <Dialog open={packageDialogOpen} onOpenChange={handleClosePackageDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingPackage ? "Editar Pacote" : "Novo Pacote"}</DialogTitle>
             <DialogDescription>
@@ -1484,8 +1506,131 @@ export default function Settings() {
                   <FormItem>
                     <FormLabel>Descrição</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Descrição do pacote" rows={3} data-testid="input-package-description" />
+                      <Textarea {...field} value={field.value || ""} placeholder="Descrição do pacote" rows={3} data-testid="input-package-description" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={packageForm.control}
+                name="characterCount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantidade de Personagens</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0"
+                        {...field}
+                        value={field.value || 0}
+                        onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                        placeholder="0" 
+                        data-testid="input-package-character-count" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={packageForm.control}
+                name="serviceIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Serviços Vinculados</FormLabel>
+                    <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                      {services.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nenhum serviço cadastrado</p>
+                      ) : (
+                        services.map((service) => (
+                          <div key={service.id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`service-${service.id}`}
+                              checked={field.value?.includes(service.id) || false}
+                              onChange={(e) => {
+                                const currentValue = field.value || [];
+                                if (e.target.checked) {
+                                  field.onChange([...currentValue, service.id]);
+                                } else {
+                                  field.onChange(currentValue.filter((id: string) => id !== service.id));
+                                }
+                              }}
+                              className="h-4 w-4 rounded border-gray-300"
+                              data-testid={`checkbox-service-${service.id}`}
+                            />
+                            <label htmlFor={`service-${service.id}`} className="text-sm cursor-pointer">
+                              {service.name}
+                            </label>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={packageForm.control}
+                name="materialIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Materiais Vinculados</FormLabel>
+                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                      {materials.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Nenhum material cadastrado no inventário</p>
+                      ) : (
+                        materials.map((material) => {
+                          const existingMaterial = field.value?.find((m: { materialId: string }) => m.materialId === material.id);
+                          const isSelected = !!existingMaterial;
+                          
+                          return (
+                            <div key={material.id} className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                id={`material-${material.id}`}
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const currentValue = field.value || [];
+                                  if (e.target.checked) {
+                                    field.onChange([...currentValue, { materialId: material.id, quantity: 1 }]);
+                                  } else {
+                                    field.onChange(currentValue.filter((m: { materialId: string }) => m.materialId !== material.id));
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-gray-300"
+                                data-testid={`checkbox-material-${material.id}`}
+                              />
+                              <label htmlFor={`material-${material.id}`} className="text-sm cursor-pointer flex-1">
+                                {material.name}
+                              </label>
+                              {isSelected && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-muted-foreground">Qtd:</span>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    className="w-16 h-7 text-sm"
+                                    value={existingMaterial?.quantity || 1}
+                                    onChange={(e) => {
+                                      const qty = parseInt(e.target.value) || 1;
+                                      const currentValue = field.value || [];
+                                      field.onChange(
+                                        currentValue.map((m: { materialId: string; quantity: number }) =>
+                                          m.materialId === material.id ? { ...m, quantity: qty } : m
+                                        )
+                                      );
+                                    }}
+                                    data-testid={`input-material-quantity-${material.id}`}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
