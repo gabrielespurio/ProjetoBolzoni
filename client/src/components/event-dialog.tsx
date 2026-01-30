@@ -1068,6 +1068,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
+                            type="button"
                             variant="outline"
                             role="combobox"
                             className="w-full justify-between"
@@ -1179,6 +1180,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
+                              type="button"
                               variant="outline"
                               role="combobox"
                               className={cn(
@@ -1243,6 +1245,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
+                                type="button"
                                 variant="outline"
                                 role="combobox"
                                 className={cn(
@@ -1467,6 +1470,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
+                            type="button"
                             variant="outline"
                             role="combobox"
                             className={cn(
