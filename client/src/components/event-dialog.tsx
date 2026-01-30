@@ -1145,105 +1145,40 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               </div>
             </div>
 
-{canViewFinancials && (
+            {canViewFinancials && (
               <div className="space-y-4">
                 <h3 className="text-sm font-medium">Informações de Pagamento</h3>
-              <div className="grid gap-4 md:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="ticketValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor da Entrada</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
-                          <Input 
-                            {...field} 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0.00" 
-                            className="pl-10"
-                            data-testid="input-event-ticket-value" 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Forma de Pagamento</FormLabel>
-                      <Popover open={methodPopoverOpen} onOpenChange={setMethodPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              data-testid="select-payment-method"
-                            >
-                              {field.value === "dinheiro" ? "Dinheiro" :
-                               field.value === "pix" ? "PIX" :
-                               field.value === "cartao_credito" ? "Cartão de Crédito" :
-                               field.value === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[400px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar forma..." />
-                            <CommandList>
-                              <CommandGroup>
-                                {[
-                                  { value: "dinheiro", label: "Dinheiro" },
-                                  { value: "pix", label: "PIX" },
-                                  { value: "cartao_credito", label: "Cartão de Crédito" },
-                                  { value: "cartao_debito", label: "Cartão de Débito" }
-                                ].map((item) => (
-                                  <CommandItem
-                                    key={item.value}
-                                    value={item.label}
-                                    onSelect={() => {
-                                      field.onChange(item.value);
-                                      setMethodPopoverOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === item.value ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    {item.label}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {paymentMethod === "cartao_debito" && (
+                <div className="grid gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
-                    name="cardType"
+                    name="ticketValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor da Entrada</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              className="pl-10"
+                              data-testid="input-event-ticket-value" 
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="paymentMethod"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Tipo de Cartão</FormLabel>
-                        <Popover open={cardPopoverOpen} onOpenChange={setCardPopoverOpen}>
+                        <FormLabel>Forma de Pagamento</FormLabel>
+                        <Popover open={methodPopoverOpen} onOpenChange={setMethodPopoverOpen}>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
@@ -1254,29 +1189,33 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                                   "w-full justify-between",
                                   !field.value && "text-muted-foreground"
                                 )}
-                                data-testid="select-card-type"
+                                data-testid="select-payment-method"
                               >
-                                {field.value === "visa_master" ? "Visa/Master" :
-                                 field.value === "outros" ? "Outros" : "Selecione"}
+                                {field.value === "dinheiro" ? "Dinheiro" :
+                                 field.value === "pix" ? "PIX" :
+                                 field.value === "cartao_credito" ? "Cartão de Crédito" :
+                                 field.value === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-[400px] p-0" align="start">
                             <Command>
-                              <CommandInput placeholder="Buscar tipo..." />
+                              <CommandInput placeholder="Buscar forma..." />
                               <CommandList>
                                 <CommandGroup>
                                   {[
-                                    { value: "visa_master", label: "Visa/Master" },
-                                    { value: "outros", label: "Outros" }
+                                    { value: "dinheiro", label: "Dinheiro" },
+                                    { value: "pix", label: "PIX" },
+                                    { value: "cartao_credito", label: "Cartão de Crédito" },
+                                    { value: "cartao_debito", label: "Cartão de Débito" }
                                   ].map((item) => (
                                     <CommandItem
                                       key={item.value}
                                       value={item.label}
                                       onSelect={() => {
                                         field.onChange(item.value);
-                                        setCardPopoverOpen(false);
+                                        setMethodPopoverOpen(false);
                                       }}
                                     >
                                       <Check
@@ -1297,193 +1236,233 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       </FormItem>
                     )}
                   />
-                )}
-                <FormField
-                  control={form.control}
-                  name="paymentDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data do Pagamento</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="date" data-testid="input-payment-date" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                  {paymentMethod === "cartao_debito" && (
+                    <FormField
+                      control={form.control}
+                      name="cardType"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Tipo de Cartão</FormLabel>
+                          <Popover open={cardPopoverOpen} onOpenChange={setCardPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  className={cn(
+                                    "w-full justify-between",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                  data-testid="select-card-type"
+                                >
+                                  {field.value === "visa_master" ? "Visa/Master" :
+                                   field.value === "outros" ? "Outros" : "Selecione"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Buscar tipo..." />
+                                <CommandList>
+                                  <CommandGroup>
+                                    {[
+                                      { value: "visa_master", label: "Visa/Master" },
+                                      { value: "outros", label: "Outros" }
+                                    ].map((item) => (
+                                      <CommandItem
+                                        key={item.value}
+                                        value={item.label}
+                                        onSelect={() => {
+                                          field.onChange(item.value);
+                                          setCardPopoverOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            field.value === item.value ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {item.label}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   )}
-                />
-              </div>
-
-              <div className="space-y-4 border rounded-md p-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Parcelas Pagas</h4>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowInstallmentForm(!showInstallmentForm)}
-                    data-testid="button-add-installment"
-                  >
-                    {showInstallmentForm ? "Cancelar" : "Adicionar Parcela"}
-                  </Button>
+                  <FormField
+                    control={form.control}
+                    name="paymentDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data do Pagamento</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="date" data-testid="input-payment-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 py-2 border-b">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground uppercase">Valor do Contrato</p>
-                    <p className="text-sm font-semibold text-primary">R$ {parseFloat(contractValue || "0").toFixed(2)}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground uppercase">Total Pago</p>
-                    <p className="text-sm font-semibold text-green-600">R$ {totalPaid.toFixed(2)}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground uppercase">Pendente</p>
-                    <p className={`text-sm font-semibold ${pendingValue > 0 ? "text-destructive" : "text-green-600"}`}>
-                      R$ {pendingValue.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-
-                {showInstallmentForm && (
-                  <div className="grid gap-4 p-4 border rounded-md bg-muted/50">
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="space-y-2">
-                        <FormLabel>Valor</FormLabel>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={newInstallment.amount}
-                          onChange={(e) => setNewInstallment({ ...newInstallment, amount: e.target.value })}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <FormLabel>Data</FormLabel>
-                        <Input
-                          type="date"
-                          value={newInstallment.paymentDate}
-                          onChange={(e) => setNewInstallment({ ...newInstallment, paymentDate: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2 flex flex-col">
-                        <FormLabel>Forma</FormLabel>
-                        <Popover open={installmentMethodPopoverOpen} onOpenChange={setInstallmentMethodPopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !newInstallment.paymentMethod && "text-muted-foreground"
-                              )}
-                            >
-                              {newInstallment.paymentMethod === "dinheiro" ? "Dinheiro" :
-                               newInstallment.paymentMethod === "pix" ? "PIX" :
-                               newInstallment.paymentMethod === "cartao_credito" ? "Cartão de Crédito" :
-                               newInstallment.paymentMethod === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[200px] p-0">
-                            <Command>
-                              <CommandInput placeholder="Buscar forma..." />
-                              <CommandList>
-                                <CommandGroup>
-                                  {[
-                                    { value: "dinheiro", label: "Dinheiro" },
-                                    { value: "pix", label: "PIX" },
-                                    { value: "cartao_credito", label: "Cartão de Crédito" },
-                                    { value: "cartao_debito", label: "Cartão de Débito" }
-                                  ].map((item) => (
-                                    <CommandItem
-                                      key={item.value}
-                                      value={item.label}
-                                      onSelect={() => {
-                                        setNewInstallment({ ...newInstallment, paymentMethod: item.value });
-                                        setInstallmentMethodPopoverOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          newInstallment.paymentMethod === item.value ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      {item.label}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
+                <div className="space-y-4 border rounded-md p-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium">Parcelas Pagas</h4>
                     <Button
                       type="button"
-                      onClick={() => {
-                        if (!newInstallment.amount || !newInstallment.paymentDate || !newInstallment.paymentMethod) {
-                          toast({ title: "Erro", description: "Preencha todos os campos da parcela.", variant: "destructive" });
-                          return;
-                        }
-                        setEventInstallments([...eventInstallments, newInstallment]);
-                        setNewInstallment({ amount: "", paymentDate: "", paymentMethod: "" });
-                        setShowInstallmentForm(false);
-                      }}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowInstallmentForm(!showInstallmentForm)}
+                      data-testid="button-add-installment"
                     >
-                      Confirmar Parcela
+                      {showInstallmentForm ? "Cancelar" : "Adicionar Parcela"}
                     </Button>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                      {eventInstallments.map((inst, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-background">
-                          <div className="text-sm">
-                            <span className="font-medium">R$ {parseFloat(inst?.amount || "0").toFixed(2)}</span>
-                            <span className="mx-2">•</span>
-                            <span>{inst?.paymentDate ? new Date(inst.paymentDate).toLocaleDateString("pt-BR") : ""}</span>
-                            <span className="mx-2">•</span>
-                            <span className="capitalize">{(inst?.paymentMethod || "").replace("_", " ")}</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEventInstallments(eventInstallments.filter((_, i) => i !== index))}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                  <div className="grid grid-cols-3 gap-4 py-2 border-b">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase">Valor do Contrato</p>
+                      <p className="text-sm font-semibold text-primary">R$ {parseFloat(contractValue || "0").toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase">Total Pago</p>
+                      <p className="text-sm font-semibold text-green-600">R$ {totalPaid.toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase">Pendente</p>
+                      <p className={`text-sm font-semibold ${pendingValue > 0 ? "text-destructive" : "text-green-600"}`}>
+                        R$ {pendingValue.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {showInstallmentForm && (
+                    <div className="grid gap-4 p-4 border rounded-md bg-muted/50">
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <FormLabel>Valor</FormLabel>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={newInstallment.amount}
+                            onChange={(e) => setNewInstallment({ ...newInstallment, amount: e.target.value })}
+                            placeholder="0.00"
+                          />
                         </div>
-                      ))}
-                  {eventInstallments.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-2">Nenhuma parcela registrada</p>
+                        <div className="space-y-2">
+                          <FormLabel>Data</FormLabel>
+                          <Input
+                            type="date"
+                            value={newInstallment.paymentDate}
+                            onChange={(e) => setNewInstallment({ ...newInstallment, paymentDate: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2 flex flex-col">
+                          <FormLabel>Forma</FormLabel>
+                          <Popover open={installmentMethodPopoverOpen} onOpenChange={setInstallmentMethodPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !newInstallment.paymentMethod && "text-muted-foreground"
+                                )}
+                              >
+                                {newInstallment.paymentMethod === "dinheiro" ? "Dinheiro" :
+                                 newInstallment.paymentMethod === "pix" ? "PIX" :
+                                 newInstallment.paymentMethod === "cartao_credito" ? "Cartão de Crédito" :
+                                 newInstallment.paymentMethod === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0">
+                              <Command>
+                                <CommandInput placeholder="Buscar forma..." />
+                                <CommandList>
+                                  <CommandGroup>
+                                    {[
+                                      { value: "dinheiro", label: "Dinheiro" },
+                                      { value: "pix", label: "PIX" },
+                                      { value: "cartao_credito", label: "Cartão de Crédito" },
+                                      { value: "cartao_debito", label: "Cartão de Débito" }
+                                    ].map((item) => (
+                                      <CommandItem
+                                        key={item.value}
+                                        value={item.label}
+                                        onSelect={() => {
+                                          setNewInstallment({ ...newInstallment, paymentMethod: item.value });
+                                          setInstallmentMethodPopoverOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            newInstallment.paymentMethod === item.value ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {item.label}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (!newInstallment.amount || !newInstallment.paymentDate || !newInstallment.paymentMethod) {
+                            toast({ title: "Erro", description: "Preencha todos os campos da parcela.", variant: "destructive" });
+                            return;
+                          }
+                          setEventInstallments([...eventInstallments, newInstallment]);
+                          setNewInstallment({ amount: "", paymentDate: "", paymentMethod: "" });
+                          setShowInstallmentForm(false);
+                        }}
+                      >
+                        Confirmar Parcela
+                      </Button>
+                    </div>
                   )}
+
+                  <div className="space-y-2">
+                    {eventInstallments.map((inst, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-background">
+                        <div className="text-sm">
+                          <span className="font-medium">R$ {parseFloat(inst?.amount || "0").toFixed(2)}</span>
+                          <span className="mx-2">•</span>
+                          <span>{inst?.paymentDate ? new Date(inst.paymentDate).toLocaleDateString("pt-BR") : ""}</span>
+                          <span className="mx-2">•</span>
+                          <span className="capitalize">{(inst?.paymentMethod || "").replace("_", " ")}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEventInstallments(eventInstallments.filter((_, i) => i !== index))}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {eventInstallments.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-2">Nenhuma parcela registrada</p>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              <FormField
-                control={form.control}
-                name="packageId"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Pacote</FormLabel>
-                    <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            role="combobox"
-                            className={cn(
-                              "w-full justify-between",
-                              !field.value && "text-muted-foreground"
-                            )}
-                            data-testid="select-event-package"
-                          >
-                            {field.value
-                              ? packages?.find((pkg) => pkg.id === field.value)?.name
-                              : "Selecione o pacote"}
+            )}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
