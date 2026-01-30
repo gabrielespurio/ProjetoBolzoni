@@ -14,6 +14,8 @@ import {
   eventCategories,
   employeeRoles,
   packages,
+  packageServices,
+  packageMaterials,
   skills,
   services,
   employeeSkills,
@@ -48,6 +50,8 @@ import {
   type InsertEmployeeRole,
   type Package,
   type InsertPackage,
+  type PackageService,
+  type PackageMaterial,
   type Skill,
   type InsertSkill,
   type Service,
@@ -176,6 +180,8 @@ export interface IStorage {
   // Settings - Packages
   getAllPackages(): Promise<Package[]>;
   getPackage(id: string): Promise<Package | undefined>;
+  getPackageWithRelations(id: string): Promise<(Package & { services: PackageService[], materials: PackageMaterial[] }) | undefined>;
+  getAllPackagesWithRelations(): Promise<(Package & { services: PackageService[], materials: PackageMaterial[] })[]>;
   createPackage(pkg: InsertPackage): Promise<Package>;
   updatePackage(id: string, pkg: Partial<InsertPackage>): Promise<Package>;
   deletePackage(id: string): Promise<void>;
@@ -813,18 +819,96 @@ export class DatabaseStorage implements IStorage {
     const [pkg] = await db.select().from(packages).where(eq(packages.id, id));
     return pkg || undefined;
   }
+
+  async getPackageWithRelations(id: string): Promise<(Package & { services: PackageService[], materials: PackageMaterial[] }) | undefined> {
+    const pkg = await this.getPackage(id);
+    if (!pkg) return undefined;
+    
+    const pkgServices = await db.select().from(packageServices).where(eq(packageServices.packageId, id));
+    const pkgMaterials = await db.select().from(packageMaterials).where(eq(packageMaterials.packageId, id));
+    
+    return {
+      ...pkg,
+      services: pkgServices,
+      materials: pkgMaterials,
+    };
+  }
+
+  async getAllPackagesWithRelations(): Promise<(Package & { services: PackageService[], materials: PackageMaterial[] })[]> {
+    const allPackages = await db.select().from(packages).orderBy(packages.name);
+    const allServices = await db.select().from(packageServices);
+    const allMaterials = await db.select().from(packageMaterials);
+    
+    return allPackages.map(pkg => ({
+      ...pkg,
+      services: allServices.filter(s => s.packageId === pkg.id),
+      materials: allMaterials.filter(m => m.packageId === pkg.id),
+    }));
+  }
   
   async createPackage(pkg: InsertPackage): Promise<Package> {
-    const [newPackage] = await db.insert(packages).values(pkg).returning();
+    const { serviceIds, materialIds, ...packageData } = pkg;
+    
+    const [newPackage] = await db.insert(packages).values(packageData).returning();
+    
+    if (serviceIds && serviceIds.length > 0) {
+      await db.insert(packageServices).values(
+        serviceIds.map(serviceId => ({
+          packageId: newPackage.id,
+          serviceId,
+        }))
+      );
+    }
+    
+    if (materialIds && materialIds.length > 0) {
+      await db.insert(packageMaterials).values(
+        materialIds.map(m => ({
+          packageId: newPackage.id,
+          materialId: m.materialId,
+          quantity: m.quantity,
+        }))
+      );
+    }
+    
     return newPackage;
   }
   
   async updatePackage(id: string, pkg: Partial<InsertPackage>): Promise<Package> {
-    const [updated] = await db.update(packages).set(pkg).where(eq(packages.id, id)).returning();
+    const { serviceIds, materialIds, ...packageData } = pkg;
+    
+    const [updated] = await db.update(packages).set(packageData).where(eq(packages.id, id)).returning();
+    
+    if (serviceIds !== undefined) {
+      await db.delete(packageServices).where(eq(packageServices.packageId, id));
+      if (serviceIds.length > 0) {
+        await db.insert(packageServices).values(
+          serviceIds.map(serviceId => ({
+            packageId: id,
+            serviceId,
+          }))
+        );
+      }
+    }
+    
+    if (materialIds !== undefined) {
+      await db.delete(packageMaterials).where(eq(packageMaterials.packageId, id));
+      if (materialIds.length > 0) {
+        await db.insert(packageMaterials).values(
+          materialIds.map(m => ({
+            packageId: id,
+            materialId: m.materialId,
+            quantity: m.quantity,
+          }))
+        );
+      }
+    }
+    
     return updated;
   }
   
   async deletePackage(id: string): Promise<void> {
+    await db.delete(packageServices).where(eq(packageServices.packageId, id));
+    await db.delete(packageMaterials).where(eq(packageMaterials.packageId, id));
     await db.delete(packages).where(eq(packages.id, id));
   }
   
