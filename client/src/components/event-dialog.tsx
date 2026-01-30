@@ -109,7 +109,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || 'employee';
   const isAdmin = userRole === 'admin';
-  const isEmployee = userRole === 'employee';
   const canViewFinancials = isAdmin;
   const canEdit = isAdmin;
   const isReadOnly = !canEdit;
@@ -203,7 +202,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const cardType = form.watch("cardType");
   const installments = form.watch("installments");
 
-  // Calcular taxa automaticamente
   useEffect(() => {
     const calculateFee = async () => {
       if (!paymentMethod || (paymentMethod !== "cartao_credito" && paymentMethod !== "cartao_debito")) {
@@ -215,7 +213,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
       setCalculatingFee(true);
       try {
-        // Garantir que installments seja sempre um número válido (default 1)
         const numericInstallments = installments ? parseInt(String(installments)) : 1;
         const validInstallments = isNaN(numericInstallments) || numericInstallments < 1 ? 1 : numericInstallments;
         
@@ -261,7 +258,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const eventType = form.watch("eventType");
-  const packageId = form.watch("packageId");
   const contractValue = form.watch("contractValue");
 
   const totalPaid = useMemo(() => {
@@ -298,7 +294,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         })() : ""),
         endTime: (event as any).endTime || (event.date ? (() => {
           const d = new Date(event.date);
-          // Only use date time if it's NOT midnight (00:00), which usually means date only
           if (d.getHours() === 0 && d.getMinutes() === 0) return "";
           return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         })() : ""),
@@ -325,9 +320,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         characterIds: [],
       });
       setSelectedCharacters((event as any).characterIds || []);
-      // Garantir que as despesas sejam carregadas corretamente
       const loadedExpenses = (event as any).expenses || [];
-      console.log("Despesas brutas do evento:", (event as any).expenses);
       setExpenses(loadedExpenses.map((exp: any) => ({
         title: exp.title || "",
         amount: exp.amount?.toString() || "0",
@@ -414,8 +407,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   }, [selectedEmployees]);
 
   useEffect(() => {
-    // Only calculate if not in edit mode or if the contract value is currently "0"
-    // This allows the initial calculation for new events but preserves manual overrides or loaded values for edits
     if (!isEdit || form.getValues("contractValue") === "0") {
       const total = charactersTotal + expensesTotal + kmTotal;
       form.setValue("contractValue", total.toFixed(2), { shouldValidate: false, shouldDirty: false });
@@ -428,14 +419,13 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         ...data,
         characterIds: selectedCharacters,
         expenses: expenses,
-        eventInstallments: eventInstallments, // Certificando que as parcelas do estado local sejam enviadas
+        eventInstallments: eventInstallments,
         eventEmployees: selectedEmployees.map(emp => ({
           employeeId: emp.employeeId,
           characterId: emp.characterId || null,
           cacheValue: emp.cacheValue,
         })),
       };
-      console.log("Enviando payload do evento:", payload);
       if (isEdit) {
         return apiRequest("PATCH", `/api/events/${event.id}`, payload);
       } else {
@@ -464,7 +454,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   });
 
   const onSubmit = (data: EventForm) => {
-    // Combine date and time correctly for the 'date' field
     const [year, month, day] = data.date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
 
@@ -506,8 +495,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     setNewExpense({ title: "", amount: "", description: "" });
     setShowExpenseForm(false);
     setKmDistance("");
-    form.setValue("partyStartTime", "");
-    form.setValue("eventDuration", "");
     setSelectedEmployees([]);
     setNewEmployee({ employeeId: "", characterId: "", cacheValue: "" });
     setShowEmployeeForm(false);
@@ -855,64 +842,88 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               />
 
               {(eventType === "package" || eventType === "both") && (
-                <FormField
-                  control={form.control}
-                  name="packageId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Pacote</FormLabel>
-                      <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              disabled={isReadOnly}
-                            >
-                              {field.value
-                                ? packages?.find((p) => p.id === field.value)?.name
-                                : "Selecione um pacote"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                          <Command>
-                            <CommandInput placeholder="Buscar pacote..." />
-                            <CommandList>
-                              <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
-                              <CommandGroup>
-                                {packages?.map((p) => (
-                                  <CommandItem
-                                    key={p.id}
-                                    value={p.name}
-                                    onSelect={() => {
-                                      form.setValue("packageId", p.id);
-                                      setPackagePopoverOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        p.id === field.value ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    {p.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <>
+                  <FormField
+                    control={form.control}
+                    name="packageId"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Pacote</FormLabel>
+                        <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isReadOnly}
+                                data-testid="select-event-package"
+                              >
+                                {field.value
+                                  ? packages?.find((p) => p.id === field.value)?.name
+                                  : "Selecione um pacote"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                            <Command>
+                              <CommandInput placeholder="Buscar pacote..." />
+                              <CommandList>
+                                <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
+                                <CommandGroup>
+                                  {packages?.map((p) => (
+                                    <CommandItem
+                                      key={p.id}
+                                      value={p.name}
+                                      onSelect={() => {
+                                        form.setValue("packageId", p.id);
+                                        setPackagePopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          p.id === field.value ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {p.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="packageNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observação do Pacote</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="Observações sobre o pacote..."
+                            className="resize-none"
+                            rows={2}
+                            data-testid="input-package-notes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
 
               {(eventType === "service" || eventType === "both") && (
@@ -1463,66 +1474,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 </div>
               </div>
             )}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[400px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Buscar pacote..." />
-                          <CommandList>
-                            <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
-                            <CommandGroup>
-                              {packages?.map((pkg) => (
-                                <CommandItem
-                                  key={pkg.id}
-                                  value={pkg.name}
-                                  onSelect={() => {
-                                    field.onChange(pkg.id);
-                                    setPackagePopoverOpen(false);
-                                  }}
-                                  data-testid={`package-option-${pkg.id}`}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      field.value === pkg.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  {pkg.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="packageNotes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observação do Pacote</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        value={field.value || ""}
-                        placeholder="Observações sobre o pacote..."
-                        className="resize-none"
-                        rows={2}
-                        data-testid="input-package-notes"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              </div>
-            )}
 
             <div className="space-y-4">
               <div>
@@ -1573,587 +1524,434 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
-                      data-testid="input-search-characters"
+                      data-testid="input-search-character"
                     />
                   </div>
-
-                  <div className="border rounded-md max-h-64 overflow-y-auto">
-                    {characters.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <p className="text-sm text-muted-foreground">
-                          Nenhum personagem cadastrado no estoque
-                        </p>
-                      </div>
-                    ) : filteredCharacters.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <Search className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground">
-                          Nenhum personagem encontrado para "{searchTerm}"
-                        </p>
-                        <Button
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[200px] overflow-y-auto p-1 border rounded-md bg-muted/50">
+                    {filteredCharacters.map(character => {
+                      const isSelected = selectedCharacters.includes(character.id);
+                      return (
+                        <button
+                          key={character.id}
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSearchTerm("")}
-                          className="mt-2"
-                          data-testid="button-clear-search"
+                          onClick={() => toggleCharacter(character.id)}
+                          className={cn(
+                            "flex flex-col items-center justify-center p-2 rounded-md border text-center transition-all",
+                            isSelected 
+                              ? "bg-primary text-primary-foreground border-primary" 
+                              : "bg-background hover:bg-muted border-transparent"
+                          )}
+                          data-testid={`character-option-${character.id}`}
                         >
-                          Limpar busca
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="divide-y">
-                        {filteredCharacters.map(character => {
-                          const isSelected = selectedCharacters.includes(character.id);
-                          return (
-                            <div
-                              key={character.id}
-                              className={`flex items-center justify-between p-3 hover:bg-accent transition-colors ${
-                                isSelected ? 'bg-accent/50' : ''
-                              }`}
-                            >
-                              <div className="flex items-center space-x-3 flex-1">
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() => toggleCharacter(character.id)}
-                                  data-testid={`checkbox-character-${character.id}`}
-                                />
-                                <label 
-                                  htmlFor={`char-${character.id}`}
-                                  className="flex-1 min-w-0 cursor-pointer"
-                                  onClick={() => toggleCharacter(character.id)}
-                                >
-                                  <p className="text-sm font-medium truncate">{character.name}</p>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span>R$ {parseFloat(character.salePrice || "0").toFixed(2)}</span>
-                                    <span>•</span>
-                                    <span>Qtd: {character.quantity}</span>
-                                  </div>
-                                </label>
-                              </div>
-                              {!isSelected && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleCharacter(character.id)}
-                                  className="ml-2"
-                                  data-testid={`add-character-${character.id}`}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        })}
+                          <span className="text-xs font-medium truncate w-full">{character.name}</span>
+                          <span className={cn(
+                            "text-[10px] opacity-75",
+                            isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                          )}>
+                            R$ {parseFloat(character.salePrice || "0").toFixed(2)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {filteredCharacters.length === 0 && (
+                      <div className="col-span-full py-6 text-center text-sm text-muted-foreground">
+                        {searchTerm ? "Nenhum personagem encontrado" : "Carregando personagens..."}
                       </div>
                     )}
                   </div>
-                  
-                  {filteredCharacters.length > 0 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Mostrando {filteredCharacters.length} de {characters.length} personagens
-                    </p>
-                  )}
                 </div>
               </div>
 
-              <div>
-                <FormLabel>Despesas Adicionais</FormLabel>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Adicione despesas extras relacionadas a este evento
-                </p>
-                
-                {expenses.length > 0 && (
-                  <div className="mb-4 space-y-2">
-                    <p className="text-sm font-medium">
-                      Despesas cadastradas ({expenses.length}):
-                    </p>
-                    <div className="space-y-2">
-                      {expenses.map((expense, index) => (
-                        <div
-                          key={index}
-                          className="flex items-start justify-between gap-2 bg-accent/50 p-3 rounded-md"
-                          data-testid={`expense-item-${index}`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{expense.title}</p>
-                            <p className="text-sm text-primary font-semibold">
-                              R$ {parseFloat(expense.amount).toFixed(2)}
-                            </p>
-                            {expense.description && (
-                              <p className="text-xs text-muted-foreground mt-1">{expense.description}</p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeExpense(index)}
-                            className="hover:bg-destructive/20 text-destructive rounded-full p-1.5 transition-colors"
-                            data-testid={`remove-expense-${index}`}
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!showExpenseForm ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <FormLabel>Colaboradores & Cachês</FormLabel>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowExpenseForm(true)}
-                    className="w-full"
-                    data-testid="button-show-expense-form"
+                    onClick={() => setShowEmployeeForm(!showEmployeeForm)}
+                    data-testid="button-add-employee"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Despesa
+                    {showEmployeeForm ? "Cancelar" : "Adicionar Colaborador"}
                   </Button>
-                ) : (
-                  <div className="border rounded-md p-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div>
-                        <label className="text-sm font-medium mb-1.5 block">Título da Despesa *</label>
-                        <Input
-                          value={newExpense.title}
-                          onChange={(e) => setNewExpense(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Ex: Transporte, Decoração"
-                          data-testid="input-expense-title"
-                        />
+                </div>
+
+                {selectedEmployees.length > 0 && (
+                  <div className="space-y-2">
+                    {selectedEmployees.map((emp, index) => {
+                      const employee = employees?.find(e => e.id === emp.employeeId);
+                      const character = characters.find(c => c.id === emp.characterId);
+                      return (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-md bg-background">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">{employee?.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {character ? `Personagem: ${character.name}` : "Geral"} • Cachê: R$ {parseFloat(emp.cacheValue || "0").toFixed(2)}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeEmployee(index)}
+                            data-testid={`remove-employee-${index}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {showEmployeeForm && (
+                  <div className="grid gap-4 p-4 border rounded-md bg-muted/50">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <FormLabel>Colaborador</FormLabel>
+                        <Select
+                          value={newEmployee.employeeId}
+                          onValueChange={(val) => setNewEmployee({ ...newEmployee, employeeId: val })}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-employee">
+                              <SelectValue placeholder="Selecione o funcionário" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {employees?.filter(e => !selectedEmployees.some(se => se.employeeId === e.id && !se.characterId)).map((employee) => (
+                              <SelectItem key={employee.id} value={employee.id}>
+                                {employee.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1.5 block">Valor *</label>
+                      <div className="space-y-2">
+                        <FormLabel>Personagem (Opcional)</FormLabel>
+                        <Select
+                          value={newEmployee.characterId}
+                          onValueChange={(val) => setNewEmployee({ ...newEmployee, characterId: val })}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-employee-character">
+                              <SelectValue placeholder="Selecione o personagem" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">Geral (Sem personagem)</SelectItem>
+                            {selectedCharacters.map(characterId => {
+                              const character = characters.find(c => c.id === characterId);
+                              return character ? (
+                                <SelectItem key={characterId} value={characterId}>
+                                  {character.name}
+                                </SelectItem>
+                              ) : null;
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <FormLabel>Valor do Cachê</FormLabel>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
                         <Input
                           type="number"
                           step="0.01"
-                          value={newExpense.amount}
-                          onChange={(e) => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
+                          value={newEmployee.cacheValue}
+                          onChange={(e) => setNewEmployee({ ...newEmployee, cacheValue: e.target.value })}
                           placeholder="0.00"
-                          data-testid="input-expense-amount"
+                          className="pl-10"
+                          data-testid="input-employee-cache"
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1.5 block">Descrição</label>
-                      <Input
-                        value={newExpense.description || ""}
-                        onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Breve descrição da despesa (opcional)"
-                        data-testid="input-expense-description"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowExpenseForm(false);
-                          setNewExpense({ title: "", amount: "", description: "" });
-                        }}
-                        className="flex-1"
-                        data-testid="button-cancel-expense"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="sm"
-                        onClick={addExpense}
-                        className="flex-1"
-                        data-testid="button-add-expense"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar
-                      </Button>
-                    </div>
+                    <Button
+                      type="button"
+                      onClick={addEmployee}
+                      data-testid="button-confirm-employee"
+                    >
+                      Confirmar Colaborador
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} placeholder="Informações adicionais sobre o evento" rows={3} data-testid="input-event-notes" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="space-y-4">
-              <div>
-                <FormLabel>Funcionários</FormLabel>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Selecione os funcionários que trabalharão neste evento e informe o cachê
-                </p>
-                
-                {selectedEmployees.length > 0 && (
-                  <div className="mb-4 space-y-2">
-                    <p className="text-sm font-medium">
-                      Funcionários selecionados ({selectedEmployees.length}):
-                    </p>
-                    <div className="space-y-2">
-                      {selectedEmployees.map((emp, index) => {
-                        const employee = employees?.find(e => e.id === emp.employeeId);
-                        const character = characters.find(c => c.id === emp.characterId);
-                        return employee ? (
-                          <div
-                            key={index}
-                            className="flex items-start justify-between gap-2 bg-accent/50 p-3 rounded-md"
-                            data-testid={`employee-item-${index}`}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{employee.name}</p>
-                              <p className="text-xs text-muted-foreground">{employee.role}</p>
-                              {character && (
-                                <p className="text-xs text-primary mt-1">
-                                  Personagem: {character.name}
-                                </p>
-                              )}
-                              <p className="text-sm text-primary font-semibold mt-1">
-                                Cachê: R$ {parseFloat(emp.cacheValue).toFixed(2)}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeEmployee(index)}
-                              className="hover:bg-destructive/20 text-destructive rounded-full p-1.5 transition-colors"
-                              data-testid={`remove-employee-${index}`}
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : null;
-                      })}
-                    </div>
+              <h3 className="text-sm font-medium">Financeiro</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 p-3 border rounded-md bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground uppercase">Soma de Personagens</span>
+                    <span className="text-sm font-medium">R$ {charactersTotal.toFixed(2)}</span>
                   </div>
-                )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground uppercase">Soma de Outros Gastos</span>
+                    <span className="text-sm font-medium">R$ {expensesTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground uppercase">Soma de Cachês</span>
+                    <span className="text-sm font-medium">R$ {employeeCacheTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="pt-2 border-t flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase">Custo Total Previsto</span>
+                    <span className="text-sm font-bold text-destructive">R$ {(expensesTotal + employeeCacheTotal).toFixed(2)}</span>
+                  </div>
+                </div>
 
-                {!showEmployeeForm ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowEmployeeForm(true)}
-                    className="w-full"
-                    data-testid="button-show-employee-form"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Funcionário
-                  </Button>
-                ) : (
-                  <div className="border rounded-md p-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div>
-                        <label className="text-sm font-medium mb-1.5 block">Funcionário *</label>
-                        <Select
-                          value={newEmployee.employeeId}
-                          onValueChange={(value) => setNewEmployee(prev => ({ ...prev, employeeId: value }))}
-                        >
-                          <SelectTrigger data-testid="select-employee">
-                            <SelectValue placeholder="Selecione o funcionário" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {employees?.filter(e => !selectedEmployees.some(se => se.employeeId === e.id)).map(employee => (
-                              <SelectItem key={employee.id} value={employee.id}>
-                                {employee.name} - {employee.role}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1.5 block">Personagem</label>
-                        <Select
-                          value={newEmployee.characterId}
-                          onValueChange={(value) => setNewEmployee(prev => ({ ...prev, characterId: value }))}
-                          disabled={selectedCharacters.length === 0}
-                        >
-                          <SelectTrigger data-testid="select-employee-character">
-                            <SelectValue placeholder={selectedCharacters.length === 0 ? "Selecione personagens primeiro" : "Selecione o personagem"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {characters.filter(c => selectedCharacters.includes(c.id)).map(character => (
-                              <SelectItem key={character.id} value={character.id}>
-                                {character.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1.5 block">Valor do Cachê *</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={newEmployee.cacheValue}
-                            onChange={(e) => setNewEmployee(prev => ({ ...prev, cacheValue: e.target.value }))}
-                            placeholder="0.00"
-                            className="pl-10"
-                            data-testid="input-employee-cache"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowEmployeeForm(false);
-                          setNewEmployee({ employeeId: "", characterId: "", cacheValue: "" });
-                        }}
-                        className="flex-1"
-                        data-testid="button-cancel-employee"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="sm"
-                        onClick={addEmployee}
-                        className="flex-1"
-                        data-testid="button-add-employee"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar
-                      </Button>
-                    </div>
+                <div className="space-y-2 p-3 border rounded-md bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground uppercase">Valor do Contrato</span>
+                    <span className="text-sm font-medium">R$ {parseFloat(contractValue || "0").toFixed(2)}</span>
                   </div>
-                )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground uppercase">Deslocamento</span>
+                    <span className="text-sm font-medium">R$ {kmTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground uppercase">Taxa Maquininha ({feePercentage}%)</span>
+                    <span className="text-sm font-medium">
+                      {paymentMethod === "cartao_credito" || paymentMethod === "cartao_debito" ? (
+                        <>R$ {(parseFloat(contractValue || "0") * (feePercentage / 100)).toFixed(2)}</>
+                      ) : (
+                        "R$ 0.00"
+                      )}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase">Lucro Bruto Previsto</span>
+                    {calculatingFee ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <span className="text-sm font-bold text-green-600">
+                        R$ {(
+                          parseFloat(contractValue || "0") - 
+                          (expensesTotal + employeeCacheTotal) - 
+                          (paymentMethod === "cartao_credito" || paymentMethod === "cartao_debito" ? parseFloat(contractValue || "0") * (feePercentage / 100) : 0)
+                        ).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {canViewFinancials && (
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Resumo do Contrato</h3>
-                <div className="space-y-3 bg-muted/50 rounded-lg p-4">
-                  <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Personagens ({selectedCharacters.length})</span>
-                  <span className="font-medium">R$ {charactersTotal.toFixed(2)}</span>
+              {hasInstallmentInterest && monthlyInterestRate > 0 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    <strong>Atenção:</strong> Este parcelamento possui juros mensais de {monthlyInterestRate}%. 
+                    O valor total a ser pago pelo cliente será maior que o valor do contrato.
+                  </p>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Despesas ({expenses.length})</span>
-                  <span className="font-medium">R$ {expensesTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Funcionários ({selectedEmployees.length})</span>
-                  <span className="font-medium text-orange-600 dark:text-orange-400">R$ {employeeCacheTotal.toFixed(2)}</span>
-                </div>
-                <p className="text-xs text-muted-foreground italic">
-                  * Custo interno da empresa (não incluído no valor do contrato)
-                </p>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Deslocamento ({kmDistance || 0} km)</span>
-                  <span className="font-medium">R$ {kmTotal.toFixed(2)}</span>
-                </div>
-                {(() => {
-                  const contractValue = parseFloat(form.watch("contractValue") || "0");
-                  const ticketValue = parseFloat(form.watch("ticketValue") || "0");
-                  const remainingValue = Math.max(0, contractValue - ticketValue);
-                  const numInstallments = parseInt(String(form.watch("installments") || "1"));
-                  
-                  // Passo 1: Aplicar taxa da operadora sobre o valor restante
-                  const feeAmount = remainingValue * (feePercentage / 100);
-                  
-                  // Valor após aplicar taxa da operadora (valor que será parcelado)
-                  const valueToFinance = remainingValue + feeAmount;
-                  
-                  // Passo 2: Calcular juros compostos se aplicável (Tabela Price)
-                  let interestAmount = 0;
-                  let installmentValue = 0;
-                  let totalFinanced = valueToFinance; // Por padrão, sem juros
-                  
-                  if (hasInstallmentInterest && monthlyInterestRate > 0 && numInstallments > 1) {
-                    const i = monthlyInterestRate / 100; // Taxa em decimal
-                    const n = numInstallments;
-                    
-                    // Fórmula da Tabela Price: PMT = PV × [i × (1 + i)^n] / [(1 + i)^n - 1]
-                    const factor = Math.pow(1 + i, n);
-                    installmentValue = valueToFinance * (i * factor) / (factor - 1);
-                    totalFinanced = installmentValue * n;
-                    interestAmount = totalFinanced - valueToFinance;
-                  }
-                  
-                  // Valor total final = entrada + valor financiado (com taxas e juros)
-                  const finalTotal = ticketValue + totalFinanced;
+              )}
 
-                  if (feePercentage > 0 && (paymentMethod === "cartao_credito" || paymentMethod === "cartao_debito") && remainingValue > 0) {
-                    return (
-                      <>
-                        <div className="border-t pt-3 mt-3 space-y-2">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">
-                              Taxa de pagamento ({feePercentage.toFixed(2)}%)
-                              {calculatingFee && <span className="ml-2 text-xs">(calculando...)</span>}
-                            </span>
-                            <span className="font-medium text-orange-600 dark:text-orange-400">R$ {feeAmount.toFixed(2)}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground italic">
-                            * Taxa aplicada sobre o valor restante (R$ {remainingValue.toFixed(2)})
-                          </p>
-                          
-                          {hasInstallmentInterest && monthlyInterestRate > 0 && numInstallments > 1 && interestAmount > 0 && (
-                            <>
-                              <div className="flex justify-between items-center text-sm mt-2">
-                                <span className="text-muted-foreground">
-                                  Juros ({monthlyInterestRate.toFixed(2)}% a.m. × {numInstallments}x)
-                                </span>
-                                <span className="font-medium text-orange-600 dark:text-orange-400">R$ {interestAmount.toFixed(2)}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground italic">
-                                * Juros compostos aplicados sobre R$ {valueToFinance.toFixed(2)} (Tabela Price)
-                              </p>
-                            </>
-                          )}
-                          
-                          <div className="flex justify-between items-center text-sm pt-2 border-t">
-                            <span className="font-semibold">
-                              Valor Total {feeAmount > 0 ? "com Taxas" : ""}{hasInstallmentInterest && interestAmount > 0 ? " e Juros" : ""}
-                            </span>
-                            <span className="font-semibold text-lg">R$ {finalTotal.toFixed(2)}</span>
-                          </div>
-                          
-                          {hasInstallmentInterest && monthlyInterestRate > 0 && numInstallments > 1 && interestAmount > 0 && (
-                            <div className="bg-orange-50 dark:bg-orange-950/20 rounded p-2 mt-2">
-                              <p className="text-xs text-orange-700 dark:text-orange-300">
-                                <strong>Valor financiado:</strong> R$ {valueToFinance.toFixed(2)}<br />
-                                <strong>Parcelamento:</strong> {numInstallments}x de R$ {installmentValue.toFixed(2)}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    );
-                  }
-                  return null;
-                })()}
-                <div className="border-t pt-3 mt-3">
+              <FormField
+                control={form.control}
+                name="contractValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor do Contrato (Manual)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold">R$</span>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          className="pl-10 text-lg font-bold text-primary"
+                          data-testid="input-contract-value"
+                        />
+                      </div>
+                    </FormControl>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Este valor é calculado automaticamente, mas pode ser alterado manualmente.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {(paymentMethod === "cartao_credito" || paymentMethod === "cartao_debito") && (
                   <FormField
                     control={form.control}
-                    name="contractValue"
+                    name="installments"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex justify-between items-center gap-4">
-                          <FormLabel className="text-base font-semibold mb-0">Valor Total do Contrato *</FormLabel>
+                        <FormLabel>Número de Parcelas</FormLabel>
+                        <Select 
+                          onValueChange={(val) => field.onChange(parseInt(val))} 
+                          value={field.value?.toString() || "1"}
+                        >
                           <FormControl>
-                            <div className="relative w-48">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium">R$</span>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="0.00" 
-                                className="pl-10 text-right font-semibold text-lg"
-                                data-testid="input-event-value" 
-                              />
-                            </div>
+                            <SelectTrigger data-testid="select-installments">
+                              <SelectValue placeholder="1x" />
+                            </SelectTrigger>
                           </FormControl>
-                        </div>
+                          <SelectContent>
+                            {[...Array(12)].map((_, i) => (
+                              <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                {i + 1}x
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  O valor é calculado automaticamente, mas você pode ajustá-lo se necessário.
-                </p>
-                
-                <div className="border-t pt-3 mt-3">
-                  <FormField
-                    control={form.control}
-                    name="installments"
-                    render={({ field }) => {
-                      const contractValue = parseFloat(form.watch("contractValue") || "0");
-                      const ticketValue = parseFloat(form.watch("ticketValue") || "0");
-                      const installments = parseInt(field.value?.toString() || "1");
-                      const remainingValue = contractValue - ticketValue;
-                      
-                      // Calcular o valor correto da parcela incluindo taxas e juros
-                      let calculatedInstallmentValue = 0;
-                      
-                      if (installments > 0 && remainingValue > 0) {
-                        // Aplicar taxa da operadora sobre o valor restante
-                        const feeAmount = remainingValue * (feePercentage / 100);
-                        const valueToFinance = remainingValue + feeAmount;
-                        
-                        // Verificar se tem juros compostos (Tabela Price)
-                        if (hasInstallmentInterest && monthlyInterestRate > 0 && installments > 1) {
-                          const i = monthlyInterestRate / 100;
-                          const n = installments;
-                          const factor = Math.pow(1 + i, n);
-                          calculatedInstallmentValue = valueToFinance * (i * factor) / (factor - 1);
-                        } else {
-                          // Sem juros compostos: dividir valor com taxa pelo número de parcelas
-                          calculatedInstallmentValue = valueToFinance / installments;
-                        }
-                      }
-                      
-                      return (
-                        <FormItem>
-                          <div className="flex justify-between items-center gap-4">
-                            <FormLabel className="text-sm font-medium mb-0">Quantidade de Parcelas</FormLabel>
-                            <FormControl>
-                              <div className="w-32">
-                                <Input 
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  type="number" 
-                                  min="1"
-                                  max="12"
-                                  placeholder="1" 
-                                  className="text-right"
-                                  data-testid="input-installments" 
-                                />
-                              </div>
-                            </FormControl>
-                          </div>
-                          {installments > 0 && remainingValue > 0 && (
-                            <div className="mt-2 text-sm text-muted-foreground">
-                              <p>Valor restante: R$ {remainingValue.toFixed(2)}</p>
-                              <p className="font-medium text-foreground">
-                                {installments}x de R$ {calculatedInstallmentValue.toFixed(2)}
-                              </p>
-                            </div>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
-                </div>
-                </div>
+                )}
+                {paymentMethod === "cartao_credito" && (
+                  <div className="p-3 border rounded-md bg-muted/20 flex flex-col justify-center">
+                    <span className="text-xs text-muted-foreground uppercase">Encargo do Parcelamento</span>
+                    {calculatingFee ? (
+                      <Loader2 className="h-4 w-4 animate-spin mt-1" />
+                    ) : (
+                      <span className="text-sm font-medium">
+                        {hasInstallmentInterest ? (
+                          <span className="text-blue-600 font-bold">Juros mensais de {monthlyInterestRate}%</span>
+                        ) : (
+                          "Parcelamento sem juros extras"
+                        )}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
             </div>
 
-            <div className="flex justify-end gap-4 p-6 border-t bg-background mt-auto shrink-0">
-              <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
-                {isReadOnly ? "Fechar" : "Cancelar"}
-              </Button>
-              {canEdit && (
-                <Button type="submit" disabled={mutation.isPending || calculatingFee} data-testid="button-save-event">
-                  {(mutation.isPending || calculatingFee) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEdit ? "Atualizar" : "Cadastrar"}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <FormLabel>Outros Gastos (Logística, Insumos, etc)</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowExpenseForm(!showExpenseForm)}
+                  data-testid="button-add-expense"
+                >
+                  {showExpenseForm ? "Cancelar" : "Adicionar Gasto"}
                 </Button>
+              </div>
+
+              {expenses.length > 0 && (
+                <div className="space-y-2">
+                  {expenses.map((expense, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-md bg-background">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">{expense.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          R$ {parseFloat(expense.amount || "0").toFixed(2)} {expense.description && `• ${expense.description}`}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeExpense(index)}
+                        data-testid={`remove-expense-${index}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showExpenseForm && (
+                <div className="grid gap-4 p-4 border rounded-md bg-muted/50">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <FormLabel>Título</FormLabel>
+                      <Input
+                        value={newExpense.title}
+                        onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
+                        placeholder="Ex: Combustível, Alimentação"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <FormLabel>Valor</FormLabel>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={newExpense.amount}
+                          onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                          placeholder="0.00"
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <FormLabel>Descrição (Opcional)</FormLabel>
+                    <Input
+                      value={newExpense.description}
+                      onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
+                      placeholder="Mais detalhes sobre o gasto..."
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={addExpense}
+                    data-testid="button-confirm-expense"
+                  >
+                    Confirmar Gasto
+                  </Button>
+                </div>
               )}
             </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
+
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observações Gerais</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        value={field.value || ""}
+                        placeholder="Observações gerais sobre o evento..."
+                        className="resize-none"
+                        rows={3}
+                        data-testid="input-event-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+          <div className="p-6 border-t shrink-0 flex justify-end gap-2 bg-background">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              data-testid="button-cancel-event"
+            >
+              Cancelar
+            </Button>
+            {!isReadOnly && (
+              <Button
+                type="submit"
+                disabled={mutation.isPending || calculatingFee}
+                data-testid="button-save-event"
+              >
+                {(mutation.isPending || calculatingFee) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEdit ? "Salvar Alterações" : "Criar Evento"}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
+    </DialogContent>
+  </Dialog>
+);
 }
