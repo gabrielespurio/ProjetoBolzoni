@@ -22,7 +22,6 @@ import { Loader2 } from "lucide-react";
 
 const inventoryFormSchema = insertInventoryItemSchema.extend({
   costPrice: z.string().optional(),
-  salePrice: z.string().optional(),
   notes: z.string().optional(),
   parentId: z.string().optional(),
   partType: z.enum(["head", "body", "feet"]).optional().nullable(),
@@ -53,7 +52,6 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
       quantity: 0,
       minQuantity: 0,
       costPrice: "",
-      salePrice: "",
       notes: "",
       parentId: undefined,
     },
@@ -70,7 +68,6 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           quantity: item.quantity,
           minQuantity: item.minQuantity,
           costPrice: item.costPrice?.toString() || "",
-          salePrice: item.salePrice?.toString() || "",
           notes: item.notes || "",
           parentId: item.parentId || undefined,
           partType: item.partType as any || undefined,
@@ -82,7 +79,6 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           quantity: 0,
           minQuantity: 0,
           costPrice: "",
-          salePrice: "",
           notes: "",
           parentId: undefined,
           partType: undefined,
@@ -122,7 +118,6 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
     const cleanedData = {
       ...data,
       costPrice: data.costPrice && data.costPrice !== "" ? data.costPrice : undefined,
-      salePrice: data.salePrice && data.salePrice !== "" ? data.salePrice : undefined,
       notes: data.notes && data.notes !== "" ? data.notes : undefined,
       parentId: data.parentId === "none" ? undefined : data.parentId,
     };
@@ -283,21 +278,6 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                   </FormItem>
                 )}
               />
-              {selectedType !== "part" && (
-                <FormField
-                  control={form.control}
-                  name="salePrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor de Venda</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-sale-price" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
             </div>
             <FormField
               control={form.control}
