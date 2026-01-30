@@ -907,10 +907,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Packages routes
   app.get("/api/settings/packages", authenticateToken, requireAdmin, async (req, res) => {
     try {
-      const packages = await storage.getAllPackages();
+      const packages = await storage.getAllPackagesWithRelations();
       res.json(packages);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao buscar pacotes" });
+    }
+  });
+
+  app.get("/api/settings/packages/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const pkg = await storage.getPackageWithRelations(req.params.id);
+      if (!pkg) {
+        return res.status(404).json({ message: "Pacote não encontrado" });
+      }
+      res.json(pkg);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar pacote" });
     }
   });
   
