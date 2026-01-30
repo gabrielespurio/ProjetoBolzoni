@@ -25,6 +25,7 @@ const inventoryFormSchema = insertInventoryItemSchema.extend({
   notes: z.string().optional(),
   parentId: z.string().optional(),
   partType: z.string().optional().nullable(),
+  accessoryType: z.string().optional(),
 });
 
 type InventoryForm = z.infer<typeof inventoryFormSchema>;
@@ -54,6 +55,7 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
       costPrice: "",
       notes: "",
       parentId: undefined,
+      accessoryType: "",
     },
   });
 
@@ -71,6 +73,7 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           notes: item.notes || "",
           parentId: item.parentId || undefined,
           partType: item.partType as any || undefined,
+          accessoryType: item.accessoryType || "",
         });
       } else {
         form.reset({
@@ -82,6 +85,7 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           notes: "",
           parentId: undefined,
           partType: undefined,
+          accessoryType: "",
         });
       }
     }
@@ -178,6 +182,24 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                   </FormItem>
                 )}
               />
+              {selectedType === "accessory" && (
+                <FormField
+                  control={form.control}
+                  name="accessoryType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo do Acessório</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Digite o tipo do acessório" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               {selectedType === "part" && (
                 <>
                   <FormField

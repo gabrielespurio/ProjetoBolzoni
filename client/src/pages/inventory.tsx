@@ -246,6 +246,11 @@ export default function Inventory() {
                               <Badge variant="outline" className="text-xs capitalize w-fit">
                                 {getTypeName(item.type)}
                               </Badge>
+                              {item.type === "accessory" && item.accessoryType && (
+                                <Badge variant="secondary" className="text-[10px] w-fit">
+                                  {item.accessoryType}
+                                </Badge>
+                              )}
                               {item.type === "part" && item.partType && (
                                 <Badge variant="secondary" className="text-[10px] w-fit">
                                   {item.partType === "head" ? "Cabeça" : item.partType === "body" ? "Corpo" : "Pés"}
@@ -343,6 +348,11 @@ export default function Inventory() {
                             <Badge variant="outline" className="text-[10px] capitalize">
                               {getTypeName(item.type)}
                             </Badge>
+                            {item.type === "accessory" && item.accessoryType && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {item.accessoryType}
+                              </Badge>
+                            )}
                           </div>
                           {item.unit && (
                             <p className="text-xs text-muted-foreground mt-0.5">Unidade: {item.unit}</p>
