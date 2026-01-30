@@ -15,6 +15,7 @@ import {
   employeeRoles,
   packages,
   skills,
+  services,
   employeeSkills,
   eventExpenses,
   eventInstallments,
@@ -49,6 +50,8 @@ import {
   type InsertPackage,
   type Skill,
   type InsertSkill,
+  type Service,
+  type InsertService,
   type EmployeeSkill,
   type InsertEmployeeSkill,
   type EventExpense,
@@ -183,6 +186,13 @@ export interface IStorage {
   createSkill(skill: InsertSkill): Promise<Skill>;
   updateSkill(id: string, skill: Partial<InsertSkill>): Promise<Skill>;
   deleteSkill(id: string): Promise<void>;
+  
+  // Settings - Services
+  getAllServices(): Promise<Service[]>;
+  getService(id: string): Promise<Service | undefined>;
+  createService(service: InsertService): Promise<Service>;
+  updateService(id: string, service: Partial<InsertService>): Promise<Service>;
+  deleteService(id: string): Promise<void>;
   
   // Settings - System Settings
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
@@ -847,6 +857,37 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Habilidade não encontrada");
     }
     await db.delete(skills).where(eq(skills.id, id));
+  }
+  
+  // Services
+  async getAllServices(): Promise<Service[]> {
+    return await db.select().from(services).orderBy(services.name);
+  }
+  
+  async getService(id: string): Promise<Service | undefined> {
+    const [service] = await db.select().from(services).where(eq(services.id, id));
+    return service || undefined;
+  }
+  
+  async createService(service: InsertService): Promise<Service> {
+    const [newService] = await db.insert(services).values(service).returning();
+    return newService;
+  }
+  
+  async updateService(id: string, service: Partial<InsertService>): Promise<Service> {
+    const [updated] = await db.update(services).set(service).where(eq(services.id, id)).returning();
+    if (!updated) {
+      throw new Error("Serviço não encontrado");
+    }
+    return updated;
+  }
+  
+  async deleteService(id: string): Promise<void> {
+    const existing = await this.getService(id);
+    if (!existing) {
+      throw new Error("Serviço não encontrado");
+    }
+    await db.delete(services).where(eq(services.id, id));
   }
   
   // Employee Skills

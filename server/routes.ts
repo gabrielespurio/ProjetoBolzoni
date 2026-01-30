@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertEmployeePaymentSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertServiceSchema, insertEmployeePaymentSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -987,6 +987,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao deletar habilidade" });
+    }
+  });
+  
+  // Services routes
+  app.get("/api/settings/services", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const services = await storage.getAllServices();
+      res.json(services);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar serviços" });
+    }
+  });
+  
+  app.post("/api/settings/services", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const data = insertServiceSchema.parse(req.body);
+      const service = await storage.createService(data);
+      res.status(201).json(service);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar serviço" });
+    }
+  });
+  
+  app.patch("/api/settings/services/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const existingService = await storage.getService(req.params.id);
+      if (!existingService) {
+        return res.status(404).json({ message: "Serviço não encontrado" });
+      }
+      const data = insertServiceSchema.partial().parse(req.body);
+      const service = await storage.updateService(req.params.id, data);
+      res.json(service);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao atualizar serviço" });
+    }
+  });
+  
+  app.delete("/api/settings/services/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const existingService = await storage.getService(req.params.id);
+      if (!existingService) {
+        return res.status(404).json({ message: "Serviço não encontrado" });
+      }
+      await storage.deleteService(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar serviço" });
     }
   });
   

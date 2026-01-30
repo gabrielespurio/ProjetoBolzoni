@@ -201,6 +201,13 @@ export const skills = pgTable("skills", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const services = pgTable("services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const employeeSkills = pgTable("employee_skills", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   employeeId: varchar("employee_id").notNull().references(() => employees.id),
@@ -456,6 +463,11 @@ export const insertSkillSchema = createInsertSchema(skills).omit({
   createdAt: true,
 });
 
+export const insertServiceSchema = createInsertSchema(services).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertEmployeeSkillSchema = createInsertSchema(employeeSkills).omit({
   id: true,
 });
@@ -511,6 +523,9 @@ export type InsertPackage = z.infer<typeof insertPackageSchema>;
 
 export type Skill = typeof skills.$inferSelect;
 export type InsertSkill = z.infer<typeof insertSkillSchema>;
+
+export type Service = typeof services.$inferSelect;
+export type InsertService = z.infer<typeof insertServiceSchema>;
 
 export type EmployeeSkill = typeof employeeSkills.$inferSelect;
 export type InsertEmployeeSkill = z.infer<typeof insertEmployeeSkillSchema>;

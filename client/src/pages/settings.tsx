@@ -16,8 +16,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon, RefreshCw, ExternalLink } from "lucide-react";
-import type { EventCategory, EmployeeRole, Package, Skill } from "@shared/schema";
-import { insertSkillSchema } from "@shared/schema";
+import type { EventCategory, EmployeeRole, Package, Skill, Service } from "@shared/schema";
+import { insertSkillSchema, insertServiceSchema } from "@shared/schema";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -39,10 +39,16 @@ const skillFormSchema = insertSkillSchema.extend({
   name: z.string().min(1, "Nome é obrigatório"),
 });
 
+const serviceSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  description: z.string().optional(),
+});
+
 type CategoryForm = z.infer<typeof categorySchema>;
 type RoleForm = z.infer<typeof roleSchema>;
 type PackageForm = z.infer<typeof packageSchema>;
 type SkillForm = z.infer<typeof skillFormSchema>;
+type ServiceForm = z.infer<typeof serviceSchema>;
 
 // Tipos para Taxas e Juros
 interface SumupFeeData {
@@ -514,10 +520,12 @@ export default function Settings() {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [skillDialogOpen, setSkillDialogOpen] = useState(false);
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<EventCategory | null>(null);
   const [editingRole, setEditingRole] = useState<EmployeeRole | null>(null);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [editingService, setEditingService] = useState<Service | null>(null);
   const [kmValue, setKmValue] = useState<string>("");
 
   // Event Categories
@@ -538,6 +546,11 @@ export default function Settings() {
   // Skills
   const { data: skills = [], isLoading: loadingSkills } = useQuery<Skill[]>({
     queryKey: ["/api/settings/skills"],
+  });
+
+  // Services
+  const { data: services = [], isLoading: loadingServices } = useQuery<Service[]>({
+    queryKey: ["/api/settings/services"],
   });
 
   // System Settings - Kilometragem
@@ -601,6 +614,11 @@ export default function Settings() {
 
   const skillForm = useForm<SkillForm>({
     resolver: zodResolver(skillFormSchema),
+    defaultValues: { name: "", description: "" },
+  });
+
+  const serviceForm = useForm<ServiceForm>({
+    resolver: zodResolver(serviceSchema),
     defaultValues: { name: "", description: "" },
   });
 
@@ -792,6 +810,53 @@ export default function Settings() {
     },
   });
 
+  // Service mutations
+  const serviceMutation = useMutation({
+    mutationFn: async (data: ServiceForm) => {
+      if (editingService) {
+        return apiRequest("PATCH", `/api/settings/services/${editingService.id}`, data);
+      }
+      return apiRequest("POST", "/api/settings/services", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/services"] });
+      toast({
+        title: editingService ? "Serviço atualizado" : "Serviço criado",
+        description: "Operação realizada com sucesso.",
+      });
+      setServiceDialogOpen(false);
+      setEditingService(null);
+      serviceForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Ocorreu um erro ao salvar o serviço.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/settings/services/${id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/services"] });
+      toast({
+        title: "Serviço deletado",
+        description: "Serviço deletado com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao deletar serviço.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditCategory = (category: EventCategory) => {
     setEditingCategory(category);
     categoryForm.setValue("name", category.name);
@@ -845,6 +910,19 @@ export default function Settings() {
     skillForm.reset();
   };
 
+  const handleEditService = (service: Service) => {
+    setEditingService(service);
+    serviceForm.setValue("name", service.name);
+    serviceForm.setValue("description", service.description || "");
+    setServiceDialogOpen(true);
+  };
+
+  const handleCloseServiceDialog = () => {
+    setServiceDialogOpen(false);
+    setEditingService(null);
+    serviceForm.reset();
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6 md:space-y-8">
@@ -857,11 +935,12 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="categories" className="w-full">
-          <TabsList className="flex w-full h-auto flex-wrap md:grid md:grid-cols-6 gap-1">
+          <TabsList className="flex w-full h-auto flex-wrap md:grid md:grid-cols-7 gap-1">
             <TabsTrigger value="categories" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-categories">Categorias</TabsTrigger>
             <TabsTrigger value="roles" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-roles">Funções</TabsTrigger>
             <TabsTrigger value="packages" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-packages">Pacotes</TabsTrigger>
             <TabsTrigger value="skills" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-skills">Habilidades</TabsTrigger>
+            <TabsTrigger value="services" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-services">Serviços</TabsTrigger>
             <TabsTrigger value="km-value" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-km-value">Valor/km</TabsTrigger>
             <TabsTrigger value="fees" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-fees">Taxas</TabsTrigger>
           </TabsList>
@@ -1108,6 +1187,70 @@ export default function Settings() {
                                 size="icon"
                                 onClick={() => deleteSkillMutation.mutate(skill.id)}
                                 data-testid={`button-delete-skill-${skill.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="services" className="mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <CardTitle>Serviços</CardTitle>
+                    <CardDescription>Gerencie os serviços prestados pela empresa</CardDescription>
+                  </div>
+                  <Button onClick={() => setServiceDialogOpen(true)} className="w-full sm:w-auto" data-testid="button-new-service">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo Serviço
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingServices ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : services.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum serviço cadastrado</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {services.map((service) => (
+                        <TableRow key={service.id}>
+                          <TableCell className="font-medium">{service.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{service.description || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditService(service)}
+                                data-testid={`button-edit-service-${service.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteServiceMutation.mutate(service.id)}
+                                data-testid={`button-delete-service-${service.id}`}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -1405,6 +1548,57 @@ export default function Settings() {
                 <Button type="submit" disabled={skillMutation.isPending} data-testid="button-save-skill">
                   {skillMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingSkill ? "Atualizar" : "Cadastrar"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Service Dialog */}
+      <Dialog open={serviceDialogOpen} onOpenChange={handleCloseServiceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingService ? "Editar Serviço" : "Novo Serviço"}</DialogTitle>
+            <DialogDescription>
+              {editingService ? "Atualize as informações do serviço" : "Cadastre um novo serviço prestado pela empresa"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...serviceForm}>
+            <form onSubmit={serviceForm.handleSubmit((data) => serviceMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={serviceForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: Animação de festa infantil" data-testid="input-service-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={serviceForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ""} placeholder="Descrição do serviço" rows={3} data-testid="input-service-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={handleCloseServiceDialog} data-testid="button-cancel-service">
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={serviceMutation.isPending} data-testid="button-save-service">
+                  {serviceMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingService ? "Atualizar" : "Cadastrar"}
                 </Button>
               </div>
             </form>
