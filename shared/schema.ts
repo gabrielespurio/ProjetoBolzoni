@@ -96,6 +96,8 @@ export const events = pgTable("events", {
   paymentDate: timestamp("payment_date"),
   installments: integer("installments"),
   packageId: varchar("package_id").references(() => packages.id),
+  serviceId: varchar("service_id").references(() => services.id),
+  eventType: text("event_type").default("package"), // 'package', 'service', 'both'
   packageNotes: text("package_notes"),
   childrenCount: integer("children_count"),
   status: eventStatusEnum("status").notNull().default("scheduled"),

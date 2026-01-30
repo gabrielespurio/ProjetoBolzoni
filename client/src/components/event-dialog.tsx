@@ -51,6 +51,8 @@ const eventFormSchema = insertEventSchema.extend({
   cardType: z.string().optional(),
   paymentDate: z.string().optional(),
   packageId: z.string().optional(),
+  serviceId: z.string().optional(),
+  eventType: z.enum(["package", "service", "both"]).default("package"),
   packageNotes: z.string().optional(),
   childrenCount: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
@@ -188,6 +190,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       cardType: "",
       paymentDate: "",
       packageId: "",
+      serviceId: "",
+      eventType: "package",
       packageNotes: "",
       status: "scheduled",
       notes: "",
@@ -251,6 +255,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     calculateFee();
   }, [paymentMethod, cardType, installments]);
 
+  const { data: services } = useQuery<any[]>({
+    queryKey: ["/api/settings/services"],
+    enabled: open,
+  });
+
+  const eventType = form.watch("eventType");
   const packageId = form.watch("packageId");
   const contractValue = form.watch("contractValue");
 
@@ -307,6 +317,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         installments: (event as any).installments || 1,
         paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
         packageId: (event as any).packageId || "",
+        serviceId: (event as any).serviceId || "",
+        eventType: (event as any).eventType || "package",
         packageNotes: (event as any).packageNotes || "",
         status: event.status || "scheduled",
         notes: event.notes || "",
@@ -356,6 +368,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         installments: 1,
         paymentDate: "",
         packageId: "",
+        serviceId: "",
+        eventType: "package",
         packageNotes: "",
         partyStartTime: "",
         eventDuration: "",
@@ -476,6 +490,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       paymentMethod: data.paymentMethod || null,
       cardType: data.cardType || null,
       packageId: data.packageId || null,
+      serviceId: data.serviceId || null,
+      eventType: data.eventType || "package",
       venueName: data.venueName || null,
       venueNumber: data.venueNumber || null,
     };
@@ -598,6 +614,127 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
             <div className="flex-1 overflow-y-auto px-6 py-2 space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="eventType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Evento</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        disabled={isReadOnly}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="package">Pacote</SelectItem>
+                          <SelectItem value="service">Serviço</SelectItem>
+                          <SelectItem value="both">Ambos (Pacote e Serviço)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {(eventType === "package" || eventType === "both") && (
+                  <FormField
+                    control={form.control}
+                    name="packageId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pacote</FormLabel>
+                        <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isReadOnly}
+                              >
+                                {field.value
+                                  ? packages?.find((p) => p.id === field.value)?.name
+                                  : "Selecione um pacote"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                            <Command>
+                              <CommandInput placeholder="Buscar pacote..." />
+                              <CommandList>
+                                <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
+                                <CommandGroup>
+                                  {packages?.map((p) => (
+                                    <CommandItem
+                                      key={p.id}
+                                      value={p.name}
+                                      onSelect={() => {
+                                        form.setValue("packageId", p.id);
+                                        setPackagePopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          p.id === field.value ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {p.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {(eventType === "service" || eventType === "both") && (
+                  <FormField
+                    control={form.control}
+                    name="serviceId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Serviço</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                          disabled={isReadOnly}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um serviço" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {services?.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
               <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
