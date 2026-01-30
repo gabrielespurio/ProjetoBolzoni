@@ -169,7 +169,7 @@ export default function Inventory() {
           </TabsTrigger>
           <TabsTrigger value="part" className="flex items-center gap-2 py-2">
             <Scissors className="h-4 w-4" />
-            <span>Peças</span>
+            <span>Figurino</span>
           </TabsTrigger>
           <TabsTrigger value="material" className="flex items-center gap-2 py-2">
             <Ruler className="h-4 w-4" />
