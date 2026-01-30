@@ -191,7 +191,21 @@ export const packages = pgTable("packages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
   description: text("description"),
+  characterCount: integer("character_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const packageServices = pgTable("package_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  packageId: varchar("package_id").notNull().references(() => packages.id, { onDelete: "cascade" }),
+  serviceId: varchar("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+});
+
+export const packageMaterials = pgTable("package_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  packageId: varchar("package_id").notNull().references(() => packages.id, { onDelete: "cascade" }),
+  materialId: varchar("material_id").notNull().references(() => inventoryItems.id, { onDelete: "cascade" }),
+  quantity: integer("quantity").notNull().default(1),
 });
 
 export const skills = pgTable("skills", {
@@ -363,6 +377,30 @@ export const eventExpensesRelations = relations(eventExpenses, ({ one }) => ({
 
 export const packagesRelations = relations(packages, ({ many }) => ({
   events: many(events),
+  packageServices: many(packageServices),
+  packageMaterials: many(packageMaterials),
+}));
+
+export const packageServicesRelations = relations(packageServices, ({ one }) => ({
+  package: one(packages, {
+    fields: [packageServices.packageId],
+    references: [packages.id],
+  }),
+  service: one(services, {
+    fields: [packageServices.serviceId],
+    references: [services.id],
+  }),
+}));
+
+export const packageMaterialsRelations = relations(packageMaterials, ({ one }) => ({
+  package: one(packages, {
+    fields: [packageMaterials.packageId],
+    references: [packages.id],
+  }),
+  material: one(inventoryItems, {
+    fields: [packageMaterials.materialId],
+    references: [inventoryItems.id],
+  }),
 }));
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -456,6 +494,20 @@ export const insertEmployeeRoleSchema = createInsertSchema(employeeRoles).omit({
 export const insertPackageSchema = createInsertSchema(packages).omit({
   id: true,
   createdAt: true,
+}).extend({
+  serviceIds: z.array(z.string()).optional(),
+  materialIds: z.array(z.object({
+    materialId: z.string(),
+    quantity: z.number().min(1).default(1),
+  })).optional(),
+});
+
+export const insertPackageServiceSchema = createInsertSchema(packageServices).omit({
+  id: true,
+});
+
+export const insertPackageMaterialSchema = createInsertSchema(packageMaterials).omit({
+  id: true,
 });
 
 export const insertSkillSchema = createInsertSchema(skills).omit({
@@ -538,3 +590,9 @@ export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 
 export type EmployeePayment = typeof employeePayments.$inferSelect;
 export type InsertEmployeePayment = z.infer<typeof insertEmployeePaymentSchema>;
+
+export type PackageService = typeof packageServices.$inferSelect;
+export type InsertPackageService = z.infer<typeof insertPackageServiceSchema>;
+
+export type PackageMaterial = typeof packageMaterials.$inferSelect;
+export type InsertPackageMaterial = z.infer<typeof insertPackageMaterialSchema>;
