@@ -20,7 +20,12 @@ The backend is an Express.js application written in TypeScript, featuring a modu
 
 ### Data Storage
 
-PostgreSQL is the primary relational database, utilized with Neon Serverless PostgreSQL for connectivity. Drizzle ORM provides type-safe query building and schema management, with migrations handled by Drizzle Kit. The system manages ten core entities: Users, Clients, Employees, Events, Inventory Items, Financial Transactions, Purchases, Event Categories, Employee Roles, and Services, with defined relationships between them.
+PostgreSQL is the primary relational database, utilized with Neon Serverless PostgreSQL for connectivity. Drizzle ORM provides type-safe query building and schema management, with migrations handled by Drizzle Kit. The system manages core entities: Users, Clients, Employees, Events, Inventory Items, Financial Transactions, Purchases, Event Categories, Employee Roles, Services, Packages, Skills, with defined relationships between them.
+
+**Package Enhancements:**
+- Packages support a `characterCount` field to define how many characters/performers are included
+- Junction tables `package_services` and `package_materials` allow linking services and materials to packages
+- Materials are linked with quantities, enabling precise inventory tracking per package
 
 ### System Design Choices
 
