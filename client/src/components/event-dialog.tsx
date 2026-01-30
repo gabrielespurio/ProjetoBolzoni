@@ -638,6 +638,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
+                            type="button"
                             variant="outline"
                             role="combobox"
                             aria-expanded={clientPopoverOpen}
@@ -697,20 +698,21 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            className={cn(
-                              "w-full justify-between",
-                              !field.value && "text-muted-foreground"
-                            )}
-                            data-testid="select-event-category"
-                          >
-                            {field.value
-                              ? categories?.find((c) => c.id === field.value)?.name
-                              : "Selecione uma categoria"}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              data-testid="select-event-category"
+                            >
+                              {field.value
+                                ? categories?.find((c) => c.id === field.value)?.name
+                                : "Selecione uma categoria"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-[400px] p-0" align="start">
