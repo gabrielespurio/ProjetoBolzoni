@@ -24,7 +24,7 @@ const inventoryFormSchema = insertInventoryItemSchema.extend({
   costPrice: z.string().optional(),
   notes: z.string().optional(),
   parentId: z.string().optional(),
-  partType: z.enum(["head", "body", "feet"]).optional().nullable(),
+  partType: z.string().optional().nullable(),
 });
 
 type InventoryForm = z.infer<typeof inventoryFormSchema>;
@@ -186,18 +186,13 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tipo de Peça *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || undefined}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo de peça" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="head">Cabeça</SelectItem>
-                            <SelectItem value="body">Corpo</SelectItem>
-                            <SelectItem value="feet">Pés</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <Input 
+                            placeholder="Digite o tipo de peça" 
+                            {...field} 
+                            value={field.value || ""} 
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
