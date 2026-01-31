@@ -195,6 +195,8 @@ export const packages = pgTable("packages", {
   name: text("name").notNull().unique(),
   description: text("description"),
   characterCount: integer("character_count").notNull().default(0),
+  needsAdditionalProducer: boolean("needs_additional_producer").notNull().default(false),
+  additionalProducerCount: integer("additional_producer_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

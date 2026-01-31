@@ -39,6 +39,8 @@ const packageSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   description: z.string().optional(),
   characterCount: z.number().min(0).default(0),
+  needsAdditionalProducer: z.boolean().default(false),
+  additionalProducerCount: z.number().min(0).default(0),
   serviceIds: z.array(z.string()).optional().default([]),
   materialIds: z.array(z.object({
     materialId: z.string(),
@@ -629,7 +631,7 @@ export default function Settings() {
 
   const packageForm = useForm<PackageForm>({
     resolver: zodResolver(packageSchema),
-    defaultValues: { name: "", description: "", characterCount: 0, serviceIds: [], materialIds: [] },
+    defaultValues: { name: "", description: "", characterCount: 0, needsAdditionalProducer: false, additionalProducerCount: 0, serviceIds: [], materialIds: [] },
   });
 
   const skillForm = useForm<SkillForm>({
@@ -909,6 +911,8 @@ export default function Settings() {
     packageForm.setValue("name", pkg.name);
     packageForm.setValue("description", pkg.description || "");
     packageForm.setValue("characterCount", pkg.characterCount || 0);
+    packageForm.setValue("needsAdditionalProducer", (pkg as any).needsAdditionalProducer || false);
+    packageForm.setValue("additionalProducerCount", (pkg as any).additionalProducerCount || 0);
     packageForm.setValue("serviceIds", pkg.services?.map(s => s.serviceId) || []);
     packageForm.setValue("materialIds", pkg.materials?.map(m => ({ materialId: m.materialId, quantity: m.quantity })) || []);
     setPackageDialogOpen(true);
@@ -1537,6 +1541,58 @@ export default function Settings() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={packageForm.control}
+                name="needsAdditionalProducer"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center space-x-2">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          id="needsAdditionalProducer"
+                          checked={field.value || false}
+                          onChange={(e) => {
+                            field.onChange(e.target.checked);
+                            if (!e.target.checked) {
+                              packageForm.setValue("additionalProducerCount", 0);
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                          data-testid="checkbox-needs-additional-producer"
+                        />
+                      </FormControl>
+                      <FormLabel htmlFor="needsAdditionalProducer" className="cursor-pointer !mt-0">
+                        Necessita Produtor Adicional?
+                      </FormLabel>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {packageForm.watch("needsAdditionalProducer") && (
+                <FormField
+                  control={packageForm.control}
+                  name="additionalProducerCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade de Produtores Adicionais</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="1"
+                          {...field}
+                          value={field.value || 1}
+                          onChange={e => field.onChange(parseInt(e.target.value) || 1)}
+                          placeholder="1" 
+                          data-testid="input-additional-producer-count" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={packageForm.control}
                 name="serviceIds"
