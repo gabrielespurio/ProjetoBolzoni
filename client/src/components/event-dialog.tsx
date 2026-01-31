@@ -50,7 +50,7 @@ const eventFormSchema = insertEventSchema.extend({
   paymentMethod: z.string().optional(),
   cardType: z.string().optional(),
   paymentDate: z.string().optional(),
-  packageId: z.string().optional(),
+  packageIds: z.array(z.string()).optional().default([]),
   serviceId: z.string().optional(),
   eventType: z.enum(["package", "service", "both"]).default("package"),
   packageNotes: z.string().optional(),
@@ -188,7 +188,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       paymentMethod: "",
       cardType: "",
       paymentDate: "",
-      packageId: "",
+      packageIds: [],
       serviceId: "",
       eventType: "package",
       packageNotes: "",
@@ -311,7 +311,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cardType: (event as any).cardType || "",
         installments: (event as any).installments || 1,
         paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
-        packageId: (event as any).packageId || "",
+        packageIds: (event as any).packageIds || [],
         serviceId: (event as any).serviceId || "",
         eventType: (event as any).eventType || "package",
         packageNotes: (event as any).packageNotes || "",
@@ -360,7 +360,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         cardType: "",
         installments: 1,
         paymentDate: "",
-        packageId: "",
+        packageIds: [],
         serviceId: "",
         eventType: "package",
         packageNotes: "",
@@ -478,7 +478,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       paymentDate: data.paymentDate && data.paymentDate !== "" ? new Date(data.paymentDate) : null,
       paymentMethod: data.paymentMethod || null,
       cardType: data.cardType || null,
-      packageId: data.packageId || null,
+      packageIds: data.packageIds || [],
       serviceId: data.serviceId || null,
       eventType: data.eventType || "package",
       venueName: data.venueName || null,
@@ -848,60 +848,42 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 <>
                   <FormField
                     control={form.control}
-                    name="packageId"
+                    name="packageIds"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Pacote</FormLabel>
-                        <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                  "w-full justify-between",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isReadOnly}
-                                data-testid="select-event-package"
-                              >
-                                {field.value
-                                  ? packages?.find((p) => p.id === field.value)?.name
-                                  : "Selecione um pacote"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                            <Command>
-                              <CommandInput placeholder="Buscar pacote..." />
-                              <CommandList>
-                                <CommandEmpty>Nenhum pacote encontrado.</CommandEmpty>
-                                <CommandGroup>
-                                  {packages?.map((p) => (
-                                    <CommandItem
-                                      key={p.id}
-                                      value={p.name}
-                                      onSelect={() => {
-                                        form.setValue("packageId", p.id);
-                                        setPackagePopoverOpen(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          p.id === field.value ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      {p.name}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <FormLabel>Pacotes</FormLabel>
+                        <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto" data-testid="select-event-packages">
+                          {packages?.length === 0 && (
+                            <p className="text-sm text-muted-foreground">Nenhum pacote cadastrado.</p>
+                          )}
+                          {packages?.map((p) => {
+                            const isSelected = field.value?.includes(p.id) || false;
+                            return (
+                              <div key={p.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`package-${p.id}`}
+                                  checked={isSelected}
+                                  disabled={isReadOnly}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = field.value || [];
+                                    if (checked) {
+                                      form.setValue("packageIds", [...currentValues, p.id]);
+                                    } else {
+                                      form.setValue("packageIds", currentValues.filter((id: string) => id !== p.id));
+                                    }
+                                  }}
+                                  data-testid={`checkbox-package-${p.id}`}
+                                />
+                                <label
+                                  htmlFor={`package-${p.id}`}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                  {p.name}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
