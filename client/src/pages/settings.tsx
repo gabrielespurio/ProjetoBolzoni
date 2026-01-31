@@ -1728,6 +1728,19 @@ export default function Settings() {
               />
               <FormField
                 control={serviceForm.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Serviço</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: Entretenimento, Logística, etc." data-testid="input-service-type" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={serviceForm.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
