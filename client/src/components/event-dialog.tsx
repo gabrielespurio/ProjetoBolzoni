@@ -542,7 +542,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       });
       return;
     }
-    setSelectedEmployees(prev => [...prev, newEmployee]);
+    setSelectedEmployees(prev => [...prev, {
+      ...newEmployee,
+      characterId: newEmployee.characterId === "none" ? "" : newEmployee.characterId
+    }]);
     setNewEmployee({ employeeId: "", characterId: "", cacheValue: "" });
     setShowEmployeeForm(false);
   }, [newEmployee, toast]);
@@ -1640,7 +1643,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Geral (Sem personagem)</SelectItem>
+                            <SelectItem value="none">Geral (Sem personagem)</SelectItem>
                             {selectedCharacters.map(characterId => {
                               const character = characters.find(c => c.id === characterId);
                               return character ? (
