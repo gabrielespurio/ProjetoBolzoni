@@ -1251,6 +1251,7 @@ export default function Settings() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nome</TableHead>
+                        <TableHead>Tipo</TableHead>
                         <TableHead>Descrição</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -1259,6 +1260,7 @@ export default function Settings() {
                       {services.map((service) => (
                         <TableRow key={service.id}>
                           <TableCell className="font-medium">{service.name}</TableCell>
+                          <TableCell>{service.type || "-"}</TableCell>
                           <TableCell className="text-muted-foreground">{service.description || "-"}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
