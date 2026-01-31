@@ -460,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/events", authenticateToken, requireEventEdit, async (req, res) => {
     try {
-      const { characterIds, expenses, eventEmployees, eventInstallments, ...eventData } = req.body;
+      const { characterIds, expenses, eventEmployees, eventInstallments, packageIds, ...eventData } = req.body;
       
       // Validate date is not more than 1 year in the past
       const eventDate = new Date(eventData.date);
@@ -478,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: eventDate,
         paymentDate: eventData.paymentDate ? new Date(eventData.paymentDate) : null,
       });
-      const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees, eventInstallments);
+      const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees, eventInstallments, packageIds);
       res.status(201).json(event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar evento" });
@@ -487,7 +487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/events/:id", authenticateToken, requireEventEdit, async (req, res) => {
     try {
-      const { characterIds, expenses, eventEmployees, eventInstallments, ...eventData } = req.body;
+      const { characterIds, expenses, eventEmployees, eventInstallments, packageIds, ...eventData } = req.body;
       console.log("Recebido PATCH para evento:", req.params.id);
       console.log("Parcelas recebidas:", eventInstallments);
       
@@ -512,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bodyData.paymentDate = bodyData.paymentDate ? new Date(bodyData.paymentDate) : null;
       }
       const data = insertEventSchema.partial().parse(bodyData);
-      const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees, eventInstallments);
+      const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees, eventInstallments, packageIds);
       
       // Se o status mudou para "completed", criar transação de contas a receber
       if (data.status === "completed" && previousStatus !== "completed" && currentEvent) {

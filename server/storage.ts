@@ -21,6 +21,7 @@ import {
   employeeSkills,
   eventExpenses,
   eventInstallments,
+  eventPackages,
   systemSettings,
   type User,
   type InsertUser,
@@ -117,8 +118,8 @@ export interface IStorage {
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>): Promise<Event>;
+  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
   
@@ -427,17 +428,23 @@ export class DatabaseStorage implements IStorage {
       })
       .from(eventEmployees)
       .where(eq(eventEmployees.eventId, id));
+
+    const eventPkgs = await db
+      .select({ packageId: eventPackages.packageId })
+      .from(eventPackages)
+      .where(eq(eventPackages.eventId, id));
     
     return {
       ...event,
       characterIds: characters.map(c => c.characterId),
+      packageIds: eventPkgs.map(p => p.packageId),
       expenses,
       eventInstallments: installments,
       eventEmployees: eventEmps,
     };
   }
   
-  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>): Promise<Event> {
+  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
     
     if (characterIds && characterIds.length > 0) {
@@ -457,11 +464,15 @@ export class DatabaseStorage implements IStorage {
       const eventDate = (event as any).date instanceof Date ? (event as any).date : new Date((event as any).date);
       await this.addEventEmployees(newEvent.id, eventEmployees, (event as any).title, eventDate);
     }
+
+    if (packageIds && packageIds.length > 0) {
+      await this.addEventPackages(newEvent.id, packageIds);
+    }
     
     return newEvent;
   }
   
-  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>): Promise<Event> {
+  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
     
     if (characterIds !== undefined) {
@@ -493,6 +504,13 @@ export class DatabaseStorage implements IStorage {
         await this.addEventEmployees(id, eventEmployees, updated.title, eventDate);
       }
     }
+
+    if (packageIds !== undefined) {
+      await this.removeEventPackages(id);
+      if (packageIds.length > 0) {
+        await this.addEventPackages(id, packageIds);
+      }
+    }
     
     return updated;
   }
@@ -513,11 +531,28 @@ export class DatabaseStorage implements IStorage {
   async removeEventInstallments(eventId: string): Promise<void> {
     await db.delete(eventInstallments).where(eq(eventInstallments.eventId, eventId));
   }
+
+  async addEventPackages(eventId: string, packageIds: string[]): Promise<void> {
+    const values = packageIds.map(packageId => ({
+      eventId,
+      packageId,
+    }));
+    await db.insert(eventPackages).values(values);
+  }
+
+  async removeEventPackages(eventId: string): Promise<void> {
+    await db.delete(eventPackages).where(eq(eventPackages.eventId, eventId));
+  }
+
+  async getEventPackages(eventId: string): Promise<any[]> {
+    return await db.select().from(eventPackages).where(eq(eventPackages.eventId, eventId));
+  }
   
   async deleteEvent(id: string): Promise<void> {
     await this.removeEventCharacters(id);
     await this.removeEventExpenses(id);
     await this.removeEventEmployees(id);
+    await this.removeEventPackages(id);
     await db.delete(events).where(eq(events.id, id));
   }
   

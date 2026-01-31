@@ -259,6 +259,12 @@ export const eventInstallments = pgTable("event_installments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const eventPackages = pgTable("event_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  packageId: varchar("package_id").notNull().references(() => packages.id, { onDelete: "cascade" }),
+});
+
 export const eventsRelations = relations(events, ({ one, many }) => ({
   client: one(clients, {
     fields: [events.clientId],
@@ -276,6 +282,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   eventCharacters: many(eventCharacters),
   eventExpenses: many(eventExpenses),
   eventInstallments: many(eventInstallments),
+  eventPackages: many(eventPackages),
   transactions: many(financialTransactions),
   stockMovements: many(stockMovements),
 }));
@@ -385,6 +392,18 @@ export const packagesRelations = relations(packages, ({ many }) => ({
   events: many(events),
   packageServices: many(packageServices),
   packageMaterials: many(packageMaterials),
+  eventPackages: many(eventPackages),
+}));
+
+export const eventPackagesRelations = relations(eventPackages, ({ one }) => ({
+  event: one(events, {
+    fields: [eventPackages.eventId],
+    references: [events.id],
+  }),
+  package: one(packages, {
+    fields: [eventPackages.packageId],
+    references: [packages.id],
+  }),
 }));
 
 export const packageServicesRelations = relations(packageServices, ({ one }) => ({
@@ -516,6 +535,10 @@ export const insertPackageMaterialSchema = createInsertSchema(packageMaterials).
   id: true,
 });
 
+export const insertEventPackageSchema = createInsertSchema(eventPackages).omit({
+  id: true,
+});
+
 export const insertSkillSchema = createInsertSchema(skills).omit({
   id: true,
   createdAt: true,
@@ -602,3 +625,6 @@ export type InsertPackageService = z.infer<typeof insertPackageServiceSchema>;
 
 export type PackageMaterial = typeof packageMaterials.$inferSelect;
 export type InsertPackageMaterial = z.infer<typeof insertPackageMaterialSchema>;
+
+export type EventPackage = typeof eventPackages.$inferSelect;
+export type InsertEventPackage = z.infer<typeof insertEventPackageSchema>;
