@@ -221,6 +221,7 @@ export const skills = pgTable("skills", {
 export const services = pgTable("services", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
+  type: text("type"),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

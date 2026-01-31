@@ -52,6 +52,7 @@ const skillFormSchema = insertSkillSchema.extend({
 
 const serviceSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
+  type: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -935,6 +936,7 @@ export default function Settings() {
   const handleEditService = (service: Service) => {
     setEditingService(service);
     serviceForm.setValue("name", service.name);
+    serviceForm.setValue("type", service.type || "");
     serviceForm.setValue("description", service.description || "");
     setServiceDialogOpen(true);
   };
