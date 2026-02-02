@@ -104,20 +104,25 @@ export function AppSidebar() {
 
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  // Normalização completa: remove acentos e converte para minúsculo
+  
+  // Normalização total: remove acentos e converte para minúsculo
   const normalize = (str: string) => {
     if (!str) return "";
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   };
   
   const userRole = normalize(user?.role || user?.function || 'employee');
-  const isSecretaria = userRole === 'secretaria' || userRole === 'secretaria';
   
   const filteredMenuItems = menuItems.filter(item => {
+    // Admin tem acesso a absolutamente tudo
+    if (userRole === 'admin') return true;
+    
     return item.roles.some(role => {
       const normalizedRole = normalize(role);
-      if (normalizedRole === 'secretaria' && isSecretaria) return true;
-      if (normalizedRole === 'employee' && userRole === 'funcionario') return true;
+      // Se a role do item for 'secretaria', aceita se o usuário for 'secretaria' ou 'funcionario' com função de 'secretaria'
+      if (normalizedRole === 'secretaria') {
+        return userRole === 'secretaria' || userRole === 'secretária';
+      }
       return normalizedRole === userRole;
     });
   });
