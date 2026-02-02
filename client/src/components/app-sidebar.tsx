@@ -29,7 +29,7 @@ const menuItems: MenuItem[] = [
     title: "Dashboard",
     url: "/",
     icon: Home,
-    roles: ['admin'],
+    roles: ['admin', 'secretaria'],
   },
   {
     title: "Eventos",
@@ -59,7 +59,7 @@ const menuItems: MenuItem[] = [
     title: "Funcionários",
     url: "/employees",
     icon: UserCircle,
-    roles: ['admin'],
+    roles: ['admin', 'secretaria'],
   },
   {
     title: "Estoque",
@@ -77,19 +77,19 @@ const menuItems: MenuItem[] = [
     title: "Compras",
     url: "/purchases",
     icon: ShoppingCart,
-    roles: ['admin'],
+    roles: ['admin', 'secretaria'],
   },
   {
     title: "Relatórios",
     url: "/reports",
     icon: FileSpreadsheet,
-    roles: ['admin'],
+    roles: ['admin', 'secretaria'],
   },
   {
     title: "Configurações",
     url: "/settings",
     icon: Settings,
-    roles: ['admin'],
+    roles: ['admin', 'secretaria'],
   },
 ];
 

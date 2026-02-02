@@ -68,7 +68,7 @@ function Router() {
               <div className="mx-auto max-w-7xl">
                 <Switch>
                   <Route path="/">
-                    <RoleProtectedRoute component={Dashboard} allowedRoles={['admin']} />
+                    <RoleProtectedRoute component={Dashboard} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/clients">
                     <RoleProtectedRoute component={Clients} allowedRoles={['admin', 'secretaria']} />
@@ -77,7 +77,7 @@ function Router() {
                     <RoleProtectedRoute component={Buffets} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/employees">
-                    <RoleProtectedRoute component={Employees} allowedRoles={['admin']} />
+                    <RoleProtectedRoute component={Employees} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/events" component={Events} />
                   <Route path="/agenda" component={Agenda} />
@@ -88,13 +88,13 @@ function Router() {
                     <RoleProtectedRoute component={Inventory} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/purchases">
-                    <RoleProtectedRoute component={Purchases} allowedRoles={['admin']} />
+                    <RoleProtectedRoute component={Purchases} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/reports">
-                    <RoleProtectedRoute component={Reports} allowedRoles={['admin']} />
+                    <RoleProtectedRoute component={Reports} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/settings">
-                    <RoleProtectedRoute component={Settings} allowedRoles={['admin']} />
+                    <RoleProtectedRoute component={Settings} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route component={NotFound} />
                 </Switch>
