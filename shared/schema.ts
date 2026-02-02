@@ -109,7 +109,7 @@ export const inventoryItems = pgTable("inventory_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   type: inventoryTypeEnum("type").notNull(),
-  partType: partTypeEnum("part_type"),
+  partType: text("part_type"),
   parentId: varchar("parent_id"),
   quantity: integer("quantity").notNull().default(0),
   minQuantity: integer("min_quantity").notNull().default(0),
