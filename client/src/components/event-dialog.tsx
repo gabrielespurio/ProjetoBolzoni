@@ -102,6 +102,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [packagePopoverOpen, setPackagePopoverOpen] = useState(false);
+  const [packageSearchTerm, setPackageSearchTerm] = useState("");
   const [methodPopoverOpen, setMethodPopoverOpen] = useState(false);
   const [cardPopoverOpen, setCardPopoverOpen] = useState(false);
   const [installmentMethodPopoverOpen, setInstallmentMethodPopoverOpen] = useState(false);
@@ -155,6 +156,13 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     queryKey: ["/api/settings/packages"],
     enabled: open,
   });
+
+  const filteredPackages = useMemo(() =>
+    packages?.filter(p =>
+      p.name.toLowerCase().includes(packageSearchTerm.toLowerCase())
+    ) || [],
+    [packages, packageSearchTerm]
+  );
 
   const characters = useMemo(() => 
     inventoryItems?.filter(item => item.type === "character") || [],
@@ -846,48 +854,57 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
               {(eventType === "package" || eventType === "both") && (
                 <>
-                  <FormField
-                    control={form.control}
-                    name="packageIds"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Pacotes</FormLabel>
-                        <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto" data-testid="select-event-packages">
-                          {packages?.length === 0 && (
-                            <p className="text-sm text-muted-foreground">Nenhum pacote cadastrado.</p>
-                          )}
-                          {packages?.map((p) => {
-                            const isSelected = field.value?.includes(p.id) || false;
-                            return (
-                              <div key={p.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`package-${p.id}`}
-                                  checked={isSelected}
-                                  disabled={isReadOnly}
-                                  onCheckedChange={(checked) => {
-                                    const currentValues = field.value || [];
-                                    if (checked) {
-                                      form.setValue("packageIds", [...currentValues, p.id]);
-                                    } else {
-                                      form.setValue("packageIds", currentValues.filter((id: string) => id !== p.id));
-                                    }
-                                  }}
-                                  data-testid={`checkbox-package-${p.id}`}
-                                />
-                                <label
-                                  htmlFor={`package-${p.id}`}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                >
-                                  {p.name}
-                                </label>
+                      <FormField
+                        control={form.control}
+                        name="packageIds"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Pacotes</FormLabel>
+                            <div className="space-y-2">
+                              <Input
+                                placeholder="Pesquisar pacotes..."
+                                value={packageSearchTerm}
+                                onChange={(e) => setPackageSearchTerm(e.target.value)}
+                                className="h-8"
+                                data-testid="input-search-packages"
+                              />
+                              <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto" data-testid="select-event-packages">
+                                {filteredPackages.length === 0 && (
+                                  <p className="text-sm text-muted-foreground">Nenhum pacote encontrado.</p>
+                                )}
+                                {filteredPackages.map((p) => {
+                                  const isSelected = field.value?.includes(p.id) || false;
+                                  return (
+                                    <div key={p.id} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`package-${p.id}`}
+                                        checked={isSelected}
+                                        disabled={isReadOnly}
+                                        onCheckedChange={(checked) => {
+                                          const currentValues = field.value || [];
+                                          if (checked) {
+                                            form.setValue("packageIds", [...currentValues, p.id]);
+                                          } else {
+                                            form.setValue("packageIds", currentValues.filter((id: string) => id !== p.id));
+                                          }
+                                        }}
+                                        data-testid={`checkbox-package-${p.id}`}
+                                      />
+                                      <label
+                                        htmlFor={`package-${p.id}`}
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                      >
+                                        {p.name}
+                                      </label>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            );
-                          })}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                   <FormField
                     control={form.control}
                     name="packageNotes"
