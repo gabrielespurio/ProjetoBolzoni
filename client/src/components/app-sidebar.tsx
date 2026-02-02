@@ -104,10 +104,21 @@ export function AppSidebar() {
 
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  const userRole = (user?.role || 'employee').toLowerCase();
+  const userRole = (user?.role || user?.function || 'employee').toLowerCase();
+  
+  // Log para depuração das permissões
+  console.log("Current user role:", userRole);
+  console.log("User object from localStorage:", user);
   
   const filteredMenuItems = menuItems.filter(item => {
-    return item.roles.some(role => role.toLowerCase() === userRole);
+    const hasAccess = item.roles.some(role => {
+      const normalizedRole = role.toLowerCase();
+      return normalizedRole === userRole || 
+             (normalizedRole === 'secretaria' && userRole === 'secretária') ||
+             (normalizedRole === 'secretaria' && userRole === 'secretary');
+    });
+    console.log(`Checking access for ${item.title}:`, hasAccess, "Roles allowed:", item.roles);
+    return hasAccess;
   });
 
   return (

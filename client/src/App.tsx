@@ -32,9 +32,14 @@ function RoleProtectedRoute({
 }) {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  const userRole = (user?.role || 'employee').toLowerCase();
+  const userRole = (user?.role || user?.function || 'employee').toLowerCase();
   
-  const hasAccess = allowedRoles.some(role => role.toLowerCase() === userRole);
+  const hasAccess = allowedRoles.some(role => {
+    const normalizedRole = role.toLowerCase();
+    return normalizedRole === userRole || 
+           (normalizedRole === 'secretaria' && userRole === 'secretária') ||
+           (normalizedRole === 'secretaria' && userRole === 'secretary');
+  });
   
   if (!hasAccess) {
     return <Redirect to="/events" />;
