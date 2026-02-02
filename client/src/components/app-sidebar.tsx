@@ -111,17 +111,15 @@ export function AppSidebar() {
   };
   
   const userRole = normalize(user?.role || user?.function || 'employee');
+  const isSecretaria = userRole === 'secretaria' || userRole === 'secretaria';
   
   const filteredMenuItems = menuItems.filter(item => {
-    const hasAccess = item.roles.some(role => {
+    return item.roles.some(role => {
       const normalizedRole = normalize(role);
-      // Se a role do item for 'secretaria', aceita se o usuário for 'secretaria' ou 'funcionario' com função de 'secretaria'
-      if (normalizedRole === 'secretaria') {
-        return userRole === 'secretaria';
-      }
+      if (normalizedRole === 'secretaria' && isSecretaria) return true;
+      if (normalizedRole === 'employee' && userRole === 'funcionario') return true;
       return normalizedRole === userRole;
     });
-    return hasAccess;
   });
 
   return (

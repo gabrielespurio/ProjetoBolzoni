@@ -398,11 +398,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const events = await storage.getAllEvents();
       const userRoleRaw = (req.userRole || "").toLowerCase();
-      const isSecretaria = userRoleRaw === 'secretaria' || userRoleRaw === 'secretária';
+      const isSecretaria = userRoleRaw === 'secretaria' || userRoleRaw === 'secretária' || userRoleRaw === 'secretaria';
       const isEmployee = userRoleRaw === 'employee' || userRoleRaw === 'funcionario' || userRoleRaw === 'funcionário';
       
       // For employees, filter to show only events they are linked to
-      if (isEmployee) {
+      if (isEmployee && !isSecretaria) {
         // Get the employee linked to this user
         const user = await storage.getUser(req.userId!);
         if (user) {
@@ -438,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       
-      // For secretaria, remove financial values too
+      // For secretaria, remove financial values but show all events
       if (isSecretaria) {
         const sanitizedEvents = events.map((event: any) => ({
           ...event,
