@@ -6,6 +6,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertInventoryItemSchema, type InventoryItem } from "@shared/schema";
 import { z } from "zod";
 import { useState, useMemo } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -51,16 +52,29 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
     select: (items) => items.filter(i => i.type === "character"),
   });
 
-  const { data: partsAndAccessories } = useQuery<InventoryItem[]>({
+  const { data: parts } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
-    select: (items) => items.filter(i => i.type === "part" || i.type === "accessory"),
+    select: (items) => items.filter(i => i.type === "part"),
   });
 
-  const filteredComponents = useMemo(() => {
-    return partsAndAccessories?.filter(item => 
+  const { data: accessories } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/inventory"],
+    select: (items) => items.filter(i => i.type === "accessory"),
+  });
+
+  const [componentTab, setComponentTab] = useState<"parts" | "accessories">("parts");
+
+  const filteredParts = useMemo(() => {
+    return parts?.filter(item => 
       item.name.toLowerCase().includes(componentSearchTerm.toLowerCase())
     ) || [];
-  }, [partsAndAccessories, componentSearchTerm]);
+  }, [parts, componentSearchTerm]);
+
+  const filteredAccessories = useMemo(() => {
+    return accessories?.filter(item => 
+      item.name.toLowerCase().includes(componentSearchTerm.toLowerCase())
+    ) || [];
+  }, [accessories, componentSearchTerm]);
 
   const form = useForm<InventoryForm>({
     resolver: zodResolver(inventoryFormSchema),
@@ -208,46 +222,94 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
               />
               {selectedType === "character" && (
                 <div className="md:col-span-2 space-y-4">
-                  <FormLabel>Peças e Acessórios do Personagem</FormLabel>
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="Pesquisar peças ou acessórios..."
-                      value={componentSearchTerm}
-                      onChange={(e) => setComponentSearchTerm(e.target.value)}
-                      className="h-8"
-                    />
-                    <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
-                      {filteredComponents.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          Nenhuma peça ou acessório encontrado.
-                        </p>
-                      )}
-                      {filteredComponents.map((component) => {
-                        const isSelected = selectedComponents.includes(component.id);
-                        return (
-                          <div key={component.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`component-${component.id}`}
-                              checked={isSelected}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedComponents(prev => [...prev, component.id]);
-                                } else {
-                                  setSelectedComponents(prev => prev.filter(id => id !== component.id));
-                                }
-                              }}
-                            />
-                            <label
-                              htmlFor={`component-${component.id}`}
-                              className="text-sm font-medium leading-none cursor-pointer"
-                            >
-                              {component.name} ({component.type === 'part' ? 'Peça' : 'Acessório'})
-                            </label>
-                          </div>
-                        );
-                      })}
+                  <FormLabel>Componentes do Personagem</FormLabel>
+                  <Tabs value={componentTab} onValueChange={(v) => setComponentTab(v as "parts" | "accessories")}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="parts" data-testid="tab-parts">
+                        Peças ({filteredParts.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="accessories" data-testid="tab-accessories">
+                        Acessórios ({filteredAccessories.length})
+                      </TabsTrigger>
+                    </TabsList>
+                    <div className="mt-2">
+                      <Input
+                        placeholder={componentTab === "parts" ? "Pesquisar peças..." : "Pesquisar acessórios..."}
+                        value={componentSearchTerm}
+                        onChange={(e) => setComponentSearchTerm(e.target.value)}
+                        className="h-8"
+                        data-testid="input-search-components"
+                      />
                     </div>
-                  </div>
+                    <TabsContent value="parts" className="mt-2">
+                      <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                        {filteredParts.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Nenhuma peça encontrada.
+                          </p>
+                        )}
+                        {filteredParts.map((part) => {
+                          const isSelected = selectedComponents.includes(part.id);
+                          return (
+                            <div key={part.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`part-${part.id}`}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedComponents(prev => [...prev, part.id]);
+                                  } else {
+                                    setSelectedComponents(prev => prev.filter(id => id !== part.id));
+                                  }
+                                }}
+                                data-testid={`checkbox-part-${part.id}`}
+                              />
+                              <label
+                                htmlFor={`part-${part.id}`}
+                                className="text-sm font-medium leading-none cursor-pointer"
+                              >
+                                {part.name}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="accessories" className="mt-2">
+                      <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                        {filteredAccessories.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Nenhum acessório encontrado.
+                          </p>
+                        )}
+                        {filteredAccessories.map((accessory) => {
+                          const isSelected = selectedComponents.includes(accessory.id);
+                          return (
+                            <div key={accessory.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`accessory-${accessory.id}`}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedComponents(prev => [...prev, accessory.id]);
+                                  } else {
+                                    setSelectedComponents(prev => prev.filter(id => id !== accessory.id));
+                                  }
+                                }}
+                                data-testid={`checkbox-accessory-${accessory.id}`}
+                              />
+                              <label
+                                htmlFor={`accessory-${accessory.id}`}
+                                className="text-sm font-medium leading-none cursor-pointer"
+                              >
+                                {accessory.name}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
               )}
               {selectedType === "accessory" && (
