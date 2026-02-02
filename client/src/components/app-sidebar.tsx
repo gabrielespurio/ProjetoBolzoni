@@ -104,21 +104,13 @@ export function AppSidebar() {
 
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  const userRole = (user?.role || user?.function || 'employee').toLowerCase();
+  // Normalização completa: remove acentos e converte para minúsculo
+  const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   
-  // Log para depuração das permissões
-  console.log("Current user role:", userRole);
-  console.log("User object from localStorage:", user);
+  const userRole = normalize(user?.role || user?.function || 'employee');
   
   const filteredMenuItems = menuItems.filter(item => {
-    const hasAccess = item.roles.some(role => {
-      const normalizedRole = role.toLowerCase();
-      return normalizedRole === userRole || 
-             (normalizedRole === 'secretaria' && userRole === 'secretária') ||
-             (normalizedRole === 'secretaria' && userRole === 'secretary');
-    });
-    console.log(`Checking access for ${item.title}:`, hasAccess, "Roles allowed:", item.roles);
-    return hasAccess;
+    return item.roles.some(role => normalize(role) === userRole);
   });
 
   return (

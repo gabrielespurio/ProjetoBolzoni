@@ -32,14 +32,10 @@ function RoleProtectedRoute({
 }) {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  const userRole = (user?.role || user?.function || 'employee').toLowerCase();
+  const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const userRole = normalize(user?.role || user?.function || 'employee');
   
-  const hasAccess = allowedRoles.some(role => {
-    const normalizedRole = role.toLowerCase();
-    return normalizedRole === userRole || 
-           (normalizedRole === 'secretaria' && userRole === 'secretária') ||
-           (normalizedRole === 'secretaria' && userRole === 'secretary');
-  });
+  const hasAccess = allowedRoles.some(role => normalize(role) === userRole);
   
   if (!hasAccess) {
     return <Redirect to="/events" />;

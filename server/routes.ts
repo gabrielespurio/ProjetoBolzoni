@@ -49,7 +49,8 @@ function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
 
 // Admin or Secretaria authorization middleware
 function requireAdminOrSecretaria(req: AuthRequest, res: Response, next: NextFunction) {
-  if (req.userRole !== 'admin' && req.userRole !== 'secretaria') {
+  const role = (req.userRole || "").toLowerCase();
+  if (role !== 'admin' && role !== 'secretaria' && role !== 'secretária') {
     return res.status(403).json({ message: "Acesso negado. Apenas administradores e secretárias podem acessar este recurso." });
   }
   next();
@@ -394,9 +395,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/events", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const events = await storage.getAllEvents();
+      const userRoleRaw = (req.userRole || "").toLowerCase();
+      const isSecretaria = userRoleRaw === 'secretaria' || userRoleRaw === 'secretária';
+      const isEmployee = userRoleRaw === 'employee' || userRoleRaw === 'funcionario' || userRoleRaw === 'funcionário';
       
       // For employees, filter to show only events they are linked to
-      if (req.userRole === 'employee') {
+      if (isEmployee) {
         // Get the employee linked to this user
         const user = await storage.getUser(req.userId!);
         if (user) {
@@ -433,7 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // For secretaria, remove financial values too
-      if (req.userRole === 'secretaria') {
+      if (isSecretaria) {
         const sanitizedEvents = events.map((event: any) => ({
           ...event,
           contractValue: undefined,
