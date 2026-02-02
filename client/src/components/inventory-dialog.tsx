@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertInventoryItemSchema, type InventoryItem } from "@shared/schema";
 import { z } from "zod";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -26,6 +28,7 @@ const inventoryFormSchema = insertInventoryItemSchema.extend({
   parentId: z.string().optional(),
   partType: z.string().optional().nullable(),
   accessoryType: z.string().optional(),
+  componentIds: z.array(z.string()).optional(),
 });
 
 type InventoryForm = z.infer<typeof inventoryFormSchema>;
@@ -40,10 +43,24 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
   const { toast } = useToast();
   const isEdit = !!item;
 
+  const [selectedComponents, setSelectedComponents] = useState<string[]>([]);
+  const [componentSearchTerm, setComponentSearchTerm] = useState("");
+
   const { data: characters } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
     select: (items) => items.filter(i => i.type === "character"),
   });
+
+  const { data: partsAndAccessories } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/inventory"],
+    select: (items) => items.filter(i => i.type === "part" || i.type === "accessory"),
+  });
+
+  const filteredComponents = useMemo(() => {
+    return partsAndAccessories?.filter(item => 
+      item.name.toLowerCase().includes(componentSearchTerm.toLowerCase())
+    ) || [];
+  }, [partsAndAccessories, componentSearchTerm]);
 
   const form = useForm<InventoryForm>({
     resolver: zodResolver(inventoryFormSchema),
@@ -74,7 +91,9 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           parentId: item.parentId || undefined,
           partType: item.partType as any || undefined,
           accessoryType: item.accessoryType || "",
+          componentIds: (item as any).characterComponents?.map((cc: any) => cc.componentId) || [],
         });
+        setSelectedComponents((item as any).characterComponents?.map((cc: any) => cc.componentId) || []);
       } else {
         form.reset({
           name: "",
@@ -86,17 +105,23 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
           parentId: undefined,
           partType: undefined,
           accessoryType: "",
+          componentIds: [],
         });
+        setSelectedComponents([]);
       }
     }
   }, [open, item, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: InventoryForm) => {
+      const payload = {
+        ...data,
+        componentIds: selectedComponents,
+      };
       if (isEdit) {
-        return apiRequest("PATCH", `/api/inventory/${item.id}`, data);
+        return apiRequest("PATCH", `/api/inventory/${item.id}`, payload);
       } else {
-        return apiRequest("POST", "/api/inventory", data);
+        return apiRequest("POST", "/api/inventory", payload);
       }
     },
     onSuccess: () => {
@@ -181,6 +206,50 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                   </FormItem>
                 )}
               />
+              {selectedType === "character" && (
+                <div className="md:col-span-2 space-y-4">
+                  <FormLabel>Peças e Acessórios do Personagem</FormLabel>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Pesquisar peças ou acessórios..."
+                      value={componentSearchTerm}
+                      onChange={(e) => setComponentSearchTerm(e.target.value)}
+                      className="h-8"
+                    />
+                    <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                      {filteredComponents.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nenhuma peça ou acessório encontrado.
+                        </p>
+                      )}
+                      {filteredComponents.map((component) => {
+                        const isSelected = selectedComponents.includes(component.id);
+                        return (
+                          <div key={component.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`component-${component.id}`}
+                              checked={isSelected}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedComponents(prev => [...prev, component.id]);
+                                } else {
+                                  setSelectedComponents(prev => prev.filter(id => id !== component.id));
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`component-${component.id}`}
+                              className="text-sm font-medium leading-none cursor-pointer"
+                            >
+                              {component.name} ({component.type === 'part' ? 'Peça' : 'Acessório'})
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
               {selectedType === "accessory" && (
                 <FormField
                   control={form.control}

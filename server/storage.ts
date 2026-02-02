@@ -601,21 +601,56 @@ export class DatabaseStorage implements IStorage {
   
   // Inventory
   async getAllInventoryItems(): Promise<InventoryItem[]> {
-    return await db.select().from(inventoryItems).orderBy(desc(inventoryItems.createdAt));
+    const items = await db.select().from(inventoryItems).orderBy(desc(inventoryItems.createdAt));
+    return await Promise.all(items.map(async (item) => {
+      const components = await db
+        .select({ componentId: characterComponents.componentId })
+        .from(characterComponents)
+        .where(eq(characterComponents.characterId, item.id));
+      return { ...item, characterComponents: components };
+    }));
   }
-  
+
   async getInventoryItem(id: string): Promise<InventoryItem | undefined> {
     const [item] = await db.select().from(inventoryItems).where(eq(inventoryItems.id, id));
-    return item || undefined;
+    if (!item) return undefined;
+    const components = await db
+      .select({ componentId: characterComponents.componentId })
+      .from(characterComponents)
+      .where(eq(characterComponents.characterId, id));
+    return { ...item, characterComponents: components } as any;
   }
-  
-  async createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem> {
-    const [newItem] = await db.insert(inventoryItems).values(item).returning();
+
+  async createInventoryItem(item: InsertInventoryItem & { componentIds?: string[] }): Promise<InventoryItem> {
+    const { componentIds, ...itemData } = item;
+    const [newItem] = await db.insert(inventoryItems).values(itemData).returning();
+    
+    if (componentIds && componentIds.length > 0) {
+      const values = componentIds.map(componentId => ({
+        characterId: newItem.id,
+        componentId,
+      }));
+      await db.insert(characterComponents).values(values);
+    }
+    
     return newItem;
   }
-  
-  async updateInventoryItem(id: string, item: Partial<InsertInventoryItem>): Promise<InventoryItem> {
-    const [updated] = await db.update(inventoryItems).set(item).where(eq(inventoryItems.id, id)).returning();
+
+  async updateInventoryItem(id: string, item: Partial<InsertInventoryItem & { componentIds?: string[] }>): Promise<InventoryItem> {
+    const { componentIds, ...itemData } = item;
+    const [updated] = await db.update(inventoryItems).set(itemData).where(eq(inventoryItems.id, id)).returning();
+    
+    if (componentIds !== undefined) {
+      await db.delete(characterComponents).where(eq(characterComponents.characterId, id));
+      if (componentIds.length > 0) {
+        const values = componentIds.map(componentId => ({
+          characterId: id,
+          componentId,
+        }));
+        await db.insert(characterComponents).values(values);
+      }
+    }
+    
     return updated;
   }
   

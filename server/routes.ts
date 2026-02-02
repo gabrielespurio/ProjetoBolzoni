@@ -573,8 +573,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/inventory", authenticateToken, requireAdmin, async (req, res) => {
     try {
-      const data = insertInventoryItemSchema.parse(req.body);
-      const item = await storage.createInventoryItem(data);
+      const { componentIds, ...inventoryData } = req.body;
+      const data = insertInventoryItemSchema.parse(inventoryData);
+      const item = await storage.createInventoryItem({ ...data, componentIds });
       res.status(201).json(item);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar item" });
@@ -583,8 +584,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/inventory/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
-      const data = insertInventoryItemSchema.partial().parse(req.body);
-      const item = await storage.updateInventoryItem(req.params.id, data);
+      const { componentIds, ...inventoryData } = req.body;
+      const data = insertInventoryItemSchema.partial().parse(inventoryData);
+      const item = await storage.updateInventoryItem(req.params.id, { ...data, componentIds });
       res.json(item);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao atualizar item" });

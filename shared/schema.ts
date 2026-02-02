@@ -428,6 +428,32 @@ export const packageMaterialsRelations = relations(packageMaterials, ({ one }) =
   }),
 }));
 
+export const characterComponents = pgTable("character_components", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  characterId: varchar("character_id").notNull().references(() => inventoryItems.id, { onDelete: "cascade" }),
+  componentId: varchar("component_id").notNull().references(() => inventoryItems.id, { onDelete: "cascade" }),
+});
+
+export const characterComponentsRelations = relations(characterComponents, ({ one }) => ({
+  character: one(inventoryItems, {
+    fields: [characterComponents.characterId],
+    references: [inventoryItems.id],
+    relationName: "character",
+  }),
+  component: one(inventoryItems, {
+    fields: [characterComponents.componentId],
+    references: [inventoryItems.id],
+    relationName: "component",
+  }),
+}));
+
+export const insertCharacterComponentSchema = createInsertSchema(characterComponents).omit({
+  id: true,
+});
+
+export type CharacterComponent = typeof characterComponents.$inferSelect;
+export type InsertCharacterComponent = z.infer<typeof insertCharacterComponentSchema>;
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
