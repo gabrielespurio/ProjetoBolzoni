@@ -439,6 +439,51 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
                 </FormItem>
               )}
             />
+            {selectedType === "character" && selectedComponents.length > 0 && (
+              <div className="border rounded-md p-4 bg-muted/30" data-testid="summary-components">
+                <h4 className="font-medium text-sm mb-3">Resumo dos Componentes</h4>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {(() => {
+                    const selectedParts = parts?.filter(p => selectedComponents.includes(p.id)) || [];
+                    const selectedAccessoriesList = accessories?.filter(a => selectedComponents.includes(a.id)) || [];
+                    return (
+                      <>
+                        {selectedParts.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Peças ({selectedParts.length})</p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedParts.map(part => (
+                                <span 
+                                  key={part.id} 
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-primary/10 text-primary"
+                                >
+                                  {part.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {selectedAccessoriesList.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Acessórios ({selectedAccessoriesList.length})</p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedAccessoriesList.map(accessory => (
+                                <span 
+                                  key={accessory.id} 
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground"
+                                >
+                                  {accessory.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
                 Cancelar
