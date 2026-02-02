@@ -25,6 +25,12 @@ import {
   eachWeekOfInterval,
   eachMonthOfInterval,
 } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ptBR } from "date-fns/locale";
 
 export default function Agenda() {
@@ -34,6 +40,9 @@ export default function Agenda() {
   const [modalOpen, setModalOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
+
+  const [selectedDayEvents, setSelectedDayEvents] = useState<any[]>([]);
+  const [dayModalOpen, setDayModalOpen] = useState(false);
 
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -60,6 +69,14 @@ export default function Agenda() {
   const handleEventClick = (event: any) => {
     setSelectedEvent(event);
     setModalOpen(true);
+  };
+
+  const handleDayClick = (date: Date) => {
+    const dayEvents = getEventsForDate(date);
+    if (dayEvents.length > 0) {
+      setSelectedDayEvents(dayEvents);
+      setDayModalOpen(true);
+    }
   };
 
   const handleEditEvent = (event: any) => {
@@ -152,7 +169,12 @@ export default function Agenda() {
             </TabsList>
 
             <TabsContent value="month" className="mt-6">
-              <MonthView currentDate={currentDate} getEventsForDate={getEventsForDate} onEventClick={handleEventClick} />
+              <MonthView 
+                currentDate={currentDate} 
+                getEventsForDate={getEventsForDate} 
+                onEventClick={handleEventClick}
+                onDayClick={handleDayClick}
+              />
             </TabsContent>
 
             <TabsContent value="week" className="mt-6">
@@ -178,11 +200,39 @@ export default function Agenda() {
         onClose={() => setDialogOpen(false)}
         event={editingEvent}
       />
+
+      <Dialog open={dayModalOpen} onOpenChange={setDayModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDayEvents.length > 0 && format(selectedDayEvents[0].dateObj, "dd 'de' MMMM", { locale: ptBR })}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-4">
+            {selectedDayEvents.map((event) => (
+              <button
+                key={event.id}
+                className="w-full text-left p-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors flex items-center justify-between"
+                onClick={() => {
+                  setDayModalOpen(false);
+                  handleEventClick(event);
+                }}
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{event.title}</span>
+                  <span className="text-xs opacity-70">{format(event.dateObj, "HH:mm")}</span>
+                </div>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function MonthView({ currentDate, getEventsForDate, onEventClick }: any) {
+function MonthView({ currentDate, getEventsForDate, onEventClick, onDayClick }: any) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(monthStart, { locale: ptBR });
@@ -214,8 +264,9 @@ function MonthView({ currentDate, getEventsForDate, onEventClick }: any) {
               key={idx}
               className={`min-h-[60px] md:min-h-[100px] border rounded-md md:rounded-lg p-1 md:p-2 ${
                 !isCurrentMonth ? "bg-muted/50 text-muted-foreground" : "bg-background"
-              } ${isToday ? "ring-2 ring-primary" : ""}`}
+              } ${isToday ? "ring-2 ring-primary" : ""} cursor-pointer hover:bg-accent/5 transition-colors`}
               data-testid={`day-${format(day, "yyyy-MM-dd")}`}
+              onClick={() => onDayClick(day)}
             >
               <div className={`text-xs md:text-sm font-medium mb-0.5 md:mb-1 ${isToday ? "text-primary" : ""}`}>
                 {format(day, "d")}
@@ -226,15 +277,18 @@ function MonthView({ currentDate, getEventsForDate, onEventClick }: any) {
                     key={event.id}
                     className="w-full text-left text-[9px] md:text-xs p-0.5 md:p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover-elevate"
                     title={event.title}
-                    onClick={() => onEventClick(event)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick(event);
+                    }}
                     data-testid={`event-${event.id}`}
                   >
                     <span className="hidden md:inline">{format(event.dateObj, "HH:mm")} </span>{event.title}
                   </button>
                 ))}
                 {dayEvents.length > 2 && (
-                  <div className="text-[9px] md:text-xs text-muted-foreground">
-                    +{dayEvents.length - 2}
+                  <div className="text-[9px] md:text-xs text-muted-foreground font-medium">
+                    +{dayEvents.length - 2} mais
                   </div>
                 )}
               </div>
