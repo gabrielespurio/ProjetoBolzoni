@@ -32,9 +32,11 @@ function RoleProtectedRoute({
 }) {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  const userRole: UserRole = user?.role || 'employee';
+  const userRole = (user?.role || 'employee').toLowerCase();
   
-  if (!allowedRoles.includes(userRole)) {
+  const hasAccess = allowedRoles.some(role => role.toLowerCase() === userRole);
+  
+  if (!hasAccess) {
     return <Redirect to="/events" />;
   }
   
