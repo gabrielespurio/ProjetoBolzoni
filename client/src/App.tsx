@@ -30,7 +30,8 @@ function RoleProtectedRoute({
   component: React.ComponentType; 
   allowedRoles?: UserRole[];
 }) {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userStr = localStorage.getItem("user");
+  const user = userStr ? JSON.parse(userStr) : {};
   const userRole: UserRole = user?.role || 'employee';
   
   if (!allowedRoles.includes(userRole)) {

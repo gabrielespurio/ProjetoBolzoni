@@ -102,10 +102,17 @@ export function AppSidebar() {
     window.location.href = "/login";
   };
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userStr = localStorage.getItem("user");
+  const user = userStr ? JSON.parse(userStr) : {};
   const userRole: UserRole = user?.role || 'employee';
   
-  const filteredMenuItems = menuItems.filter(item => item.roles.includes(userRole));
+  // Log para depuração das permissões (pode ser removido após confirmar que funciona)
+  console.log("Current user role:", userRole);
+  
+  const filteredMenuItems = menuItems.filter(item => {
+    const hasAccess = item.roles.includes(userRole);
+    return hasAccess;
+  });
 
   return (
     <Sidebar className="border-none">
