@@ -166,9 +166,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const clients = await storage.getAllClients();
+      const role = (req.userRole || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       
       // For employees, filter to show only clients from events they are linked to
-      if (req.userRole === 'employee') {
+      if (role === 'employee' || role === 'funcionario') {
         const allEmployees = await storage.getAllEmployees();
         const linkedEmployee = allEmployees.find(emp => emp.userId === req.userId);
         
@@ -240,8 +241,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Employees routes (admin only)
-  app.get("/api/employees", authenticateToken, requireAdmin, async (req, res) => {
+  // Employees routes (admin and secretaria can view, only admin can modify)
+  app.get("/api/employees", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const employees = await storage.getAllEmployees();
       res.json(employees);
@@ -267,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: userEmail,
           password: hashedPassword,
           name: employeeData.name,
-          role: "employee",
+          role: employeeData.role?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes("secretaria") ? "secretaria" : "employee",
         });
         userId = user.id;
       }
@@ -294,11 +295,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create or update user if email and password are provided
       if (userEmail && userPassword) {
         if (currentEmployee.userId) {
-          // Update existing user password
+          // Update existing user password and role
           const hashedPassword = await bcrypt.hash(userPassword, 10);
           await storage.updateUser(currentEmployee.userId, {
             password: hashedPassword,
             name: employeeData.name || currentEmployee.name,
+            role: (employeeData.role || currentEmployee.role)?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes("secretaria") ? "secretaria" : "employee",
           });
         } else {
           // Create new user
@@ -312,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             username: userEmail,
             password: hashedPassword,
             name: employeeData.name || currentEmployee.name,
-            role: "employee",
+            role: (employeeData.role || currentEmployee.role)?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes("secretaria") ? "secretaria" : "employee",
           });
           userId = user.id;
         }

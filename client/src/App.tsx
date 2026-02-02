@@ -32,7 +32,10 @@ function RoleProtectedRoute({
 }) {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalize = (str: string) => {
+    if (!str) return "";
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  };
   const userRole = normalize(user?.role || user?.function || 'employee');
   
   const hasAccess = allowedRoles.some(role => normalize(role) === userRole);

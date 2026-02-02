@@ -105,12 +105,23 @@ export function AppSidebar() {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
   // Normalização completa: remove acentos e converte para minúsculo
-  const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalize = (str: string) => {
+    if (!str) return "";
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  };
   
   const userRole = normalize(user?.role || user?.function || 'employee');
   
   const filteredMenuItems = menuItems.filter(item => {
-    return item.roles.some(role => normalize(role) === userRole);
+    const hasAccess = item.roles.some(role => {
+      const normalizedRole = normalize(role);
+      // Se a role do item for 'secretaria', aceita se o usuário for 'secretaria' ou 'funcionario' com função de 'secretaria'
+      if (normalizedRole === 'secretaria') {
+        return userRole === 'secretaria';
+      }
+      return normalizedRole === userRole;
+    });
+    return hasAccess;
   });
 
   return (
