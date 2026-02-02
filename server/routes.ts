@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertServiceSchema, insertEmployeePaymentSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertServiceSchema, insertEmployeePaymentSchema, insertBuffetSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -1484,6 +1484,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao calcular taxa" });
+    }
+  });
+
+  // Buffets routes
+  app.get("/api/buffets", authenticateToken, async (req, res) => {
+    try {
+      const buffets = await storage.getAllBuffets();
+      res.json(buffets);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar buffets" });
+    }
+  });
+
+  app.get("/api/buffets/:id", authenticateToken, async (req, res) => {
+    try {
+      const buffet = await storage.getBuffet(req.params.id);
+      if (!buffet) {
+        return res.status(404).json({ message: "Buffet não encontrado" });
+      }
+      res.json(buffet);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar buffet" });
+    }
+  });
+
+  app.post("/api/buffets", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const data = insertBuffetSchema.parse(req.body);
+      const buffet = await storage.createBuffet(data);
+      res.status(201).json(buffet);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar buffet" });
+    }
+  });
+
+  app.patch("/api/buffets/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const data = insertBuffetSchema.partial().parse(req.body);
+      const buffet = await storage.updateBuffet(req.params.id, data);
+      res.json(buffet);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar buffet" });
+    }
+  });
+
+  app.delete("/api/buffets/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteBuffet(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar buffet" });
     }
   });
 

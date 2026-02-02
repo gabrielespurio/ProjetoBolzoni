@@ -24,6 +24,7 @@ import {
   eventPackages,
   systemSettings,
   characterComponents,
+  buffets,
   type User,
   type InsertUser,
   type Client,
@@ -66,6 +67,8 @@ import {
   type InsertEventInstallment,
   type SystemSetting,
   type InsertSystemSetting,
+  type Buffet,
+  type InsertBuffet,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, ne, like } from "drizzle-orm";
@@ -206,6 +209,13 @@ export interface IStorage {
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
   upsertSystemSetting(key: string, value: string): Promise<SystemSetting>;
   getAllSystemSettings(): Promise<SystemSetting[]>;
+
+  // Buffets
+  getAllBuffets(): Promise<Buffet[]>;
+  getBuffet(id: string): Promise<Buffet | undefined>;
+  createBuffet(buffet: InsertBuffet): Promise<Buffet>;
+  updateBuffet(id: string, buffet: Partial<InsertBuffet>): Promise<Buffet>;
+  deleteBuffet(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1182,6 +1192,30 @@ export class DatabaseStorage implements IStorage {
   
   async getAllSystemSettings(): Promise<SystemSetting[]> {
     return await db.select().from(systemSettings);
+  }
+
+  // Buffets
+  async getAllBuffets(): Promise<Buffet[]> {
+    return await db.select().from(buffets).orderBy(desc(buffets.createdAt));
+  }
+
+  async getBuffet(id: string): Promise<Buffet | undefined> {
+    const [buffet] = await db.select().from(buffets).where(eq(buffets.id, id));
+    return buffet || undefined;
+  }
+
+  async createBuffet(buffet: InsertBuffet): Promise<Buffet> {
+    const [newBuffet] = await db.insert(buffets).values(buffet).returning();
+    return newBuffet;
+  }
+
+  async updateBuffet(id: string, buffet: Partial<InsertBuffet>): Promise<Buffet> {
+    const [updated] = await db.update(buffets).set(buffet).where(eq(buffets.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBuffet(id: string): Promise<void> {
+    await db.delete(buffets).where(eq(buffets.id, id));
   }
 }
 

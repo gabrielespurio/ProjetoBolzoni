@@ -4,6 +4,29 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const buffets = pgTable("buffets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  address: text("address"),
+  phone: text("phone"),
+  email: text("email"),
+  responsibleName: text("responsible_name"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const buffetsRelations = relations(buffets, ({ many }) => ({
+  events: many(events),
+}));
+
+export const insertBuffetSchema = createInsertSchema(buffets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Buffet = typeof buffets.$inferSelect;
+export type InsertBuffet = z.infer<typeof insertBuffetSchema>;
+
 export const userRoleEnum = pgEnum("user_role", ["admin", "employee", "secretaria"]);
 export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted", "rescheduled", "paid_entry"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "payable"]);

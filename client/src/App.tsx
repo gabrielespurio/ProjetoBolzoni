@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
+import Buffets from "@/pages/buffets";
 import Employees from "@/pages/employees";
 import Events from "@/pages/events";
 import Agenda from "@/pages/agenda";
@@ -71,6 +72,9 @@ function Router() {
                   </Route>
                   <Route path="/clients">
                     <RoleProtectedRoute component={Clients} allowedRoles={['admin', 'secretaria']} />
+                  </Route>
+                  <Route path="/buffets">
+                    <RoleProtectedRoute component={Buffets} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/employees">
                     <RoleProtectedRoute component={Employees} allowedRoles={['admin']} />
