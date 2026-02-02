@@ -280,6 +280,7 @@ function EventsReport() {
       completed: "Concluído",
       cancelled: "Cancelado",
       deleted: "Excluído",
+      paid_entry: "Entrada Paga",
     };
     return labels[status] || status;
   };
@@ -290,8 +291,16 @@ function EventsReport() {
       completed: "secondary",
       cancelled: "destructive",
       deleted: "destructive",
+      paid_entry: "default",
     };
-    return <Badge variant={variants[status]}>{getStatusLabel(status)}</Badge>;
+    const colors: Record<string, string> = {
+      paid_entry: "bg-emerald-600 text-white hover:bg-emerald-700",
+    };
+    return (
+      <Badge variant={variants[status]} className={colors[status]}>
+        {getStatusLabel(status)}
+      </Badge>
+    );
   };
 
   if (isLoading) {

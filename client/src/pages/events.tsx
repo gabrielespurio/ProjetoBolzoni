@@ -137,6 +137,7 @@ export default function Events() {
       completed: "bg-green-500 text-white",
       cancelled: "bg-red-500 text-white",
       deleted: "bg-gray-500 text-white",
+      paid_entry: "bg-emerald-600 text-white",
     };
     return colors[status] || "bg-gray-500 text-white";
   };
@@ -148,6 +149,7 @@ export default function Events() {
       completed: "Concluído",
       cancelled: "Cancelado",
       deleted: "Excluído",
+      paid_entry: "Entrada Paga",
     };
     return labels[status] || status;
   };
@@ -204,6 +206,12 @@ export default function Events() {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500" />
               Concluído
+            </div>
+          </SelectItem>
+          <SelectItem value="paid_entry" data-testid="status-paid-entry">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-emerald-600" />
+              Entrada Paga
             </div>
           </SelectItem>
           <SelectItem value="cancelled" data-testid="status-cancelled">

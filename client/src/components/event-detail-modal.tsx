@@ -104,14 +104,15 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }> = {
       scheduled: { label: "Agendado", variant: "default" },
       confirmed: { label: "Confirmado", variant: "default" },
-      completed: { label: "Concluido", variant: "secondary" },
+      completed: { label: "Concluído", variant: "secondary" },
       cancelled: { label: "Cancelado", variant: "destructive" },
+      paid_entry: { label: "Entrada Paga", variant: "default", className: "bg-emerald-600 text-white hover:bg-emerald-700" },
     };
     const config = statusConfig[status] || { label: status, variant: "outline" };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
   };
 
   const formatAddress = () => {
