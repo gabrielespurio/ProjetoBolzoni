@@ -23,6 +23,7 @@ import {
   eventInstallments,
   eventPackages,
   systemSettings,
+  characterComponents,
   type User,
   type InsertUser,
   type Client,
