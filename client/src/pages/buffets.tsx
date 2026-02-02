@@ -37,7 +37,6 @@ export default function Buffets() {
     result = result.filter((buffet) =>
       buffet.name.toLowerCase().includes(search.toLowerCase()) ||
       buffet.address?.toLowerCase().includes(search.toLowerCase()) ||
-      buffet.responsibleName?.toLowerCase().includes(search.toLowerCase()) ||
       buffet.phone?.includes(search) ||
       buffet.email?.toLowerCase().includes(search.toLowerCase())
     );
@@ -116,9 +115,6 @@ export default function Buffets() {
                         <Utensils className="h-4 w-4 text-primary" />
                         <h3 className="text-sm md:text-base font-semibold text-foreground">{buffet.name}</h3>
                       </div>
-                      {buffet.responsibleName && (
-                        <span className="text-xs text-muted-foreground">Resp: {buffet.responsibleName}</span>
-                      )}
                     </div>
                     <div className="grid gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                       {buffet.phone && (

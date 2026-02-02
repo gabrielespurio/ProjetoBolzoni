@@ -38,7 +38,6 @@ export function BuffetDialog({ open, onClose, buffet }: BuffetDialogProps) {
       address: "",
       phone: "",
       email: "",
-      responsibleName: "",
       notes: "",
     },
   });
@@ -50,7 +49,6 @@ export function BuffetDialog({ open, onClose, buffet }: BuffetDialogProps) {
         address: buffet.address || "",
         phone: buffet.phone || "",
         email: buffet.email || "",
-        responsibleName: buffet.responsibleName || "",
         notes: buffet.notes || "",
       });
     } else {
@@ -59,7 +57,6 @@ export function BuffetDialog({ open, onClose, buffet }: BuffetDialogProps) {
         address: "",
         phone: "",
         email: "",
-        responsibleName: "",
         notes: "",
       });
     }
@@ -111,20 +108,6 @@ export function BuffetDialog({ open, onClose, buffet }: BuffetDialogProps) {
                   <FormLabel>Nome do Buffet</FormLabel>
                   <FormControl>
                     <Input {...field} data-testid="input-buffet-name" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="responsibleName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Responsável</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value || ""} data-testid="input-buffet-responsible" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

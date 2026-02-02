@@ -10,7 +10,6 @@ export const buffets = pgTable("buffets", {
   address: text("address"),
   phone: text("phone"),
   email: text("email"),
-  responsibleName: text("responsible_name"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
