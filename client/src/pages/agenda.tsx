@@ -4,8 +4,9 @@ import { type Event } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { EventDetailModal } from "@/components/event-detail-modal";
+import { EventDialog } from "@/components/event-dialog";
 import {
   startOfMonth,
   endOfMonth,
@@ -31,6 +32,8 @@ export default function Agenda() {
   const [view, setView] = useState<"month" | "week" | "year">("month");
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
 
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -59,6 +62,17 @@ export default function Agenda() {
     setModalOpen(true);
   };
 
+  const handleEditEvent = (event: any) => {
+    setEditingEvent(event);
+    setModalOpen(false);
+    setDialogOpen(true);
+  };
+
+  const handleAddEvent = () => {
+    setEditingEvent(null);
+    setDialogOpen(true);
+  };
+
   const navigateDate = (direction: "prev" | "next") => {
     if (view === "month") {
       setCurrentDate(prev => addMonths(prev, direction === "next" ? 1 : -1));
@@ -82,10 +96,18 @@ export default function Agenda() {
             Visualize seus eventos organizados por semana, mês ou ano
           </p>
         </div>
-        <Button onClick={goToToday} variant="outline" data-testid="button-today" className="w-full sm:w-auto">
-          <CalendarIcon className="h-4 w-4 mr-2" />
-          Hoje
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button onClick={handleAddEvent} data-testid="button-add-event" className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Evento
+            </Button>
+          )}
+          <Button onClick={goToToday} variant="outline" data-testid="button-today" className="w-full sm:w-auto">
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            Hoje
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -148,6 +170,13 @@ export default function Agenda() {
         event={selectedEvent}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        onEdit={handleEditEvent}
+      />
+
+      <EventDialog 
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        event={editingEvent}
       />
     </div>
   );

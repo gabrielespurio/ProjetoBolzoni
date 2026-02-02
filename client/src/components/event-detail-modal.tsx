@@ -7,6 +7,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -19,6 +20,7 @@ import {
   Users,
   FileText,
   User,
+  Pencil,
 } from "lucide-react";
 
 interface EventEmployee {
@@ -60,15 +62,17 @@ interface EventDetailModalProps {
   event: EventData | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (event: EventData) => void;
 }
 
-export function EventDetailModal({ event, open, onOpenChange }: EventDetailModalProps) {
+export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDetailModalProps) {
   if (!event) return null;
 
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || "employee";
-  const canViewFinancials = userRole === "admin";
+  const isAdmin = userRole === "admin";
+  const canViewFinancials = isAdmin;
 
   const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
   const createdAtDate = typeof event.createdAt === 'string' ? parseISO(event.createdAt) : event.createdAt;
@@ -211,8 +215,24 @@ export function EventDetailModal({ event, open, onOpenChange }: EventDetailModal
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center justify-between gap-4">
-            <DialogTitle className="text-xl" data-testid="modal-event-title">{event.title}</DialogTitle>
-            {getStatusBadge(event.status)}
+            <div className="flex flex-col gap-1">
+              <DialogTitle className="text-xl" data-testid="modal-event-title">{event.title}</DialogTitle>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(event.status)}
+                {isAdmin && onEdit && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => onEdit(event)}
+                    data-testid="button-edit-event"
+                    className="h-8 px-2"
+                  >
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </DialogHeader>
         
