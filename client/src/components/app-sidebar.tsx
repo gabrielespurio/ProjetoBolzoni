@@ -83,7 +83,7 @@ const menuItems: MenuItem[] = [
     title: "Relatórios",
     url: "/reports",
     icon: FileSpreadsheet,
-    roles: ['admin', 'secretaria'],
+    roles: ['admin'],
   },
   {
     title: "Configurações",

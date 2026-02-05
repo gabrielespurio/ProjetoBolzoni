@@ -98,7 +98,7 @@ function Router() {
                     <RoleProtectedRoute component={Purchases} allowedRoles={['admin', 'secretaria']} />
                   </Route>
                   <Route path="/reports">
-                    <RoleProtectedRoute component={Reports} allowedRoles={['admin', 'secretaria']} />
+                    <RoleProtectedRoute component={Reports} allowedRoles={['admin']} />
                   </Route>
                   <Route path="/settings">
                     <RoleProtectedRoute component={Settings} allowedRoles={['admin', 'secretaria']} />
