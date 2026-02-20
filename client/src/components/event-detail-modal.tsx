@@ -76,7 +76,7 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
 
   const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
   const createdAtDate = typeof event.createdAt === 'string' ? parseISO(event.createdAt) : event.createdAt;
-  const paymentDateObj = event.paymentDate 
+  const paymentDateObj = event.paymentDate
     ? (typeof event.paymentDate === 'string' ? parseISO(event.paymentDate) : event.paymentDate)
     : null;
 
@@ -110,6 +110,7 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
       completed: { label: "Concluído", variant: "secondary" },
       cancelled: { label: "Cancelado", variant: "destructive" },
       paid_entry: { label: "Entrada Paga", variant: "default", className: "bg-emerald-600 text-white hover:bg-emerald-700" },
+      paid_full: { label: "Total Pago", variant: "default", className: "bg-teal-600 text-white hover:bg-teal-700" },
     };
     const config = statusConfig[status] || { label: status, variant: "outline" };
     return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
@@ -129,7 +130,7 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
   const renderPaymentInfo = () => {
     const hasEntry = ticketValue > 0;
     const hasInstallments = event.installments && event.installments > 1;
-    
+
     if (hasEntry && hasInstallments) {
       return (
         <div className="space-y-2">
@@ -221,9 +222,9 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
               <div className="flex items-center gap-2">
                 {getStatusBadge(event.status)}
                 {isAdmin && onEdit && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => onEdit(event)}
                     data-testid="button-edit-event"
                     className="h-8 px-2"
@@ -236,7 +237,7 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
             </div>
           </div>
         </DialogHeader>
-        
+
         <ScrollArea className="max-h-[70vh] pr-4">
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -249,7 +250,7 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3">
                 <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
@@ -327,8 +328,8 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
               {event.eventEmployees && event.eventEmployees.length > 0 ? (
                 <div className="space-y-2">
                   {event.eventEmployees.map((emp, index) => (
-                    <div 
-                      key={`${emp.employeeId}-${index}`} 
+                    <div
+                      key={`${emp.employeeId}-${index}`}
                       className="flex items-center justify-between bg-muted/50 rounded-lg p-3"
                       data-testid={`elenco-item-${index}`}
                     >

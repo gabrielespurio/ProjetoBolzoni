@@ -20,26 +20,27 @@ import Inventory from "@/pages/inventory";
 import Purchases from "@/pages/purchases";
 import Settings from "@/pages/settings";
 import Reports from "@/pages/reports";
+import TimeTracking from "@/pages/time-tracking";
 
 type UserRole = 'admin' | 'employee' | 'secretaria';
 
-function RoleProtectedRoute({ 
-  component: Component, 
+function RoleProtectedRoute({
+  component: Component,
   allowedRoles = ['admin']
-}: { 
-  component: React.ComponentType; 
+}: {
+  component: React.ComponentType;
   allowedRoles?: UserRole[];
 }) {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
   const userRole = user?.role || user?.function || 'employee';
-  
+
   const hasAccess = allowedRoles.includes(userRole as UserRole);
-  
+
   if (!hasAccess) {
     return <Redirect to="/events" />;
   }
-  
+
   return <Component />;
 }
 
@@ -84,6 +85,7 @@ function Router() {
                   </Route>
                   <Route path="/events" component={Events} />
                   <Route path="/agenda" component={Agenda} />
+                  <Route path="/time-tracking" component={TimeTracking} />
                   <Route path="/financial">
                     <RoleProtectedRoute component={Financial} allowedRoles={['admin']} />
                   </Route>

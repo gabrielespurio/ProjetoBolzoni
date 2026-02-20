@@ -79,6 +79,8 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
       estado: employee?.estado || "",
       numero: employee?.numero || "",
       isAvailable: employee?.isAvailable ?? true,
+      clocksIn: employee?.clocksIn ?? false,
+      workloadHours: employee?.workloadHours ?? 0,
       userEmail: "",
       userPassword: "",
     },
@@ -149,6 +151,8 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         estado: "",
         numero: "",
         isAvailable: true,
+        clocksIn: false,
+        workloadHours: 0,
         userEmail: "",
         userPassword: "",
       });
@@ -187,12 +191,12 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
     },
     onSuccess: async (employeeData) => {
       const employeeId = isEdit ? employee!.id : employeeData.id;
-      
+
       // Save skills
       if (employeeId) {
         await skillsMutation.mutateAsync({ employeeId, skillIds: selectedSkillIds });
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
       queryClient.invalidateQueries({ queryKey: ["/api/employees", employeeId, "skills"] });
       toast({
@@ -317,6 +321,55 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                       />
                     </div>
 
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="clocksIn"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Funcionário passa ponto?</FormLabel>
+                            <Select
+                              onValueChange={(value) => field.onChange(value === "true")}
+                              value={field.value ? "true" : "false"}
+                            >
+                              <FormControl>
+                                <SelectTrigger data-testid="select-clocks-in">
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="true" data-testid="option-clocks-in-yes">Sim</SelectItem>
+                                <SelectItem value="false" data-testid="option-clocks-in-no">Não</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {form.watch("clocksIn") && (
+                        <FormField
+                          control={form.control}
+                          name="workloadHours"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Carga Horária (Horas)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="Ex: 44"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                  data-testid="input-workload-hours"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+
                     <div className="space-y-2">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                         Habilidades
@@ -416,9 +469,9 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           <FormItem>
                             <FormLabel>CPF</FormLabel>
                             <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="000.000.000-00" 
+                              <Input
+                                {...field}
+                                placeholder="000.000.000-00"
                                 data-testid="input-employee-cpf"
                                 onChange={(e) => field.onChange(maskCPF(e.target.value))}
                               />
@@ -434,9 +487,9 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           <FormItem>
                             <FormLabel>RG</FormLabel>
                             <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="00.000.000-0" 
+                              <Input
+                                {...field}
+                                placeholder="00.000.000-0"
                                 data-testid="input-employee-rg"
                                 onChange={(e) => field.onChange(maskRG(e.target.value))}
                               />
@@ -458,9 +511,9 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                           <FormItem>
                             <FormLabel>Telefone</FormLabel>
                             <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="(00) 00000-0000" 
+                              <Input
+                                {...field}
+                                placeholder="(00) 00000-0000"
                                 data-testid="input-employee-phone"
                                 onChange={(e) => field.onChange(maskPhone(e.target.value))}
                               />
@@ -497,9 +550,9 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                               <FormLabel>CEP</FormLabel>
                               <FormControl>
                                 <div className="relative">
-                                  <Input 
-                                    {...field} 
-                                    placeholder="00000-000" 
+                                  <Input
+                                    {...field}
+                                    placeholder="00000-000"
                                     data-testid="input-employee-cep"
                                     onBlur={handleCepBlur}
                                     maxLength={9}

@@ -78,15 +78,18 @@ export default function Dashboard() {
       completed: "secondary",
       cancelled: "destructive",
       paid_entry: "default",
+      paid_full: "default",
     };
     const labels: Record<string, string> = {
       scheduled: "Agendado",
       completed: "Concluído",
       cancelled: "Cancelado",
       paid_entry: "Entrada Paga",
+      paid_full: "Total Pago",
     };
     const colors: Record<string, string> = {
       paid_entry: "bg-emerald-600 text-white hover:bg-emerald-700",
+      paid_full: "bg-teal-600 text-white hover:bg-teal-700",
     };
     return (
       <Badge variant={variants[status]} className={colors[status]}>

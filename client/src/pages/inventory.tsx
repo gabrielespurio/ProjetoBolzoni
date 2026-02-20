@@ -71,15 +71,15 @@ export default function Inventory() {
 
   const filteredItems = useMemo(() => {
     let result = items || [];
-    
+
     result = filterByDateRange(result, "createdAt", dateFilter);
-    
+
     result = result.filter((item) =>
       (item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.type.toLowerCase().includes(search.toLowerCase())) &&
+        item.type.toLowerCase().includes(search.toLowerCase())) &&
       (activeTab === "all" || item.type === activeTab)
     );
-    
+
     return result;
   }, [items, search, dateFilter, activeTab]);
 
@@ -112,9 +112,9 @@ export default function Inventory() {
 
   const formatCurrency = (value: string | null) => {
     if (!value) return "-";
-    return new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
     }).format(parseFloat(value));
   };
 
@@ -224,9 +224,8 @@ export default function Inventory() {
                       {filteredItems.map((item) => (
                         <TableRow
                           key={item.id}
-                          className={`cursor-pointer ${
-                            isLowStock(item) ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/50"
-                          }`}
+                          className={`cursor-pointer ${isLowStock(item) ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-muted/50"
+                            }`}
                           data-testid={`inventory-item-${item.id}`}
                         >
                           <TableCell className="font-medium">
@@ -247,17 +246,11 @@ export default function Inventory() {
                                   {item.accessoryType}
                                 </Badge>
                               )}
-                              {item.type === "part" && item.partType && (
-                                <Badge variant="secondary" className="text-[10px] w-fit">
-                                  {item.partType === "head" ? "Cabeça" : item.partType === "body" ? "Corpo" : "Pés"}
-                                </Badge>
-                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className={`font-mono font-semibold ${
-                              isLowStock(item) ? "text-destructive" : "text-foreground"
-                            }`}>
+                            <span className={`font-mono font-semibold ${isLowStock(item) ? "text-destructive" : "text-foreground"
+                              }`}>
                               {item.quantity}
                             </span>
                           </TableCell>
@@ -331,9 +324,8 @@ export default function Inventory() {
                   {filteredItems.map((item) => (
                     <div
                       key={item.id}
-                      className={`p-3 hover-elevate active-elevate-2 cursor-pointer ${
-                        isLowStock(item) ? "bg-destructive/5" : ""
-                      }`}
+                      className={`p-3 hover-elevate active-elevate-2 cursor-pointer ${isLowStock(item) ? "bg-destructive/5" : ""
+                        }`}
                       onClick={() => canEdit && handleEdit(item)}
                       data-testid={`inventory-item-mobile-${item.id}`}
                     >
@@ -356,9 +348,8 @@ export default function Inventory() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="text-right">
-                            <span className={`font-mono font-semibold text-sm ${
-                              isLowStock(item) ? "text-destructive" : "text-foreground"
-                            }`}>
+                            <span className={`font-mono font-semibold text-sm ${isLowStock(item) ? "text-destructive" : "text-foreground"
+                              }`}>
                               {item.quantity}
                             </span>
                             <span className="text-xs text-muted-foreground"> / {item.minQuantity}</span>

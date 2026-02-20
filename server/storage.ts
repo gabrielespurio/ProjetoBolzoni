@@ -25,6 +25,7 @@ import {
   systemSettings,
   characterComponents,
   buffets,
+  timeRecords,
   type User,
   type InsertUser,
   type Client,
@@ -69,6 +70,8 @@ import {
   type InsertSystemSetting,
   type Buffet,
   type InsertBuffet,
+  type TimeRecord,
+  type InsertTimeRecord,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, ne, like } from "drizzle-orm";
@@ -80,7 +83,7 @@ export function calculateNextPaymentDate(eventDate: Date): Date {
   const day = eventDate.getDate();
   const month = eventDate.getMonth();
   const year = eventDate.getFullYear();
-  
+
   if (day <= 15) {
     // Próximo pagamento é dia 15 do mesmo mês
     return new Date(year, month, 15, 12, 0, 0);
@@ -95,51 +98,52 @@ export function calculateNextPaymentDate(eventDate: Date): Date {
 
 export interface IStorage {
   // Users
+  getAllUsers(): Promise<User[]>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User>;
-  
+
   // Clients
   getAllClients(): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: string): Promise<void>;
-  
+
   // Employees
   getAllEmployees(): Promise<Employee[]>;
   getEmployee(id: string): Promise<Employee | undefined>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee>;
   deleteEmployee(id: string): Promise<void>;
-  
+
   // Employee Payments
   getEmployeePayments(employeeId: string): Promise<EmployeePayment[]>;
   createEmployeePayment(employeeId: string, payment: Omit<InsertEmployeePayment, 'employeeId'>): Promise<EmployeePayment>;
   deleteEmployeePayment(id: string): Promise<void>;
-  
+
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
+  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
-  
+
   // Event Characters
   addEventCharacters(eventId: string, characterIds: string[]): Promise<void>;
   removeEventCharacters(eventId: string): Promise<void>;
-  
+
   // Event Expenses
   getEventExpenses(eventId: string): Promise<EventExpense[]>;
   addEventExpenses(eventId: string, expenses: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<void>;
   removeEventExpenses(eventId: string): Promise<void>;
-  
+
   // Event Employees
-  addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, eventTitle?: string, eventDate?: Date): Promise<void>;
+  addEventEmployees(eventId: string, employees: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, eventTitle?: string, eventDate?: Date): Promise<void>;
   removeEventEmployees(eventId: string): Promise<void>;
-  
+
   // Inventory
   getAllInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItem(id: string): Promise<InventoryItem | undefined>;
@@ -147,41 +151,41 @@ export interface IStorage {
   updateInventoryItem(id: string, item: Partial<InsertInventoryItem>): Promise<InventoryItem>;
   deleteInventoryItem(id: string): Promise<void>;
   getLowStockItems(): Promise<InventoryItem[]>;
-  
+
   // Stock Movements
   createStockMovement(movement: InsertStockMovement): Promise<StockMovement>;
-  
+
   // Financial Transactions
   getAllTransactions(): Promise<FinancialTransaction[]>;
   getTransaction(id: string): Promise<FinancialTransaction | undefined>;
   createTransaction(transaction: InsertFinancialTransaction): Promise<FinancialTransaction>;
   updateTransaction(id: string, transaction: Partial<InsertFinancialTransaction>): Promise<FinancialTransaction>;
   deleteTransaction(id: string): Promise<void>;
-  
+
   // Purchases
   getAllPurchases(): Promise<Purchase[]>;
   getPurchase(id: string): Promise<Purchase | undefined>;
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
   updatePurchase(id: string, purchase: Partial<InsertPurchase>): Promise<Purchase>;
   deletePurchase(id: string): Promise<void>;
-  
+
   // Dashboard
   getDashboardMetrics(): Promise<any>;
-  
+
   // Settings - Event Categories
   getAllEventCategories(): Promise<EventCategory[]>;
   getEventCategory(id: string): Promise<EventCategory | undefined>;
   createEventCategory(category: InsertEventCategory): Promise<EventCategory>;
   updateEventCategory(id: string, category: Partial<InsertEventCategory>): Promise<EventCategory>;
   deleteEventCategory(id: string): Promise<void>;
-  
+
   // Settings - Employee Roles
   getAllEmployeeRoles(): Promise<EmployeeRole[]>;
   getEmployeeRole(id: string): Promise<EmployeeRole | undefined>;
   createEmployeeRole(role: InsertEmployeeRole): Promise<EmployeeRole>;
   updateEmployeeRole(id: string, role: Partial<InsertEmployeeRole>): Promise<EmployeeRole>;
   deleteEmployeeRole(id: string): Promise<void>;
-  
+
   // Settings - Packages
   getAllPackages(): Promise<Package[]>;
   getPackage(id: string): Promise<Package | undefined>;
@@ -190,21 +194,21 @@ export interface IStorage {
   createPackage(pkg: InsertPackage): Promise<Package>;
   updatePackage(id: string, pkg: Partial<InsertPackage>): Promise<Package>;
   deletePackage(id: string): Promise<void>;
-  
+
   // Settings - Skills
   getAllSkills(): Promise<Skill[]>;
   getSkill(id: string): Promise<Skill | undefined>;
   createSkill(skill: InsertSkill): Promise<Skill>;
   updateSkill(id: string, skill: Partial<InsertSkill>): Promise<Skill>;
   deleteSkill(id: string): Promise<void>;
-  
+
   // Settings - Services
   getAllServices(): Promise<Service[]>;
   getService(id: string): Promise<Service | undefined>;
   createService(service: InsertService): Promise<Service>;
   updateService(id: string, service: Partial<InsertService>): Promise<Service>;
   deleteService(id: string): Promise<void>;
-  
+
   // Settings - System Settings
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
   upsertSystemSetting(key: string, value: string): Promise<SystemSetting>;
@@ -216,10 +220,21 @@ export interface IStorage {
   createBuffet(buffet: InsertBuffet): Promise<Buffet>;
   updateBuffet(id: string, buffet: Partial<InsertBuffet>): Promise<Buffet>;
   deleteBuffet(id: string): Promise<void>;
+
+  // Time Records
+  getTimeRecords(userId: string, startDate?: Date, endDate?: Date): Promise<TimeRecord[]>;
+  createTimeRecord(record: InsertTimeRecord): Promise<TimeRecord>;
+  deleteTimeRecord(id: string): Promise<void>;
+  getLatestTimeRecord(userId: string): Promise<TimeRecord | undefined>;
+  getAllUsersTimeRecords(startDate?: Date, endDate?: Date): Promise<(TimeRecord & { userName: string })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
   // Users
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
@@ -234,60 +249,60 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
-  
+
   async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
     const [updated] = await db.update(users).set(userData).where(eq(users.id, id)).returning();
     return updated;
   }
-  
+
   // Clients
   async getAllClients(): Promise<Client[]> {
     return await db.select().from(clients).orderBy(desc(clients.createdAt));
   }
-  
+
   async getClient(id: string): Promise<Client | undefined> {
     const [client] = await db.select().from(clients).where(eq(clients.id, id));
     return client || undefined;
   }
-  
+
   async createClient(client: InsertClient): Promise<Client> {
     const [newClient] = await db.insert(clients).values(client).returning();
     return newClient;
   }
-  
+
   async updateClient(id: string, client: Partial<InsertClient>): Promise<Client> {
     const [updated] = await db.update(clients).set(client).where(eq(clients.id, id)).returning();
     return updated;
   }
-  
+
   async deleteClient(id: string): Promise<void> {
     await db.delete(clients).where(eq(clients.id, id));
   }
-  
+
   // Employees
   async getAllEmployees(): Promise<Employee[]> {
     return await db.select().from(employees).orderBy(desc(employees.createdAt));
   }
-  
+
   async getEmployee(id: string): Promise<Employee | undefined> {
     const [employee] = await db.select().from(employees).where(eq(employees.id, id));
     return employee || undefined;
   }
-  
+
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
     const [newEmployee] = await db.insert(employees).values(employee).returning();
     return newEmployee;
   }
-  
+
   async updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee> {
     const [updated] = await db.update(employees).set(employee).where(eq(employees.id, id)).returning();
     return updated;
   }
-  
+
   async deleteEmployee(id: string): Promise<void> {
     await db.delete(employees).where(eq(employees.id, id));
   }
-  
+
   // Employee Payments
   async getEmployeePayments(employeeId: string): Promise<EmployeePayment[]> {
     return await db
@@ -296,7 +311,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(employeePayments.employeeId, employeeId))
       .orderBy(desc(employeePayments.paymentDate));
   }
-  
+
   async createEmployeePayment(employeeId: string, payment: Omit<InsertEmployeePayment, 'employeeId'>): Promise<EmployeePayment> {
     const [newPayment] = await db
       .insert(employeePayments)
@@ -304,11 +319,11 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return newPayment;
   }
-  
+
   async deleteEmployeePayment(id: string): Promise<void> {
     await db.delete(employeePayments).where(eq(employeePayments.id, id));
   }
-  
+
   // Events
   async getAllEvents(): Promise<any[]> {
     const allEvents = await db
@@ -339,6 +354,9 @@ export class DatabaseStorage implements IStorage {
         packageId: events.packageId,
         packageName: packages.name,
         packageNotes: events.packageNotes,
+        childrenCount: events.childrenCount,
+        buffetId: events.buffetId,
+        buffetName: buffets.name,
         status: events.status,
         notes: events.notes,
         createdAt: events.createdAt,
@@ -360,20 +378,21 @@ export class DatabaseStorage implements IStorage {
       .from(events)
       .leftJoin(clients, eq(events.clientId, clients.id))
       .leftJoin(packages, eq(events.packageId, packages.id))
+      .leftJoin(buffets, eq(events.buffetId, buffets.id))
       .where(ne(events.status, "deleted"))
       .orderBy(desc(events.date));
-    
+
     const eventsWithDetails = await Promise.all(
       allEvents.map(async (event) => {
         const characters = await db
-          .select({ 
+          .select({
             characterId: eventCharacters.characterId,
             characterName: inventoryItems.name
           })
           .from(eventCharacters)
           .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
           .where(eq(eventCharacters.eventId, event.id));
-        
+
         const eventEmps = await db
           .select({
             employeeId: eventEmployees.employeeId,
@@ -384,7 +403,7 @@ export class DatabaseStorage implements IStorage {
           .from(eventEmployees)
           .leftJoin(employees, eq(eventEmployees.employeeId, employees.id))
           .where(eq(eventEmployees.eventId, event.id));
-        
+
         const eventEmpsWithCharacters = await Promise.all(
           eventEmps.map(async (emp) => {
             if (emp.characterId) {
@@ -400,37 +419,39 @@ export class DatabaseStorage implements IStorage {
             return { ...emp, characterName: null };
           })
         );
-        
+
         const expenses = await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, event.id));
         const installments = await db.select().from(eventInstallments).where(eq(eventInstallments.eventId, event.id));
-        
+        const pkgs = await db.select({ packageId: eventPackages.packageId }).from(eventPackages).where(eq(eventPackages.eventId, event.id));
+
         return {
           ...event,
           characterIds: characters.map(c => c.characterId),
           characterNames: characters.map(c => c.characterName).filter(Boolean),
+          packageIds: pkgs.map(p => p.packageId),
           eventEmployees: eventEmpsWithCharacters,
           expenses: expenses,
           eventInstallments: installments,
         };
       })
     );
-    
+
     return eventsWithDetails;
   }
-  
+
   async getEvent(id: string): Promise<any> {
     const [event] = await db.select().from(events).where(eq(events.id, id));
     if (!event) return undefined;
-    
+
     const characters = await db
       .select({ characterId: eventCharacters.characterId })
       .from(eventCharacters)
       .where(eq(eventCharacters.eventId, id));
-    
+
     // Explicitly fetching expenses and installments for this event
     const expenses = await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, id));
     const installments = await db.select().from(eventInstallments).where(eq(eventInstallments.eventId, id));
-    
+
     const eventEmps = await db
       .select({
         employeeId: eventEmployees.employeeId,
@@ -444,7 +465,7 @@ export class DatabaseStorage implements IStorage {
       .select({ packageId: eventPackages.packageId })
       .from(eventPackages)
       .where(eq(eventPackages.eventId, id));
-    
+
     return {
       ...event,
       characterIds: characters.map(c => c.characterId),
@@ -454,14 +475,14 @@ export class DatabaseStorage implements IStorage {
       eventEmployees: eventEmps,
     };
   }
-  
-  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
+
+  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
-    
+
     if (characterIds && characterIds.length > 0) {
       await this.addEventCharacters(newEvent.id, characterIds);
     }
-    
+
     if (expenses && expenses.length > 0) {
       await this.addEventExpenses(newEvent.id, expenses);
     }
@@ -469,7 +490,7 @@ export class DatabaseStorage implements IStorage {
     if (installments && installments.length > 0) {
       await this.addEventInstallments(newEvent.id, installments);
     }
-    
+
     if (eventEmployees && eventEmployees.length > 0) {
       // Passar título e data do evento para criar as transações de cachê
       const eventDate = (event as any).date instanceof Date ? (event as any).date : new Date((event as any).date);
@@ -479,20 +500,20 @@ export class DatabaseStorage implements IStorage {
     if (packageIds && packageIds.length > 0) {
       await this.addEventPackages(newEvent.id, packageIds);
     }
-    
+
     return newEvent;
   }
-  
-  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
+
+  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
-    
+
     if (characterIds !== undefined) {
       await this.removeEventCharacters(id);
       if (characterIds.length > 0) {
         await this.addEventCharacters(id, characterIds);
       }
     }
-    
+
     if (expenses !== undefined) {
       await this.removeEventExpenses(id);
       if (expenses.length > 0) {
@@ -506,7 +527,7 @@ export class DatabaseStorage implements IStorage {
         await this.addEventInstallments(id, installments);
       }
     }
-    
+
     if (eventEmployees !== undefined) {
       await this.removeEventEmployees(id);
       if (eventEmployees.length > 0) {
@@ -522,7 +543,7 @@ export class DatabaseStorage implements IStorage {
         await this.addEventPackages(id, packageIds);
       }
     }
-    
+
     return updated;
   }
 
@@ -558,7 +579,7 @@ export class DatabaseStorage implements IStorage {
   async getEventPackages(eventId: string): Promise<any[]> {
     return await db.select().from(eventPackages).where(eq(eventPackages.eventId, eventId));
   }
-  
+
   async deleteEvent(id: string): Promise<void> {
     await this.removeEventCharacters(id);
     await this.removeEventExpenses(id);
@@ -566,7 +587,7 @@ export class DatabaseStorage implements IStorage {
     await this.removeEventPackages(id);
     await db.delete(events).where(eq(events.id, id));
   }
-  
+
   async addEventCharacters(eventId: string, characterIds: string[]): Promise<void> {
     const values = characterIds.map(characterId => ({
       eventId,
@@ -574,11 +595,11 @@ export class DatabaseStorage implements IStorage {
     }));
     await db.insert(eventCharacters).values(values);
   }
-  
+
   async removeEventCharacters(eventId: string): Promise<void> {
     await db.delete(eventCharacters).where(eq(eventCharacters.eventId, eventId));
   }
-  
+
   async getUpcomingEvents(limit: number = 10): Promise<any[]> {
     const now = new Date();
     const upcomingEvents = await db
@@ -593,6 +614,7 @@ export class DatabaseStorage implements IStorage {
         bairro: events.bairro,
         rua: events.rua,
         contractValue: events.contractValue,
+        childrenCount: events.childrenCount,
         status: events.status,
         clientName: clients.name,
       })
@@ -606,10 +628,10 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(events.date)
       .limit(limit);
-    
+
     return upcomingEvents;
   }
-  
+
   // Inventory
   async getAllInventoryItems(): Promise<InventoryItem[]> {
     const items = await db.select().from(inventoryItems).orderBy(desc(inventoryItems.createdAt));
@@ -635,7 +657,7 @@ export class DatabaseStorage implements IStorage {
   async createInventoryItem(item: InsertInventoryItem & { componentIds?: string[] }): Promise<InventoryItem> {
     const { componentIds, ...itemData } = item;
     const [newItem] = await db.insert(inventoryItems).values(itemData).returning();
-    
+
     if (componentIds && componentIds.length > 0) {
       const values = componentIds.map(componentId => ({
         characterId: newItem.id,
@@ -643,14 +665,14 @@ export class DatabaseStorage implements IStorage {
       }));
       await db.insert(characterComponents).values(values);
     }
-    
+
     return newItem;
   }
 
   async updateInventoryItem(id: string, item: Partial<InsertInventoryItem & { componentIds?: string[] }>): Promise<InventoryItem> {
     const { componentIds, ...itemData } = item;
     const [updated] = await db.update(inventoryItems).set(itemData).where(eq(inventoryItems.id, id)).returning();
-    
+
     if (componentIds !== undefined) {
       await db.delete(characterComponents).where(eq(characterComponents.characterId, id));
       if (componentIds.length > 0) {
@@ -661,178 +683,178 @@ export class DatabaseStorage implements IStorage {
         await db.insert(characterComponents).values(values);
       }
     }
-    
+
     return updated;
   }
-  
+
   async deleteInventoryItem(id: string): Promise<void> {
     await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
   }
-  
+
   async getLowStockItems(): Promise<InventoryItem[]> {
     return await db
       .select()
       .from(inventoryItems)
       .where(sql`${inventoryItems.quantity} <= ${inventoryItems.minQuantity}`);
   }
-  
+
   // Stock Movements
   async createStockMovement(movement: InsertStockMovement): Promise<StockMovement> {
     const [newMovement] = await db.insert(stockMovements).values(movement).returning();
     return newMovement;
   }
-  
+
   // Financial Transactions
   async getAllTransactions(): Promise<FinancialTransaction[]> {
     return await db.select().from(financialTransactions).orderBy(desc(financialTransactions.dueDate));
   }
-  
+
   async getTransaction(id: string): Promise<FinancialTransaction | undefined> {
     const [transaction] = await db.select().from(financialTransactions).where(eq(financialTransactions.id, id));
     return transaction || undefined;
   }
-  
+
   async createTransaction(transaction: InsertFinancialTransaction): Promise<FinancialTransaction> {
     const [newTransaction] = await db.insert(financialTransactions).values(transaction).returning();
     return newTransaction;
   }
-  
+
   async updateTransaction(id: string, transaction: Partial<InsertFinancialTransaction>): Promise<FinancialTransaction> {
     const [updated] = await db.update(financialTransactions).set(transaction).where(eq(financialTransactions.id, id)).returning();
     return updated;
   }
-  
+
   async deleteTransaction(id: string): Promise<void> {
     await db.delete(financialTransactions).where(eq(financialTransactions.id, id));
   }
-  
+
   // Purchases
   async getAllPurchases(): Promise<Purchase[]> {
     return await db.select().from(purchases).orderBy(desc(purchases.purchaseDate));
   }
-  
+
   async getPurchase(id: string): Promise<Purchase | undefined> {
     const [purchase] = await db.select().from(purchases).where(eq(purchases.id, id));
     return purchase || undefined;
   }
-  
+
   async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
     const purchaseData = {
       ...purchase,
-      purchaseDate: purchase.purchaseDate instanceof Date 
-        ? purchase.purchaseDate 
+      purchaseDate: purchase.purchaseDate instanceof Date
+        ? purchase.purchaseDate
         : new Date(purchase.purchaseDate),
-      firstInstallmentDate: purchase.firstInstallmentDate 
-        ? (purchase.firstInstallmentDate instanceof Date 
-            ? purchase.firstInstallmentDate 
-            : new Date(purchase.firstInstallmentDate))
+      firstInstallmentDate: purchase.firstInstallmentDate
+        ? (purchase.firstInstallmentDate instanceof Date
+          ? purchase.firstInstallmentDate
+          : new Date(purchase.firstInstallmentDate))
         : null,
     };
     const [newPurchase] = await db.insert(purchases).values(purchaseData).returning();
     return newPurchase;
   }
-  
+
   async updatePurchase(id: string, purchase: Partial<InsertPurchase>): Promise<Purchase> {
     const purchaseData = { ...purchase };
     if (purchase.purchaseDate) {
-      purchaseData.purchaseDate = purchase.purchaseDate instanceof Date 
-        ? purchase.purchaseDate 
+      purchaseData.purchaseDate = purchase.purchaseDate instanceof Date
+        ? purchase.purchaseDate
         : new Date(purchase.purchaseDate);
     }
     if (purchase.firstInstallmentDate) {
-      purchaseData.firstInstallmentDate = purchase.firstInstallmentDate instanceof Date 
-        ? purchase.firstInstallmentDate 
+      purchaseData.firstInstallmentDate = purchase.firstInstallmentDate instanceof Date
+        ? purchase.firstInstallmentDate
         : new Date(purchase.firstInstallmentDate);
     }
     const [updated] = await db.update(purchases).set(purchaseData as any).where(eq(purchases.id, id)).returning();
     return updated;
   }
-  
+
   async deletePurchase(id: string): Promise<void> {
     await db.delete(purchases).where(eq(purchases.id, id));
   }
-  
+
   // Dashboard
   async getDashboardMetrics(): Promise<any> {
     const allTransactions = await this.getAllTransactions();
     const lowStockItems = await this.getLowStockItems();
-    
+
     // Calculate cash balance
     const cashBalance = allTransactions.reduce((acc, t) => {
       if (!t.isPaid) return acc;
       const amount = parseFloat(t.amount);
       return t.type === 'receivable' ? acc + amount : acc - amount;
     }, 0);
-    
+
     // Calculate monthly revenue (current month)
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
+
     const monthlyRevenue = allTransactions
       .filter(t => {
         const date = new Date(t.createdAt);
-        return t.type === 'receivable' && 
-               t.isPaid &&
-               date >= firstDayOfMonth && 
-               date <= lastDayOfMonth;
+        return t.type === 'receivable' &&
+          t.isPaid &&
+          date >= firstDayOfMonth &&
+          date <= lastDayOfMonth;
       })
       .reduce((acc, t) => acc + parseFloat(t.amount), 0);
-    
+
     // Count events this month
     const allEvents = await this.getAllEvents();
     const eventsThisMonth = allEvents.filter(e => {
       const date = new Date(e.date);
       return date >= firstDayOfMonth && date <= lastDayOfMonth;
     }).length;
-    
+
     // Monthly revenue chart (last 6 months)
     const monthlyRevenueChart = [];
     for (let i = 5; i >= 0; i--) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
       const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'short' });
-      
+
       const revenue = allTransactions
         .filter(t => {
           const date = new Date(t.createdAt);
-          return t.type === 'receivable' && 
-                 t.isPaid &&
-                 date >= monthDate && 
-                 date < nextMonthDate;
+          return t.type === 'receivable' &&
+            t.isPaid &&
+            date >= monthDate &&
+            date < nextMonthDate;
         })
         .reduce((acc, t) => acc + parseFloat(t.amount), 0);
-      
+
       monthlyRevenueChart.push({ month: monthName, revenue });
     }
-    
+
     // Cash flow chart (last 7 days)
     const cashFlowChart = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
-      
+
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
-      
+
       const dayTransactions = allTransactions.filter(t => {
         if (!t.isPaid || !t.paidDate) return false;
         const paidDate = new Date(t.paidDate);
         return paidDate >= date && paidDate < nextDate;
       });
-      
+
       const balance = dayTransactions.reduce((acc, t) => {
         const amount = parseFloat(t.amount);
         return t.type === 'receivable' ? acc + amount : acc - amount;
       }, 0);
-      
+
       cashFlowChart.push({
         date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
         balance
       });
     }
-    
+
     return {
       cashBalance,
       monthlyRevenue,
@@ -842,60 +864,60 @@ export class DatabaseStorage implements IStorage {
       cashFlowChart,
     };
   }
-  
+
   // Event Categories
   async getAllEventCategories(): Promise<EventCategory[]> {
     return await db.select().from(eventCategories).orderBy(eventCategories.name);
   }
-  
+
   async getEventCategory(id: string): Promise<EventCategory | undefined> {
     const [category] = await db.select().from(eventCategories).where(eq(eventCategories.id, id));
     return category || undefined;
   }
-  
+
   async createEventCategory(category: InsertEventCategory): Promise<EventCategory> {
     const [newCategory] = await db.insert(eventCategories).values(category).returning();
     return newCategory;
   }
-  
+
   async updateEventCategory(id: string, category: Partial<InsertEventCategory>): Promise<EventCategory> {
     const [updated] = await db.update(eventCategories).set(category).where(eq(eventCategories.id, id)).returning();
     return updated;
   }
-  
+
   async deleteEventCategory(id: string): Promise<void> {
     await db.delete(eventCategories).where(eq(eventCategories.id, id));
   }
-  
+
   // Employee Roles
   async getAllEmployeeRoles(): Promise<EmployeeRole[]> {
     return await db.select().from(employeeRoles).orderBy(employeeRoles.name);
   }
-  
+
   async getEmployeeRole(id: string): Promise<EmployeeRole | undefined> {
     const [role] = await db.select().from(employeeRoles).where(eq(employeeRoles.id, id));
     return role || undefined;
   }
-  
+
   async createEmployeeRole(role: InsertEmployeeRole): Promise<EmployeeRole> {
     const [newRole] = await db.insert(employeeRoles).values(role).returning();
     return newRole;
   }
-  
+
   async updateEmployeeRole(id: string, role: Partial<InsertEmployeeRole>): Promise<EmployeeRole> {
     const [updated] = await db.update(employeeRoles).set(role).where(eq(employeeRoles.id, id)).returning();
     return updated;
   }
-  
+
   async deleteEmployeeRole(id: string): Promise<void> {
     await db.delete(employeeRoles).where(eq(employeeRoles.id, id));
   }
-  
+
   // Packages
   async getAllPackages(): Promise<Package[]> {
     return await db.select().from(packages).orderBy(packages.name);
   }
-  
+
   async getPackage(id: string): Promise<Package | undefined> {
     const [pkg] = await db.select().from(packages).where(eq(packages.id, id));
     return pkg || undefined;
@@ -904,10 +926,10 @@ export class DatabaseStorage implements IStorage {
   async getPackageWithRelations(id: string): Promise<(Package & { services: PackageService[], materials: PackageMaterial[] }) | undefined> {
     const pkg = await this.getPackage(id);
     if (!pkg) return undefined;
-    
+
     const pkgServices = await db.select().from(packageServices).where(eq(packageServices.packageId, id));
     const pkgMaterials = await db.select().from(packageMaterials).where(eq(packageMaterials.packageId, id));
-    
+
     return {
       ...pkg,
       services: pkgServices,
@@ -919,19 +941,19 @@ export class DatabaseStorage implements IStorage {
     const allPackages = await db.select().from(packages).orderBy(packages.name);
     const allServices = await db.select().from(packageServices);
     const allMaterials = await db.select().from(packageMaterials);
-    
+
     return allPackages.map(pkg => ({
       ...pkg,
       services: allServices.filter(s => s.packageId === pkg.id),
       materials: allMaterials.filter(m => m.packageId === pkg.id),
     }));
   }
-  
+
   async createPackage(pkg: InsertPackage): Promise<Package> {
     const { serviceIds, materialIds, ...packageData } = pkg;
-    
+
     const [newPackage] = await db.insert(packages).values(packageData).returning();
-    
+
     if (serviceIds && serviceIds.length > 0) {
       await db.insert(packageServices).values(
         serviceIds.map(serviceId => ({
@@ -940,7 +962,7 @@ export class DatabaseStorage implements IStorage {
         }))
       );
     }
-    
+
     if (materialIds && materialIds.length > 0) {
       await db.insert(packageMaterials).values(
         materialIds.map(m => ({
@@ -950,15 +972,15 @@ export class DatabaseStorage implements IStorage {
         }))
       );
     }
-    
+
     return newPackage;
   }
-  
+
   async updatePackage(id: string, pkg: Partial<InsertPackage>): Promise<Package> {
     const { serviceIds, materialIds, ...packageData } = pkg;
-    
+
     const [updated] = await db.update(packages).set(packageData).where(eq(packages.id, id)).returning();
-    
+
     if (serviceIds !== undefined) {
       await db.delete(packageServices).where(eq(packageServices.packageId, id));
       if (serviceIds.length > 0) {
@@ -970,7 +992,7 @@ export class DatabaseStorage implements IStorage {
         );
       }
     }
-    
+
     if (materialIds !== undefined) {
       await db.delete(packageMaterials).where(eq(packageMaterials.packageId, id));
       if (materialIds.length > 0) {
@@ -983,31 +1005,31 @@ export class DatabaseStorage implements IStorage {
         );
       }
     }
-    
+
     return updated;
   }
-  
+
   async deletePackage(id: string): Promise<void> {
     await db.delete(packageServices).where(eq(packageServices.packageId, id));
     await db.delete(packageMaterials).where(eq(packageMaterials.packageId, id));
     await db.delete(packages).where(eq(packages.id, id));
   }
-  
+
   // Skills
   async getAllSkills(): Promise<Skill[]> {
     return await db.select().from(skills).orderBy(skills.name);
   }
-  
+
   async getSkill(id: string): Promise<Skill | undefined> {
     const [skill] = await db.select().from(skills).where(eq(skills.id, id));
     return skill || undefined;
   }
-  
+
   async createSkill(skill: InsertSkill): Promise<Skill> {
     const [newSkill] = await db.insert(skills).values(skill).returning();
     return newSkill;
   }
-  
+
   async updateSkill(id: string, skill: Partial<InsertSkill>): Promise<Skill> {
     const [updated] = await db.update(skills).set(skill).where(eq(skills.id, id)).returning();
     if (!updated) {
@@ -1015,7 +1037,7 @@ export class DatabaseStorage implements IStorage {
     }
     return updated;
   }
-  
+
   async deleteSkill(id: string): Promise<void> {
     const existing = await this.getSkill(id);
     if (!existing) {
@@ -1023,22 +1045,22 @@ export class DatabaseStorage implements IStorage {
     }
     await db.delete(skills).where(eq(skills.id, id));
   }
-  
+
   // Services
   async getAllServices(): Promise<Service[]> {
     return await db.select().from(services).orderBy(services.name);
   }
-  
+
   async getService(id: string): Promise<Service | undefined> {
     const [service] = await db.select().from(services).where(eq(services.id, id));
     return service || undefined;
   }
-  
+
   async createService(service: InsertService): Promise<Service> {
     const [newService] = await db.insert(services).values(service).returning();
     return newService;
   }
-  
+
   async updateService(id: string, service: Partial<InsertService>): Promise<Service> {
     const [updated] = await db.update(services).set(service).where(eq(services.id, id)).returning();
     if (!updated) {
@@ -1046,7 +1068,7 @@ export class DatabaseStorage implements IStorage {
     }
     return updated;
   }
-  
+
   async deleteService(id: string): Promise<void> {
     const existing = await this.getService(id);
     if (!existing) {
@@ -1054,7 +1076,7 @@ export class DatabaseStorage implements IStorage {
     }
     await db.delete(services).where(eq(services.id, id));
   }
-  
+
   // Employee Skills
   async getEmployeeSkills(employeeId: string): Promise<EmployeeSkill[]> {
     return await db.select().from(employeeSkills).where(eq(employeeSkills.employeeId, employeeId));
@@ -1088,7 +1110,7 @@ export class DatabaseStorage implements IStorage {
   async getEventExpenses(eventId: string): Promise<EventExpense[]> {
     return await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, eventId));
   }
-  
+
   async addEventExpenses(eventId: string, expenses: Array<Omit<InsertEventExpense, 'eventId'>>): Promise<void> {
     if (expenses.length === 0) return;
     const values = expenses.map(expense => ({
@@ -1097,13 +1119,13 @@ export class DatabaseStorage implements IStorage {
     }));
     await db.insert(eventExpenses).values(values);
   }
-  
+
   async removeEventExpenses(eventId: string): Promise<void> {
     await db.delete(eventExpenses).where(eq(eventExpenses.eventId, eventId));
   }
-  
+
   // Event Employees
-  async addEventEmployees(eventId: string, employees: Array<{employeeId: string, characterId?: string | null, cacheValue: string}>, eventTitle?: string, eventDate?: Date): Promise<void> {
+  async addEventEmployees(eventId: string, employees: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, eventTitle?: string, eventDate?: Date): Promise<void> {
     if (employees.length === 0) return;
     const values = employees.map(emp => ({
       eventId,
@@ -1112,7 +1134,7 @@ export class DatabaseStorage implements IStorage {
       cacheValue: emp.cacheValue,
     }));
     await db.insert(eventEmployees).values(values);
-    
+
     // Criar transações financeiras de cachê para cada funcionário
     if (eventTitle && eventDate) {
       for (const emp of employees) {
@@ -1121,19 +1143,19 @@ export class DatabaseStorage implements IStorage {
           // Buscar nome do funcionário
           const employee = await this.getEmployee(emp.employeeId);
           const employeeName = employee?.name || 'Funcionário';
-          
+
           // Buscar nome do personagem (se houver)
           let characterName = '';
           if (emp.characterId) {
             const character = await this.getInventoryItem(emp.characterId);
             characterName = character?.name ? ` ${character.name}` : '';
           }
-          
+
           // Calcular data de vencimento (próximo dia 15 ou 30 do mesmo mês)
           // Se evento entre dias 1-15, paga dia 15
           // Se evento entre dias 16-31, paga dia 30
           const dueDate = calculateNextPaymentDate(eventDate);
-          
+
           // Criar transação de cachê com referência ao evento e funcionário no notes
           // Formato: [CACHE_REF:eventId:employeeId] para facilitar busca e remoção
           await this.createTransaction({
@@ -1148,30 +1170,30 @@ export class DatabaseStorage implements IStorage {
       }
     }
   }
-  
+
   async removeEventEmployees(eventId: string): Promise<void> {
     // Remover transações de cachê relacionadas usando a referência no notes
     // Buscar todas as transações que contêm a referência ao eventId
     const allTransactions = await db.select().from(financialTransactions).where(
       eq(financialTransactions.type, 'payable')
     );
-    
+
     // Filtrar transações que correspondem a este evento
     for (const transaction of allTransactions) {
       if (transaction.notes && transaction.notes.includes(`[CACHE_REF:${eventId}:`)) {
         await db.delete(financialTransactions).where(eq(financialTransactions.id, transaction.id));
       }
     }
-    
+
     await db.delete(eventEmployees).where(eq(eventEmployees.eventId, eventId));
   }
-  
+
   // System Settings
   async getSystemSetting(key: string): Promise<SystemSetting | undefined> {
     const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
     return setting || undefined;
   }
-  
+
   async upsertSystemSetting(key: string, value: string): Promise<SystemSetting> {
     const existing = await this.getSystemSetting(key);
     if (existing) {
@@ -1189,7 +1211,7 @@ export class DatabaseStorage implements IStorage {
       return created;
     }
   }
-  
+
   async getAllSystemSettings(): Promise<SystemSetting[]> {
     return await db.select().from(systemSettings);
   }
@@ -1216,6 +1238,54 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBuffet(id: string): Promise<void> {
     await db.delete(buffets).where(eq(buffets.id, id));
+  }
+
+  // Time Records
+  async getTimeRecords(userId: string, startDate?: Date, endDate?: Date): Promise<TimeRecord[]> {
+    const conditions = [eq(timeRecords.userId, userId)];
+    if (startDate) conditions.push(gte(timeRecords.timestamp, startDate));
+    if (endDate) conditions.push(lte(timeRecords.timestamp, endDate));
+    return await db.select().from(timeRecords).where(and(...conditions)).orderBy(desc(timeRecords.timestamp));
+  }
+
+  async createTimeRecord(record: InsertTimeRecord): Promise<TimeRecord> {
+    const [newRecord] = await db.insert(timeRecords).values({
+      ...record,
+      timestamp: record.timestamp ? (record.timestamp instanceof Date ? record.timestamp : new Date(record.timestamp as string)) : new Date(),
+    }).returning();
+    return newRecord;
+  }
+
+  async deleteTimeRecord(id: string): Promise<void> {
+    await db.delete(timeRecords).where(eq(timeRecords.id, id));
+  }
+
+  async getLatestTimeRecord(userId: string): Promise<TimeRecord | undefined> {
+    const [record] = await db.select().from(timeRecords)
+      .where(eq(timeRecords.userId, userId))
+      .orderBy(desc(timeRecords.timestamp))
+      .limit(1);
+    return record || undefined;
+  }
+
+  async getAllUsersTimeRecords(startDate?: Date, endDate?: Date): Promise<(TimeRecord & { userName: string })[]> {
+    const conditions: any[] = [];
+    if (startDate) conditions.push(gte(timeRecords.timestamp, startDate));
+    if (endDate) conditions.push(lte(timeRecords.timestamp, endDate));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const records = await db.select({
+      id: timeRecords.id,
+      userId: timeRecords.userId,
+      type: timeRecords.type,
+      timestamp: timeRecords.timestamp,
+      notes: timeRecords.notes,
+      createdAt: timeRecords.createdAt,
+      userName: users.name,
+    }).from(timeRecords)
+      .leftJoin(users, eq(timeRecords.userId, users.id))
+      .where(whereClause)
+      .orderBy(desc(timeRecords.timestamp));
+    return records.map(r => ({ ...r, userName: r.userName || 'Desconhecido' }));
   }
 }
 

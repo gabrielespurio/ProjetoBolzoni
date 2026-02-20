@@ -1,4 +1,4 @@
-import { Home, Users, UserCircle, Calendar, CalendarDays, DollarSign, Package, ShoppingCart, Settings, LogOut, Building2, FileSpreadsheet, Utensils } from "lucide-react";
+import { Home, Users, UserCircle, Calendar, CalendarDays, DollarSign, Package, ShoppingCart, Settings, LogOut, Building2, FileSpreadsheet, Utensils, Clock } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -62,6 +62,12 @@ const menuItems: MenuItem[] = [
     roles: ['admin', 'secretaria'],
   },
   {
+    title: "Depto. Pessoal",
+    url: "/time-tracking",
+    icon: Clock,
+    roles: ['admin', 'employee', 'secretaria'],
+  },
+  {
     title: "Estoque",
     url: "/inventory",
     icon: Package,
@@ -104,14 +110,14 @@ export function AppSidebar() {
 
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : {};
-  
+
   // Normalização total: remove acentos e converte para minúsculo
   const userRole = user?.role || user?.function || 'employee';
-  
+
   const filteredMenuItems = menuItems.filter(item => {
     // Admin tem acesso a absolutamente tudo
     if (userRole === 'admin') return true;
-    
+
     return item.roles.includes(userRole as UserRole);
   });
 

@@ -26,8 +26,33 @@ export const insertBuffetSchema = createInsertSchema(buffets).omit({
 export type Buffet = typeof buffets.$inferSelect;
 export type InsertBuffet = z.infer<typeof insertBuffetSchema>;
 
+// Time Records for employee clock-in/clock-out
+export const timeRecords = pgTable("time_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // "clock_in" | "clock_out"
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const timeRecordsRelations = relations(timeRecords, ({ one }) => ({
+  user: one(users, {
+    fields: [timeRecords.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertTimeRecordSchema = createInsertSchema(timeRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type TimeRecord = typeof timeRecords.$inferSelect;
+export type InsertTimeRecord = z.infer<typeof insertTimeRecordSchema>;
+
 export const userRoleEnum = pgEnum("user_role", ["admin", "employee", "secretaria"]);
-export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted", "rescheduled", "paid_entry"]);
+export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted", "rescheduled", "paid_entry", "paid_full"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "payable"]);
 export const inventoryTypeEnum = pgEnum("inventory_type", ["character", "part", "material", "accessory"]);
 export const partTypeEnum = pgEnum("part_type", ["head", "body", "feet"]);
@@ -81,6 +106,8 @@ export const employees = pgTable("employees", {
   numero: text("numero"),
   userId: varchar("user_id").references(() => users.id),
   isAvailable: boolean("is_available").notNull().default(true),
+  clocksIn: boolean("clocks_in").default(false),
+  workloadHours: integer("workload_hours").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -122,6 +149,7 @@ export const events = pgTable("events", {
   eventType: text("event_type").default("package"), // 'package', 'service', 'both'
   packageNotes: text("package_notes"),
   childrenCount: integer("children_count"),
+  buffetId: varchar("buffet_id").references(() => buffets.id),
   status: eventStatusEnum("status").notNull().default("scheduled"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -492,6 +520,8 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({
 }).extend({
   userEmail: z.string().email().optional(),
   userPassword: z.string().min(6).optional(),
+  clocksIn: z.boolean().default(false),
+  workloadHours: z.number().default(0),
 });
 
 export const insertEmployeePaymentSchema = createInsertSchema(employeePayments).omit({

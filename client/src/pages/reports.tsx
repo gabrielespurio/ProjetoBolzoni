@@ -281,6 +281,7 @@ function EventsReport() {
       cancelled: "Cancelado",
       deleted: "Excluído",
       paid_entry: "Entrada Paga",
+      paid_full: "Total Pago",
     };
     return labels[status] || status;
   };
@@ -292,9 +293,11 @@ function EventsReport() {
       cancelled: "destructive",
       deleted: "destructive",
       paid_entry: "default",
+      paid_full: "default",
     };
     const colors: Record<string, string> = {
       paid_entry: "bg-emerald-600 text-white hover:bg-emerald-700",
+      paid_full: "bg-teal-600 text-white hover:bg-teal-700",
     };
     return (
       <Badge variant={variants[status]} className={colors[status]}>

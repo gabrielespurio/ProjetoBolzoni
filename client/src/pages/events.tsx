@@ -99,9 +99,9 @@ export default function Events() {
 
   const filteredEvents = useMemo(() => {
     let result = events || [];
-    
+
     result = filterByDateRange(result, "date", dateFilter);
-    
+
     result = result.filter((event) =>
       event.title.toLowerCase().includes(search.toLowerCase()) ||
       event.clientName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -109,7 +109,7 @@ export default function Events() {
       event.bairro?.toLowerCase().includes(search.toLowerCase()) ||
       event.rua?.toLowerCase().includes(search.toLowerCase())
     );
-    
+
     return result;
   }, [events, search, dateFilter]);
 
@@ -138,6 +138,7 @@ export default function Events() {
       cancelled: "bg-red-500 text-white",
       deleted: "bg-gray-500 text-white",
       paid_entry: "bg-emerald-600 text-white",
+      paid_full: "bg-teal-600 text-white",
     };
     return colors[status] || "bg-gray-500 text-white";
   };
@@ -150,6 +151,7 @@ export default function Events() {
       cancelled: "Cancelado",
       deleted: "Excluído",
       paid_entry: "Entrada Paga",
+      paid_full: "Total Pago",
     };
     return labels[status] || status;
   };
@@ -214,6 +216,12 @@ export default function Events() {
               Entrada Paga
             </div>
           </SelectItem>
+          <SelectItem value="paid_full" data-testid="status-paid-full">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-teal-600" />
+              Total Pago
+            </div>
+          </SelectItem>
           <SelectItem value="cancelled" data-testid="status-cancelled">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -275,8 +283,8 @@ export default function Events() {
         contractValue: formatCurrency(event.contractValue),
         package: event.packageName || "Pacote não especificado",
         packageNotes: event.packageNotes || undefined,
-        characters: event.characterNames && event.characterNames.length > 0 
-          ? event.characterNames 
+        characters: event.characterNames && event.characterNames.length > 0
+          ? event.characterNames
           : ["Personagem não especificado"],
         employees: event.employeeNames,
         estimatedChildren: 15,
@@ -382,14 +390,14 @@ export default function Events() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => handleGenerateContract(event, "fisica")}
                                   data-testid={`menu-contract-fisica-${event.id}`}
                                 >
                                   <User className="mr-2 h-4 w-4" />
                                   Pessoa Física
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => handleGenerateContract(event, "juridica")}
                                   data-testid={`menu-contract-juridica-${event.id}`}
                                 >
@@ -469,7 +477,7 @@ export default function Events() {
             <AlertDialogCancel onClick={cancelDelete} data-testid="button-cancel-delete">
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
