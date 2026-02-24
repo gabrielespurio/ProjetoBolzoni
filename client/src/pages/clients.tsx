@@ -22,7 +22,7 @@ export default function Clients() {
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || "employee";
-  const isAdmin = userRole === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "secretaria";
   const canEdit = isAdmin;
 
   const { data: clients, isLoading } = useQuery<Client[]>({
@@ -31,16 +31,16 @@ export default function Clients() {
 
   const filteredClients = useMemo(() => {
     let result = clients || [];
-    
+
     result = filterByDateRange(result, "createdAt", dateFilter);
-    
+
     result = result.filter((client) =>
       client.name.toLowerCase().includes(search.toLowerCase()) ||
       client.cidade?.toLowerCase().includes(search.toLowerCase()) ||
       client.phone?.includes(search) ||
       client.email?.toLowerCase().includes(search.toLowerCase())
     );
-    
+
     return result;
   }, [clients, search, dateFilter]);
 

@@ -65,13 +65,13 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
   const [componentTab, setComponentTab] = useState<"parts" | "accessories">("parts");
 
   const filteredParts = useMemo(() => {
-    return parts?.filter(item => 
+    return parts?.filter(item =>
       item.name.toLowerCase().includes(componentSearchTerm.toLowerCase())
     ) || [];
   }, [parts, componentSearchTerm]);
 
   const filteredAccessories = useMemo(() => {
-    return accessories?.filter(item => 
+    return accessories?.filter(item =>
       item.name.toLowerCase().includes(componentSearchTerm.toLowerCase())
     ) || [];
   }, [accessories, componentSearchTerm]);
@@ -174,327 +174,329 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar Item" : "Novo Item"}</DialogTitle>
-          <DialogDescription>
-            {isEdit ? "Atualize as informações do item" : "Cadastre um novo item no estoque"}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome *</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Nome do item" data-testid="input-item-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-item-type">
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="character">Personagem Completo</SelectItem>
-                        <SelectItem value="part">Peça</SelectItem>
-                        <SelectItem value="material">Material</SelectItem>
-                        <SelectItem value="accessory">Acessório</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {selectedType === "character" && (
-                <div className="md:col-span-2 space-y-4">
-                  <FormLabel>Componentes do Personagem</FormLabel>
-                  <Tabs value={componentTab} onValueChange={(v) => setComponentTab(v as "parts" | "accessories")}>
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="parts" data-testid="tab-parts">
-                        Peças ({filteredParts.length})
-                      </TabsTrigger>
-                      <TabsTrigger value="accessories" data-testid="tab-accessories">
-                        Acessórios ({filteredAccessories.length})
-                      </TabsTrigger>
-                    </TabsList>
-                    <div className="mt-2">
-                      <Input
-                        placeholder={componentTab === "parts" ? "Pesquisar peças..." : "Pesquisar acessórios..."}
-                        value={componentSearchTerm}
-                        onChange={(e) => setComponentSearchTerm(e.target.value)}
-                        className="h-8"
-                        data-testid="input-search-components"
-                      />
-                    </div>
-                    <TabsContent value="parts" className="mt-2">
-                      <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
-                        {filteredParts.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            Nenhuma peça encontrada.
-                          </p>
-                        )}
-                        {filteredParts.map((part) => {
-                          const isSelected = selectedComponents.includes(part.id);
-                          return (
-                            <div key={part.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`part-${part.id}`}
-                                checked={isSelected}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedComponents(prev => [...prev, part.id]);
-                                  } else {
-                                    setSelectedComponents(prev => prev.filter(id => id !== part.id));
-                                  }
-                                }}
-                                data-testid={`checkbox-part-${part.id}`}
-                              />
-                              <label
-                                htmlFor={`part-${part.id}`}
-                                className="text-sm font-medium leading-none cursor-pointer"
-                              >
-                                {part.name}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </TabsContent>
-                    <TabsContent value="accessories" className="mt-2">
-                      <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
-                        {filteredAccessories.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            Nenhum acessório encontrado.
-                          </p>
-                        )}
-                        {filteredAccessories.map((accessory) => {
-                          const isSelected = selectedComponents.includes(accessory.id);
-                          return (
-                            <div key={accessory.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`accessory-${accessory.id}`}
-                                checked={isSelected}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedComponents(prev => [...prev, accessory.id]);
-                                  } else {
-                                    setSelectedComponents(prev => prev.filter(id => id !== accessory.id));
-                                  }
-                                }}
-                                data-testid={`checkbox-accessory-${accessory.id}`}
-                              />
-                              <label
-                                htmlFor={`accessory-${accessory.id}`}
-                                className="text-sm font-medium leading-none cursor-pointer"
-                              >
-                                {accessory.name}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              )}
-              {selectedType === "accessory" && (
+      <DialogContent className="max-w-2xl !p-0 !gap-0 !h-fit max-h-[90vh] !flex !flex-col overflow-hidden">
+        <div className="overflow-y-auto p-6">
+          <DialogHeader className="mb-6">
+            <DialogTitle>{isEdit ? "Editar Item" : "Novo Item"}</DialogTitle>
+            <DialogDescription>
+              {isEdit ? "Atualize as informações do item" : "Cadastre um novo item no estoque"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="accessoryType"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo do Acessório</FormLabel>
+                      <FormLabel>Nome *</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Digite o tipo do acessório" 
-                          {...field} 
-                        />
+                        <Input {...field} placeholder="Nome do item" data-testid="input-item-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
-              {selectedType === "part" && (
-                <>
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-item-type">
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="character">Personagem Completo</SelectItem>
+                          <SelectItem value="part">Peça</SelectItem>
+                          <SelectItem value="material">Material</SelectItem>
+                          <SelectItem value="accessory">Acessório</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {selectedType === "character" && (
+                  <div className="md:col-span-2 space-y-4">
+                    <FormLabel>Componentes do Personagem</FormLabel>
+                    <Tabs value={componentTab} onValueChange={(v) => setComponentTab(v as "parts" | "accessories")}>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="parts" data-testid="tab-parts">
+                          Peças ({filteredParts.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="accessories" data-testid="tab-accessories">
+                          Acessórios ({filteredAccessories.length})
+                        </TabsTrigger>
+                      </TabsList>
+                      <div className="mt-2">
+                        <Input
+                          placeholder={componentTab === "parts" ? "Pesquisar peças..." : "Pesquisar acessórios..."}
+                          value={componentSearchTerm}
+                          onChange={(e) => setComponentSearchTerm(e.target.value)}
+                          className="h-8"
+                          data-testid="input-search-components"
+                        />
+                      </div>
+                      <TabsContent value="parts" className="mt-2">
+                        <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                          {filteredParts.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Nenhuma peça encontrada.
+                            </p>
+                          )}
+                          {filteredParts.map((part) => {
+                            const isSelected = selectedComponents.includes(part.id);
+                            return (
+                              <div key={part.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`part-${part.id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedComponents(prev => [...prev, part.id]);
+                                    } else {
+                                      setSelectedComponents(prev => prev.filter(id => id !== part.id));
+                                    }
+                                  }}
+                                  data-testid={`checkbox-part-${part.id}`}
+                                />
+                                <label
+                                  htmlFor={`part-${part.id}`}
+                                  className="text-sm font-medium leading-none cursor-pointer"
+                                >
+                                  {part.name}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="accessories" className="mt-2">
+                        <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                          {filteredAccessories.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Nenhum acessório encontrado.
+                            </p>
+                          )}
+                          {filteredAccessories.map((accessory) => {
+                            const isSelected = selectedComponents.includes(accessory.id);
+                            return (
+                              <div key={accessory.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`accessory-${accessory.id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedComponents(prev => [...prev, accessory.id]);
+                                    } else {
+                                      setSelectedComponents(prev => prev.filter(id => id !== accessory.id));
+                                    }
+                                  }}
+                                  data-testid={`checkbox-accessory-${accessory.id}`}
+                                />
+                                <label
+                                  htmlFor={`accessory-${accessory.id}`}
+                                  className="text-sm font-medium leading-none cursor-pointer"
+                                >
+                                  {accessory.name}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+                {selectedType === "accessory" && (
                   <FormField
                     control={form.control}
-                    name="partType"
+                    name="accessoryType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo de Peça *</FormLabel>
+                        <FormLabel>Tipo do Acessório</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Digite o tipo de peça" 
-                            {...field} 
-                            value={field.value || ""} 
+                          <Input
+                            placeholder="Digite o tipo do acessório"
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="parentId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Pertence ao Personagem</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || "none"}>
+                )}
+                {selectedType === "part" && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="partType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de Peça *</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um personagem" />
-                            </SelectTrigger>
+                            <Input
+                              placeholder="Digite o tipo de peça"
+                              {...field}
+                              value={field.value || ""}
+                            />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">Nenhum (Peça avulsa)</SelectItem>
-                            {characters?.map((char) => (
-                              <SelectItem key={char.id} value={char.id}>
-                                {char.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-              <FormField
-                control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantidade *</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        data-testid="input-item-quantity"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="minQuantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estoque Mínimo *</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        data-testid="input-item-min-quantity"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="costPrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor de Custo</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-cost-price" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} placeholder="Informações adicionais sobre o item" rows={3} data-testid="input-item-notes" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {selectedType === "character" && selectedComponents.length > 0 && (
-              <div className="border rounded-md p-4 bg-muted/30" data-testid="summary-components">
-                <h4 className="font-medium text-sm mb-3">Resumo dos Componentes</h4>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {(() => {
-                    const selectedParts = parts?.filter(p => selectedComponents.includes(p.id)) || [];
-                    const selectedAccessoriesList = accessories?.filter(a => selectedComponents.includes(a.id)) || [];
-                    return (
-                      <>
-                        {selectedParts.length > 0 && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Peças ({selectedParts.length})</p>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedParts.map(part => (
-                                <span 
-                                  key={part.id} 
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-primary/10 text-primary"
-                                >
-                                  {part.name}
-                                </span>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="parentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pertence ao Personagem</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || "none"}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um personagem" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhum (Peça avulsa)</SelectItem>
+                              {characters?.map((char) => (
+                                <SelectItem key={char.id} value={char.id}>
+                                  {char.name}
+                                </SelectItem>
                               ))}
-                            </div>
-                          </div>
-                        )}
-                        {selectedAccessoriesList.length > 0 && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Acessórios ({selectedAccessoriesList.length})</p>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedAccessoriesList.map(accessory => (
-                                <span 
-                                  key={accessory.id} 
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground"
-                                >
-                                  {accessory.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade *</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          data-testid="input-item-quantity"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="minQuantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estoque Mínimo *</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          data-testid="input-item-min-quantity"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="costPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor de Custo</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" placeholder="0.00" data-testid="input-item-cost-price" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-            )}
-            <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-item">
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEdit ? "Atualizar" : "Cadastrar"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Informações adicionais sobre o item" rows={3} data-testid="input-item-notes" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {selectedType === "character" && selectedComponents.length > 0 && (
+                <div className="border rounded-md p-4 bg-muted/30" data-testid="summary-components">
+                  <h4 className="font-medium text-sm mb-3">Resumo dos Componentes</h4>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {(() => {
+                      const selectedParts = parts?.filter(p => selectedComponents.includes(p.id)) || [];
+                      const selectedAccessoriesList = accessories?.filter(a => selectedComponents.includes(a.id)) || [];
+                      return (
+                        <>
+                          {selectedParts.length > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Peças ({selectedParts.length})</p>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedParts.map(part => (
+                                  <span
+                                    key={part.id}
+                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-primary/10 text-primary"
+                                  >
+                                    {part.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {selectedAccessoriesList.length > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Acessórios ({selectedAccessoriesList.length})</p>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedAccessoriesList.map(accessory => (
+                                  <span
+                                    key={accessory.id}
+                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary text-secondary-foreground"
+                                  >
+                                    {accessory.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={mutation.isPending} data-testid="button-save-item">
+                  {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEdit ? "Atualizar" : "Cadastrar"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

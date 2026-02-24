@@ -47,7 +47,7 @@ export default function Agenda() {
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || "employee";
-  const isAdmin = userRole === "admin";
+  const isAdmin = user?.role === 'admin' || user?.role === 'secretaria';
 
   const { data: events = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/events"],
@@ -169,9 +169,9 @@ export default function Agenda() {
             </TabsList>
 
             <TabsContent value="month" className="mt-6">
-              <MonthView 
-                currentDate={currentDate} 
-                getEventsForDate={getEventsForDate} 
+              <MonthView
+                currentDate={currentDate}
+                getEventsForDate={getEventsForDate}
                 onEventClick={handleEventClick}
                 onDayClick={handleDayClick}
               />
@@ -195,7 +195,7 @@ export default function Agenda() {
         onEdit={handleEditEvent}
       />
 
-      <EventDialog 
+      <EventDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         event={editingEvent}
@@ -262,9 +262,8 @@ function MonthView({ currentDate, getEventsForDate, onEventClick, onDayClick }: 
           return (
             <div
               key={idx}
-              className={`min-h-[60px] md:min-h-[100px] border rounded-md md:rounded-lg p-1 md:p-2 ${
-                !isCurrentMonth ? "bg-muted/50 text-muted-foreground" : "bg-background"
-              } ${isToday ? "ring-2 ring-primary" : ""} cursor-pointer hover:bg-accent/5 transition-colors`}
+              className={`min-h-[60px] md:min-h-[100px] border rounded-md md:rounded-lg p-1 md:p-2 ${!isCurrentMonth ? "bg-muted/50 text-muted-foreground" : "bg-background"
+                } ${isToday ? "ring-2 ring-primary" : ""} cursor-pointer hover:bg-accent/5 transition-colors`}
               data-testid={`day-${format(day, "yyyy-MM-dd")}`}
               onClick={() => onDayClick(day)}
             >
@@ -458,9 +457,8 @@ function YearView({ currentDate, eventsWithDates, onEventClick }: any) {
                     return (
                       <button
                         key={idx}
-                        className={`text-center text-[9px] md:text-xs p-0.5 md:p-1 rounded cursor-pointer hover-elevate ${
-                          isToday ? "bg-primary text-primary-foreground" : "bg-primary/20 font-medium"
-                        }`}
+                        className={`text-center text-[9px] md:text-xs p-0.5 md:p-1 rounded cursor-pointer hover-elevate ${isToday ? "bg-primary text-primary-foreground" : "bg-primary/20 font-medium"
+                          }`}
                         onClick={() => onEventClick(dayEvents[0])}
                         title={dayEvents.map((e: any) => e.title).join(', ')}
                       >
@@ -472,9 +470,8 @@ function YearView({ currentDate, eventsWithDates, onEventClick }: any) {
                   return (
                     <div
                       key={idx}
-                      className={`text-center text-[9px] md:text-xs p-0.5 md:p-1 rounded ${
-                        !isCurrentMonth ? "text-muted-foreground/50" : ""
-                      } ${isToday ? "bg-primary text-primary-foreground" : ""}`}
+                      className={`text-center text-[9px] md:text-xs p-0.5 md:p-1 rounded ${!isCurrentMonth ? "text-muted-foreground/50" : ""
+                        } ${isToday ? "bg-primary text-primary-foreground" : ""}`}
                     >
                       {format(day, "d")}
                     </div>

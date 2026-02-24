@@ -111,7 +111,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || 'employee';
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'admin' || userRole === 'secretaria';
   const canViewFinancials = isAdmin;
   const canEdit = isAdmin;
   const isReadOnly = !canEdit;

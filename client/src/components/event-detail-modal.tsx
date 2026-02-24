@@ -71,7 +71,7 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || "employee";
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "secretaria";
   const canViewFinancials = isAdmin;
 
   const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;

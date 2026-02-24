@@ -1,0 +1,16 @@
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: POST /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: DELETE /api/inventory/62fc6a0b-e727-443e-91cd-060e1421f8c4, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/employees, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/system/km_value, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/event-categories, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/services, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/packages, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/employee-roles, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/skills, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: POST /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: DELETE /api/inventory/a1b09768-5c82-455e-94e7-e78a49271231, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria

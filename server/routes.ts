@@ -30,7 +30,8 @@ async function authenticateToken(req: AuthRequest, res: Response, next: NextFunc
     // Get user role for authorization
     const user = await storage.getUser(decoded.userId);
     if (user) {
-      req.userRole = user.role;
+      // Normalize role: lowercase and remove accents
+      req.userRole = (user.role || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     }
 
     next();
@@ -40,34 +41,42 @@ async function authenticateToken(req: AuthRequest, res: Response, next: NextFunc
 }
 
 // Admin-only authorization middleware
+import fs from 'fs';
+
 function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  const logMsg = `[AUTH DEBUG] requireAdmin - Path: ${req.method} ${req.path}, Role: ${req.userRole}\n`;
+  fs.appendFileSync('debug_auth.log', logMsg);
   if (req.userRole !== 'admin') {
-    return res.status(403).json({ message: "Acesso negado. Apenas administradores podem acessar este recurso." });
+    return res.status(403).json({ message: "[DEBUG-V2] Acesso negado. Apenas administradores podem acessar este recurso." });
   }
   next();
 }
 
 // Admin or Secretaria authorization middleware
 function requireAdminOrSecretaria(req: AuthRequest, res: Response, next: NextFunction) {
-  const role = (req.userRole || "").toLowerCase();
-  if (role !== 'admin' && role !== 'secretaria' && role !== 'secretária') {
-    return res.status(403).json({ message: "Acesso negado. Apenas administradores e secretárias podem acessar este recurso." });
+  const role = req.userRole || "";
+  const logMsg = `[AUTH DEBUG] requireAdminOrSecretaria - Path: ${req.method} ${req.path}, Role: ${role}\n`;
+  fs.appendFileSync('debug_auth.log', logMsg);
+  if (role !== 'admin' && role !== 'secretaria') {
+    return res.status(403).json({ message: "[DEBUG-V2] Acesso negado. Apenas administradores e secretárias podem acessar este recurso." });
   }
   next();
 }
 
-// Middleware to check if user can create/edit events (only admin)
+// Middleware to check if user can create/edit events (admin or secretaria)
 function requireEventEdit(req: AuthRequest, res: Response, next: NextFunction) {
-  if (req.userRole !== 'admin') {
-    return res.status(403).json({ message: "Acesso negado. Apenas administradores podem criar ou editar eventos." });
+  const role = req.userRole || "";
+  if (role !== 'admin' && role !== 'secretaria') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores e secretárias podem criar ou editar eventos." });
   }
   next();
 }
 
-// Middleware to check if user can create/edit clients (admin only)
+// Middleware to check if user can create/edit clients (admin or secretaria)
 function requireClientEdit(req: AuthRequest, res: Response, next: NextFunction) {
-  if (req.userRole !== 'admin') {
-    return res.status(403).json({ message: "Acesso negado. Apenas administradores podem criar ou editar clientes." });
+  const role = req.userRole || "";
+  if (role !== 'admin' && role !== 'secretaria') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores e secretárias podem criar ou editar clientes." });
   }
   next();
 }
@@ -144,6 +153,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
 
+      // SELF-HEALING: If user should be secretaria but is employee, fix it
+      const secretariaUsernames = [
+        "secretariabolzoniproducoes@outloock.com",
+        "secretaria@teste.com"
+      ];
+      if (secretariaUsernames.includes(user.username) && user.role === 'employee') {
+        console.log(`[AUTH DEBUG] Self-healing role for ${user.username}`);
+        await storage.updateUser(user.id, { role: "secretaria" });
+        user.role = "secretaria";
+      }
+
       const { password, ...userWithoutPassword } = user;
 
       // If user is an employee, find their employee ID
@@ -166,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const clients = await storage.getAllClients();
-      const role = (req.userRole || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const role = req.userRole || "";
 
       // For employees, filter to show only clients from events they are linked to
       if (role === 'employee' || role === 'funcionario') {
@@ -232,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/clients/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/clients/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deleteClient(req.params.id);
       res.status(204).send();
@@ -251,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/employees", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { userEmail, userPassword, ...employeeData } = req.body;
       let userId: string | undefined = undefined;
@@ -281,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/employees/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/employees/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { userEmail, userPassword, ...employeeData } = req.body;
       console.log("PATCH /api/employees/:id payload:", JSON.stringify(employeeData, null, 2));
@@ -329,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/employees/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/employees/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deleteEmployee(req.params.id);
       res.status(204).send();
@@ -339,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Employee Payments routes
-  app.get("/api/employees/:id/payments", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/employees/:id/payments", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const payments = await storage.getEmployeePayments(req.params.id);
       res.json(payments);
@@ -348,7 +368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/employees/:id/payments", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/employees/:id/payments", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const paymentData = insertEmployeePaymentSchema.omit({ employeeId: true }).parse({
         ...req.body,
@@ -361,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/employee-payments/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/employee-payments/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deleteEmployeePayment(req.params.id);
       res.status(204).send();
@@ -380,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/employees/:id/skills", authenticateToken, requireAdmin, async (req, res) => {
+  app.put("/api/employees/:id/skills", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { skillIds } = req.body;
       if (!Array.isArray(skillIds)) {
@@ -398,9 +418,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/events", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const events = await storage.getAllEvents();
-      const userRoleRaw = (req.userRole || "").toLowerCase();
-      const isSecretaria = userRoleRaw === 'secretaria' || userRoleRaw === 'secretária' || userRoleRaw === 'secretaria';
-      const isEmployee = userRoleRaw === 'employee' || userRoleRaw === 'funcionario' || userRoleRaw === 'funcionário';
+      const role = req.userRole || "";
+      const isSecretaria = role === 'secretaria';
+      const isEmployee = role === 'employee' || role === 'funcionario';
 
       // For employees, filter to show only events they are linked to
       if (isEmployee && !isSecretaria) {
@@ -576,7 +596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/inventory", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/inventory", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { componentIds, ...inventoryData } = req.body;
       const data = insertInventoryItemSchema.parse(inventoryData);
@@ -587,7 +607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/inventory/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/inventory/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { componentIds, ...inventoryData } = req.body;
       const data = insertInventoryItemSchema.partial().parse(inventoryData);
@@ -598,7 +618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/inventory/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/inventory/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deleteInventoryItem(req.params.id);
       res.status(204).send();
@@ -668,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Purchases routes
   // Purchases routes (admin only)
-  app.get("/api/purchases", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/purchases", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const purchases = await storage.getAllPurchases();
       res.json(purchases);
@@ -677,7 +697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/purchases", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/purchases", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       // Validar os dados primeiro (ainda como strings)
       const data = validatePurchaseSchema.parse(req.body);
@@ -774,7 +794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/purchases/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/purchases/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       // Função auxiliar para converter string de data YYYY-MM-DD para Date no timezone local
       const parseLocalDate = (dateString: string): Date => {
@@ -794,7 +814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/purchases/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/purchases/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deletePurchase(req.params.id);
       res.status(204).send();
@@ -805,7 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dashboard routes
   // Dashboard routes (admin only)
-  app.get("/api/dashboard/metrics", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/dashboard/metrics", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const metrics = await storage.getDashboardMetrics();
       res.json(metrics);
@@ -814,7 +834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/upcoming-events", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/dashboard/upcoming-events", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const events = await storage.getUpcomingEvents(5);
       res.json(events);
@@ -834,7 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Settings routes (admin only)
-  app.get("/api/settings/event-categories", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/event-categories", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const categories = await storage.getAllEventCategories();
       res.json(categories);
@@ -843,7 +863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/event-categories", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/event-categories", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertEventCategorySchema.parse(req.body);
       const category = await storage.createEventCategory(data);
@@ -853,7 +873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings/event-categories/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/settings/event-categories/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertEventCategorySchema.partial().parse(req.body);
       const category = await storage.updateEventCategory(req.params.id, data);
@@ -863,7 +883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/settings/event-categories/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/settings/event-categories/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deleteEventCategory(req.params.id);
       res.status(204).send();
@@ -873,7 +893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Employee Roles routes
-  app.get("/api/settings/employee-roles", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/employee-roles", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const roles = await storage.getAllEmployeeRoles();
       res.json(roles);
@@ -882,7 +902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/employee-roles", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/employee-roles", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertEmployeeRoleSchema.parse(req.body);
       const role = await storage.createEmployeeRole(data);
@@ -892,7 +912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings/employee-roles/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/settings/employee-roles/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertEmployeeRoleSchema.partial().parse(req.body);
       const role = await storage.updateEmployeeRole(req.params.id, data);
@@ -902,7 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/settings/employee-roles/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/settings/employee-roles/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deleteEmployeeRole(req.params.id);
       res.status(204).send();
@@ -912,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Packages routes
-  app.get("/api/settings/packages", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/packages", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const packages = await storage.getAllPackagesWithRelations();
       res.json(packages);
@@ -921,7 +941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/settings/packages/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/packages/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const pkg = await storage.getPackageWithRelations(req.params.id);
       if (!pkg) {
@@ -933,7 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/packages", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/packages", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertPackageSchema.parse(req.body);
       const pkg = await storage.createPackage(data);
@@ -943,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings/packages/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/settings/packages/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertPackageSchema.partial().parse(req.body);
       const pkg = await storage.updatePackage(req.params.id, data);
@@ -953,7 +973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/settings/packages/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/settings/packages/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deletePackage(req.params.id);
       res.status(204).send();
@@ -963,7 +983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Skills routes
-  app.get("/api/settings/skills", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/skills", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const skills = await storage.getAllSkills();
       res.json(skills);
@@ -972,7 +992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/skills", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/skills", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertSkillSchema.parse(req.body);
       const skill = await storage.createSkill(data);
@@ -982,7 +1002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings/skills/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/settings/skills/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const existingSkill = await storage.getSkill(req.params.id);
       if (!existingSkill) {
@@ -996,7 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/settings/skills/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/settings/skills/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const existingSkill = await storage.getSkill(req.params.id);
       if (!existingSkill) {
@@ -1010,7 +1030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Services routes
-  app.get("/api/settings/services", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/services", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const services = await storage.getAllServices();
       res.json(services);
@@ -1019,7 +1039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/services", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/services", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertServiceSchema.parse(req.body);
       const service = await storage.createService(data);
@@ -1029,7 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/settings/services/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/settings/services/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const existingService = await storage.getService(req.params.id);
       if (!existingService) {
@@ -1043,7 +1063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/settings/services/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/settings/services/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const existingService = await storage.getService(req.params.id);
       if (!existingService) {
@@ -1057,7 +1077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // System Settings
-  app.get("/api/settings/system", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/system", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const settings = await storage.getAllSystemSettings();
       res.json(settings);
@@ -1066,7 +1086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/settings/system/:key", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/system/:key", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const setting = await storage.getSystemSetting(req.params.key);
       if (!setting) {
@@ -1078,7 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/system", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/system", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { key, value } = req.body;
       if (!key || !value) {
@@ -1092,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Taxas e Juros - Sumup Scraping
-  app.get("/api/settings/fees/sumup", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/fees/sumup", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const sumupUrl = "https://www.sumup.com/pt-br/maquininhas/taxas/";
 
@@ -1221,7 +1241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Taxas personalizadas - CRUD
-  app.get("/api/settings/fees/custom", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/fees/custom", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const customFees = await storage.getSystemSetting("custom_fees");
       if (!customFees) {
@@ -1233,7 +1253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/custom", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/fees/custom", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { fees } = req.body;
       if (!fees) {
@@ -1248,7 +1268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Configuração de tipo de taxa (sumup ou personalizado)
-  app.get("/api/settings/fees/type", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/fees/type", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const feeType = await storage.getSystemSetting("fee_type");
       res.json({ type: feeType?.value || "sumup" });
@@ -1257,7 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/type", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/fees/type", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { type } = req.body;
       if (!type || !["sumup", "custom"].includes(type)) {
@@ -1272,7 +1292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tier preferencial da Sumup
-  app.get("/api/settings/fees/sumup-tier", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/fees/sumup-tier", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const tier = await storage.getSystemSetting("sumup_tier");
       res.json({ tier: tier?.value || "0" });
@@ -1281,7 +1301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/sumup-tier", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/fees/sumup-tier", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { tier } = req.body;
       if (tier === undefined || tier === null) {
@@ -1296,7 +1316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Taxa de juros mensal
-  app.get("/api/settings/fees/monthly-interest", authenticateToken, requireAdmin, async (req, res) => {
+  app.get("/api/settings/fees/monthly-interest", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const interest = await storage.getSystemSetting("monthly_interest_rate");
       res.json({ monthlyInterestRate: interest?.value || "0" });
@@ -1305,7 +1325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/settings/fees/monthly-interest", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/fees/monthly-interest", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { monthlyInterestRate } = req.body;
       if (monthlyInterestRate === undefined || monthlyInterestRate === null) {
@@ -1362,7 +1382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Calcular taxa aplicável (com juros compostos se parcelado)
-  app.post("/api/settings/fees/calculate", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/settings/fees/calculate", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const { paymentMethod, cardType, installments } = req.body;
 
@@ -1514,7 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/buffets", authenticateToken, requireAdmin, async (req, res) => {
+  app.post("/api/buffets", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertBuffetSchema.parse(req.body);
       const buffet = await storage.createBuffet(data);
@@ -1524,7 +1544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/buffets/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.patch("/api/buffets/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       const data = insertBuffetSchema.partial().parse(req.body);
       const buffet = await storage.updateBuffet(req.params.id, data);
@@ -1534,7 +1554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/buffets/:id", authenticateToken, requireAdmin, async (req, res) => {
+  app.delete("/api/buffets/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
       await storage.deleteBuffet(req.params.id);
       res.status(204).send();

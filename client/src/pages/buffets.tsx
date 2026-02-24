@@ -22,7 +22,7 @@ export default function Buffets() {
   // Get user role from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || "employee";
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "secretaria";
   const canEdit = isAdmin;
 
   const { data: buffets, isLoading } = useQuery<Buffet[]>({
@@ -31,16 +31,16 @@ export default function Buffets() {
 
   const filteredBuffets = useMemo(() => {
     let result = buffets || [];
-    
+
     result = filterByDateRange(result, "createdAt", dateFilter);
-    
+
     result = result.filter((buffet) =>
       buffet.name.toLowerCase().includes(search.toLowerCase()) ||
       buffet.address?.toLowerCase().includes(search.toLowerCase()) ||
       buffet.phone?.includes(search) ||
       buffet.email?.toLowerCase().includes(search.toLowerCase())
     );
-    
+
     return result;
   }, [buffets, search, dateFilter]);
 
