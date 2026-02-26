@@ -14,3 +14,13 @@
 [AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
 [AUTH DEBUG] requireAdminOrSecretaria - Path: DELETE /api/inventory/a1b09768-5c82-455e-94e7-e78a49271231, Role: secretaria
 [AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/dashboard/upcoming-events, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/dashboard/metrics, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/employees, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/system/km_value, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/event-categories, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/packages, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/settings/services, Role: secretaria
+[AUTH DEBUG] requireAdminOrSecretaria - Path: GET /api/inventory, Role: secretaria

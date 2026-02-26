@@ -779,6 +779,19 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 />
                 <FormField
                   control={form.control}
+                  name="partyStartTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Início da Festa</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="time" data-testid="input-party-start-time" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="startTime"
                   render={({ field }) => (
                     <FormItem>
@@ -798,19 +811,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       <FormLabel>Horário de Fim da Recreação</FormLabel>
                       <FormControl>
                         <Input {...field} type="time" data-testid="input-event-end-time" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="partyStartTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Início da Festa</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="time" data-testid="input-party-start-time" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
