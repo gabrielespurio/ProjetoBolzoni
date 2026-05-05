@@ -15,7 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon, RefreshCw, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Settings as SettingsIcon, RefreshCw, ExternalLink, Calendar } from "lucide-react";
 import type { EventCategory, EmployeeRole, Package, Skill, Service, InventoryItem, PackageService, PackageMaterial } from "@shared/schema";
 import { insertSkillSchema, insertServiceSchema } from "@shared/schema";
 
@@ -91,6 +91,172 @@ interface CustomFeesData {
   debit: string;
   creditCash: string;
   creditInstallments: string;
+}
+
+interface GoogleCalendarStatus {
+  isConnected: boolean;
+  hasCredentials: boolean;
+  clientId: string;
+  clientSecret: string;
+}
+
+function GoogleCalendarSettings() {
+  const { toast } = useToast();
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+
+  const { data: status, isLoading, refetch } = useQuery<GoogleCalendarStatus>({
+    queryKey: ["/api/settings/google-calendar/status"],
+  });
+
+  useEffect(() => {
+    if (status) {
+      setClientId(status.clientId);
+      setClientSecret(status.clientSecret);
+    }
+  }, [status]);
+
+  const saveCredentialsMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/settings/google-calendar/credentials", { clientId, clientSecret });
+    },
+    onSuccess: () => {
+      toast({ title: "Sucesso", description: "Credenciais salvas com sucesso." });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      const { url } = await apiRequest("GET", "/api/settings/google-calendar/auth-url");
+      
+      // Abrir em uma nova janela para o fluxo de OAuth
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      const popup = window.open(
+        url,
+        "google-calendar-auth",
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      const interval = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(interval);
+          refetch();
+        }
+      }, 1000);
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/settings/google-calendar/disconnect");
+    },
+    onSuccess: () => {
+      toast({ title: "Sucesso", description: "Google Agenda desconectada." });
+      refetch();
+    },
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Calendar className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <CardTitle>Google Agenda</CardTitle>
+            <CardDescription>Sincronize automaticamente os eventos do sistema com seu Google Calendar</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+          <div className="flex items-center gap-3">
+            <div className={`h-3 w-3 rounded-full ${status?.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="font-medium">Status: {status?.isConnected ? 'Conectado' : 'Desconectado'}</span>
+          </div>
+          {status?.isConnected ? (
+            <Button variant="outline" size="sm" onClick={() => disconnectMutation.mutate()} disabled={disconnectMutation.isPending}>
+              {disconnectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Desconectar
+            </Button>
+          ) : (
+            <Button onClick={() => connectMutation.mutate()} disabled={!status?.hasCredentials || connectMutation.isPending}>
+              {connectMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Conectar com Google
+            </Button>
+          )}
+        </div>
+
+        {!status?.isConnected && (
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Client ID</label>
+                <Input 
+                  value={clientId} 
+                  onChange={(e) => setClientId(e.target.value)} 
+                  placeholder="Seu Google Client ID" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Client Secret</label>
+                <Input 
+                  type="password" 
+                  value={clientSecret} 
+                  onChange={(e) => setClientSecret(e.target.value)} 
+                  placeholder="Seu Google Client Secret" 
+                />
+              </div>
+            </div>
+            
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+              <p className="font-bold mb-1">Instruções:</p>
+              <ol className="list-decimal ml-4 space-y-1">
+                <li>Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" className="underline font-medium">Google Cloud Console</a>.</li>
+                <li>Habilite a <strong>Google Calendar API</strong>.</li>
+                <li>Crie credenciais de <strong>OAuth 2.0 Web Client</strong>.</li>
+                <li>Adicione <code>http://localhost:5005/api/settings/google-calendar/callback</code> às <strong>URIs de redirecionamento autorizadas</strong>.</li>
+                <li>Copie o Client ID e Client Secret e salve abaixo.</li>
+              </ol>
+            </div>
+
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => saveCredentialsMutation.mutate()}
+              disabled={saveCredentialsMutation.isPending || !clientId || !clientSecret}
+            >
+              {saveCredentialsMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar Credenciais
+            </Button>
+          </div>
+        )}
+
+        {status?.isConnected && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm flex items-start gap-3">
+            <RefreshCw className="h-5 w-5 mt-0.5" />
+            <div>
+              <p className="font-bold mb-1">Sincronização Ativa!</p>
+              <p>Sempre que você criar, editar ou excluir um evento no sistema, ele será refletido automaticamente na sua agenda principal do Google.</p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 // Componente para Taxas e Juros
@@ -963,7 +1129,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="categories" className="w-full">
-          <TabsList className="flex w-full h-auto flex-wrap md:grid md:grid-cols-7 gap-1">
+          <TabsList className="flex w-full h-auto flex-wrap md:grid md:grid-cols-8 gap-1">
             <TabsTrigger value="categories" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-categories">Categorias</TabsTrigger>
             <TabsTrigger value="roles" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-roles">Funções</TabsTrigger>
             <TabsTrigger value="packages" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-packages">Pacotes</TabsTrigger>
@@ -971,6 +1137,7 @@ export default function Settings() {
             <TabsTrigger value="services" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-services">Serviços</TabsTrigger>
             <TabsTrigger value="km-value" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-km-value">Valor/km</TabsTrigger>
             <TabsTrigger value="fees" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-fees">Taxas</TabsTrigger>
+            <TabsTrigger value="google-calendar" className="flex-1 min-w-[100px] text-xs md:text-sm" data-testid="tab-google-calendar">Google Agenda</TabsTrigger>
           </TabsList>
 
           <TabsContent value="categories" className="mt-6">
@@ -1355,6 +1522,10 @@ export default function Settings() {
 
           <TabsContent value="fees" className="mt-6">
             <FeesSettings />
+          </TabsContent>
+
+          <TabsContent value="google-calendar" className="mt-6">
+            <GoogleCalendarSettings />
           </TabsContent>
         </Tabs>
       </div>

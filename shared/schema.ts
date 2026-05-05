@@ -152,6 +152,7 @@ export const events = pgTable("events", {
   buffetId: varchar("buffet_id").references(() => buffets.id),
   status: eventStatusEnum("status").notNull().default("scheduled"),
   notes: text("notes"),
+  googleEventId: text("google_event_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

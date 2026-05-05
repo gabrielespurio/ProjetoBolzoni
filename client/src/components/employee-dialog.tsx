@@ -133,6 +133,8 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         estado: employee.estado || "",
         numero: employee.numero || "",
         isAvailable: employee.isAvailable ?? true,
+        clocksIn: employee.clocksIn ?? false,
+        workloadHours: employee.workloadHours ?? 0,
         userEmail: "",
         userPassword: "",
       });
@@ -254,7 +256,11 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent 
+        className="max-w-4xl max-h-[90vh] overflow-hidden"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar Funcionário" : "Novo Funcionário"}</DialogTitle>
           <DialogDescription>

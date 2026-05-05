@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertServiceSchema, insertEmployeePaymentSchema, insertBuffetSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { GoogleCalendarService } from "./google-calendar";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "bolzoni-secret-key-2024";
 
@@ -506,6 +507,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentDate: eventData.paymentDate ? new Date(eventData.paymentDate) : null,
       });
       const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees, eventInstallments, packageIds);
+
+      // Sincronizar com Google Calendar
+      try {
+        if (await GoogleCalendarService.isConnected()) {
+          const details = await storage.getEventDetailsForSync(event.id);
+          const description = [
+            `Cliente: ${details.clientName}`,
+            `Horário da festa: ${details.partyStartTime || "Não informado"}`,
+            `Horário de inicio da recreação: ${details.startTime || "Não informado"}`,
+            `Duração do evento: ${details.eventDuration ? details.eventDuration + " horas" : "Não informado"}`,
+            `Valor do contrato: ${details.contractValue ? "R$ " + details.contractValue : "Não informado"}`,
+            details.buffetName ? `Buffet: ${details.buffetName}` : null,
+            `Personagens: ${details.characters.join(", ") || "Nenhum"}`,
+            details.packageName ? `Pacote: ${details.packageName}` : null,
+            details.serviceName ? `Serviço: ${details.serviceName}` : null,
+            details.notes ? `\nObservações Gerais: ${details.notes}` : null,
+          ].filter(Boolean).join("\n");
+
+          const googleEventId = await GoogleCalendarService.createEvent({
+            title: event.title,
+            start: new Date(event.date),
+            location: `${event.rua || ""}, ${event.venueNumber || ""}, ${event.bairro || ""}, ${event.cidade || ""} - ${event.estado || ""}`,
+            description: description,
+          });
+          if (googleEventId) {
+            await storage.updateEvent(event.id, { googleEventId });
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao sincronizar com Google Calendar:", err);
+      }
+
       res.status(201).json(event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar evento" });
@@ -538,6 +571,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const data = insertEventSchema.partial().parse(bodyData);
       const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees, eventInstallments, packageIds);
+
+      // Sincronizar com Google Calendar
+      try {
+        if (await GoogleCalendarService.isConnected()) {
+          const eventToSync = await storage.getEvent(req.params.id);
+          if (eventToSync) {
+            const details = await storage.getEventDetailsForSync(eventToSync.id);
+            const description = [
+              `Cliente: ${details.clientName}`,
+              `Horário da festa: ${details.partyStartTime || "Não informado"}`,
+              `Horário de inicio da recreação: ${details.startTime || "Não informado"}`,
+              `Duração do evento: ${details.eventDuration ? details.eventDuration + " horas" : "Não informado"}`,
+              `Valor do contrato: ${details.contractValue ? "R$ " + details.contractValue : "Não informado"}`,
+              details.buffetName ? `Buffet: ${details.buffetName}` : null,
+              `Personagens: ${details.characters.join(", ") || "Nenhum"}`,
+              details.packageName ? `Pacote: ${details.packageName}` : null,
+              details.serviceName ? `Serviço: ${details.serviceName}` : null,
+              details.notes ? `\nObservações Gerais: ${details.notes}` : null,
+            ].filter(Boolean).join("\n");
+
+            if (eventToSync.googleEventId) {
+              await GoogleCalendarService.updateEvent(eventToSync.googleEventId, {
+                title: eventToSync.title,
+                start: new Date(eventToSync.date),
+                location: `${eventToSync.rua || ""}, ${eventToSync.venueNumber || ""}, ${eventToSync.bairro || ""}, ${eventToSync.cidade || ""} - ${eventToSync.estado || ""}`,
+                description: description,
+              });
+            } else {
+              // Se não tinha ID do Google antes, tenta criar agora
+              const googleEventId = await GoogleCalendarService.createEvent({
+                title: eventToSync.title,
+                start: new Date(eventToSync.date),
+                location: `${eventToSync.rua || ""}, ${eventToSync.venueNumber || ""}, ${eventToSync.bairro || ""}, ${eventToSync.cidade || ""} - ${eventToSync.estado || ""}`,
+                description: description,
+              });
+              if (googleEventId) {
+                await storage.updateEvent(req.params.id, { googleEventId });
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao sincronizar atualização com Google Calendar:", err);
+      }
 
       // Se o status mudou para "completed", criar transação de contas a receber
       if (data.status === "completed" && previousStatus !== "completed" && currentEvent) {
@@ -578,6 +655,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/events/:id", authenticateToken, requireEventEdit, async (req, res) => {
     try {
+      const eventToDelete = await storage.getEvent(req.params.id);
+      
+      // Sincronizar exclusão com Google Calendar
+      try {
+        if (eventToDelete && eventToDelete.googleEventId && await GoogleCalendarService.isConnected()) {
+          await GoogleCalendarService.deleteEvent(eventToDelete.googleEventId);
+        }
+      } catch (err) {
+        console.error("Erro ao deletar evento do Google Calendar:", err);
+      }
+
       await storage.deleteEvent(req.params.id);
       res.status(204).send();
     } catch (error: any) {
@@ -1630,30 +1718,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/time-records/summary", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = req.userId!;
+      let userId = req.userId!;
+      const isAdminOrSec = req.userRole === "admin" || req.userRole === "secretaria";
+
+      if (isAdminOrSec && req.query.userId) {
+        userId = req.query.userId as string;
+      }
+
       const now = new Date();
+      const allUserRecords = await storage.getTimeRecords(userId);
+      
+      const isSameDay = (d1: Date, d2: Date) => 
+        d1.getFullYear() === d2.getFullYear() && 
+        d1.getMonth() === d2.getMonth() && 
+        d1.getDate() === d2.getDate();
 
-      // Today: midnight to end of day
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const isSameWeek = (d1: Date, d2: Date) => {
+        const startOfWeek = new Date(d2);
+        const day = d2.getDay();
+        const diff = d2.getDate() - day + (day === 0 ? -6 : 1); // Monday
+        startOfWeek.setDate(diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        return d1 >= startOfWeek && d1 <= endOfWeek;
+      };
 
-      // Week: Monday to Sunday
-      const dayOfWeek = now.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset, 0, 0, 0);
-      const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6, 23, 59, 59);
+      const isSameMonth = (d1: Date, d2: Date) => 
+        d1.getFullYear() === d2.getFullYear() && 
+        d1.getMonth() === d2.getMonth();
 
-      // Month: first to last day of month
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const todayRecords = allUserRecords.filter(r => isSameDay(new Date(r.timestamp), now));
+      const weekRecords = allUserRecords.filter(r => isSameWeek(new Date(r.timestamp), now));
+      const monthRecords = allUserRecords.filter(r => isSameMonth(new Date(r.timestamp), now));
 
-      const todayRecords = await storage.getTimeRecords(userId, todayStart, todayEnd);
-      const weekRecords = await storage.getTimeRecords(userId, weekStart, weekEnd);
-      const monthRecords = await storage.getTimeRecords(userId, monthStart, monthEnd);
-
-      // Calculate worked hours from records
       const calculateHours = (records: any[]) => {
-        // Sort chronologically
         const sorted = [...records].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         let totalMinutes = 0;
         for (let i = 0; i < sorted.length; i++) {
@@ -1663,7 +1763,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const diff = new Date(clockOut.timestamp).getTime() - new Date(sorted[i].timestamp).getTime();
               totalMinutes += diff / (1000 * 60);
             } else {
-              // Still clocked in, count until now
               const diff = now.getTime() - new Date(sorted[i].timestamp).getTime();
               totalMinutes += diff / (1000 * 60);
             }
@@ -1676,20 +1775,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const weekMinutes = calculateHours(weekRecords);
       const monthMinutes = calculateHours(monthRecords);
 
-      // Standard: 8h/day, 40h/week, ~176h/month (22 working days)
-      const DAILY_HOURS = 8;
-      const WEEKLY_HOURS = 40;
-      const MONTHLY_HOURS = 176;
-
-      // Calculate working days in period for more accurate deficit/overtime
+      const employee = await storage.getEmployeeByUserId(userId);
+      const DAILY_HOURS = employee?.workloadHours || 8;
       const todayExpected = DAILY_HOURS * 60;
-      const weekWorkDays = Math.min(5, Math.floor((now.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      
+      let weekWorkDays = 0;
+      const dayOfWeek = now.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() + mondayOffset);
+      const weekCounter = new Date(weekStart);
+      while (weekCounter <= now) {
+        if (weekCounter.getDay() !== 0 && weekCounter.getDay() !== 6) weekWorkDays++;
+        weekCounter.setDate(weekCounter.getDate() + 1);
+      }
       const weekExpected = weekWorkDays * DAILY_HOURS * 60;
 
-      // Working days elapsed this month
       let monthWorkDays = 0;
-      for (let d = new Date(monthStart); d <= now; d.setDate(d.getDate() + 1)) {
-        if (d.getDay() !== 0 && d.getDay() !== 6) monthWorkDays++;
+      const monthCounter = new Date(now.getFullYear(), now.getMonth(), 1);
+      while (monthCounter <= now) {
+        if (monthCounter.getDay() !== 0 && monthCounter.getDay() !== 6) monthWorkDays++;
+        monthCounter.setDate(monthCounter.getDate() + 1);
       }
       const monthExpected = monthWorkDays * DAILY_HOURS * 60;
 
@@ -1712,6 +1818,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao calcular resumo de horas" });
+    }
+  });
+
+  // Google Calendar Integration Routes
+  app.get("/api/settings/google-calendar/auth-url", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const url = await GoogleCalendarService.getAuthUrl();
+      res.json({ url });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/settings/google-calendar/callback", async (req, res) => {
+    try {
+      const { code } = req.query;
+      if (!code) throw new Error("Código de autorização não fornecido.");
+      await GoogleCalendarService.handleCallback(code as string);
+      res.send("<html><body onload=\"window.close()\">Conectado com sucesso! Você pode fechar esta aba.</body></html>");
+    } catch (error: any) {
+      res.status(500).send(`Erro na autenticação: ${error.message}`);
+    }
+  });
+
+  app.get("/api/settings/google-calendar/status", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const status = await GoogleCalendarService.getStatus();
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/settings/google-calendar/disconnect", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      await storage.upsertSystemSetting("google_calendar_tokens", "");
+      res.json({ message: "Desconectado com sucesso." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/settings/google-calendar/credentials", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const { clientId, clientSecret } = req.body;
+      if (!clientId || !clientSecret) {
+        return res.status(400).json({ message: "Client ID e Client Secret são obrigatórios." });
+      }
+      await storage.upsertSystemSetting("google_calendar_client_id", clientId);
+      await storage.upsertSystemSetting("google_calendar_client_secret", clientSecret);
+      res.json({ message: "Credenciais salvas com sucesso." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
   });
 

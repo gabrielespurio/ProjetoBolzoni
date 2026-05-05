@@ -104,10 +104,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [packagePopoverOpen, setPackagePopoverOpen] = useState(false);
   const [packageSearchTerm, setPackageSearchTerm] = useState("");
-  const [buffetSearchTerm, setBuffetSearchTerm] = useState("");
   const [methodPopoverOpen, setMethodPopoverOpen] = useState(false);
   const [cardPopoverOpen, setCardPopoverOpen] = useState(false);
   const [installmentMethodPopoverOpen, setInstallmentMethodPopoverOpen] = useState(false);
+  const [buffetPopoverOpen, setBuffetPopoverOpen] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = user?.role || 'employee';
@@ -163,13 +163,6 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     queryKey: ["/api/buffets"],
     enabled: open,
   });
-
-  const filteredBuffets = useMemo(() =>
-    buffets?.filter(b =>
-      b.name.toLowerCase().includes(buffetSearchTerm.toLowerCase())
-    ) || [],
-    [buffets, buffetSearchTerm]
-  );
 
   const filteredPackages = useMemo(() =>
     packages?.filter(p =>
@@ -620,7 +613,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+      <DialogContent 
+        className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader className="p-6 pb-2 shrink-0">
           <DialogTitle>{isReadOnly ? "Visualizar Evento" : (isEdit ? "Editar Evento" : "Novo Evento")}</DialogTitle>
           <DialogDescription>
@@ -849,51 +846,63 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Buffet</FormLabel>
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="Pesquisar buffets..."
-                          value={buffetSearchTerm}
-                          onChange={(e) => setBuffetSearchTerm(e.target.value)}
-                          className="h-8"
-                          data-testid="input-search-buffets"
-                        />
-                        <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto" data-testid="select-event-buffet">
-                          {filteredBuffets.length === 0 && (
-                            <p className="text-sm text-muted-foreground">Nenhum buffet encontrado.</p>
-                          )}
-                          {filteredBuffets.map((b) => {
-                            const isSelected = field.value === b.id;
-                            return (
-                              <div
-                                key={b.id}
-                                className={cn(
-                                  "flex items-center space-x-2 p-2 rounded-md cursor-pointer hover:bg-accent",
-                                  isSelected && "bg-accent"
-                                )}
-                                onClick={() => {
-                                  if (!isReadOnly) {
-                                    field.onChange(isSelected ? "" : b.id);
-                                  }
-                                }}
-                                data-testid={`buffet-option-${b.id}`}
-                              >
-                                <Check
-                                  className={cn(
-                                    "h-4 w-4 shrink-0",
-                                    isSelected ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium">{b.name}</span>
-                                  {b.address && (
-                                    <p className="text-xs text-muted-foreground truncate">{b.address}</p>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <Popover open={buffetPopoverOpen} onOpenChange={setBuffetPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={buffetPopoverOpen}
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={isReadOnly}
+                              data-testid="select-event-buffet"
+                            >
+                              {field.value
+                                ? buffets?.find((b) => b.id === field.value)?.name
+                                : "Selecione um buffet"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar buffet..." />
+                            <CommandList>
+                              <CommandEmpty>Nenhum buffet encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {buffets?.map((b) => (
+                                  <CommandItem
+                                    key={b.id}
+                                    value={b.name}
+                                    onSelect={() => {
+                                      field.onChange(field.value === b.id ? "" : b.id);
+                                      setBuffetPopoverOpen(false);
+                                    }}
+                                    data-testid={`buffet-option-${b.id}`}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === b.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{b.name}</span>
+                                      {b.address && (
+                                        <span className="text-xs text-muted-foreground truncate">{b.address}</span>
+                                      )}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -934,47 +943,79 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
                           <FormLabel>Pacotes</FormLabel>
-                          <div className="space-y-2">
-                            <Input
-                              placeholder="Pesquisar pacotes..."
-                              value={packageSearchTerm}
-                              onChange={(e) => setPackageSearchTerm(e.target.value)}
-                              className="h-8"
-                              data-testid="input-search-packages"
-                            />
-                            <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto" data-testid="select-event-packages">
-                              {filteredPackages.length === 0 && (
-                                <p className="text-sm text-muted-foreground">Nenhum pacote encontrado.</p>
-                              )}
-                              {filteredPackages.map((p) => {
-                                const isSelected = field.value?.includes(p.id) || false;
-                                return (
-                                  <div key={p.id} className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id={`package-${p.id}`}
-                                      checked={isSelected}
-                                      disabled={isReadOnly}
-                                      onCheckedChange={(checked) => {
-                                        const currentValues = field.value || [];
-                                        if (checked) {
-                                          form.setValue("packageIds", [...currentValues, p.id]);
-                                        } else {
-                                          form.setValue("packageIds", currentValues.filter((id: string) => id !== p.id));
-                                        }
-                                      }}
-                                      data-testid={`checkbox-package-${p.id}`}
-                                    />
-                                    <label
-                                      htmlFor={`package-${p.id}`}
-                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                    >
-                                      {p.name}
-                                    </label>
+                          <Popover open={packagePopoverOpen} onOpenChange={setPackagePopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={packagePopoverOpen}
+                                  className={cn(
+                                    "w-full h-auto min-h-10 justify-between text-left font-normal whitespace-normal",
+                                    (!field.value || field.value.length === 0) && "text-muted-foreground"
+                                  )}
+                                  disabled={isReadOnly}
+                                  data-testid="select-event-packages"
+                                >
+                                  <div className="flex flex-wrap gap-1 py-1">
+                                    {field.value && field.value.length > 0 ? (
+                                      field.value.map((id: string) => {
+                                        const pkg = packages?.find((p) => p.id === id);
+                                        return pkg?.name;
+                                      }).filter(Boolean).join(", ")
+                                    ) : (
+                                      "Selecione os pacotes"
+                                    )}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-4" align="start">
+                              <div className="space-y-4">
+                                <Input
+                                  placeholder="Pesquisar pacotes..."
+                                  value={packageSearchTerm}
+                                  onChange={(e) => setPackageSearchTerm(e.target.value)}
+                                  className="h-8"
+                                  data-testid="input-search-packages"
+                                />
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2" data-testid="select-event-packages-list">
+                                  {filteredPackages.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">Nenhum pacote encontrado.</p>
+                                  )}
+                                  {filteredPackages.map((p) => {
+                                    const isSelected = field.value?.includes(p.id) || false;
+                                    return (
+                                      <div key={p.id} className="flex items-center space-x-2 p-1 hover:bg-accent rounded-sm">
+                                        <Checkbox
+                                          id={`package-${p.id}`}
+                                          checked={isSelected}
+                                          disabled={isReadOnly}
+                                          onCheckedChange={(checked) => {
+                                            const currentValues = field.value || [];
+                                            if (checked) {
+                                              field.onChange([...currentValues, p.id]);
+                                            } else {
+                                              field.onChange(currentValues.filter((id: string) => id !== p.id));
+                                            }
+                                          }}
+                                          data-testid={`checkbox-package-${p.id}`}
+                                        />
+                                        <label
+                                          htmlFor={`package-${p.id}`}
+                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1 py-1"
+                                        >
+                                          {p.name}
+                                        </label>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}

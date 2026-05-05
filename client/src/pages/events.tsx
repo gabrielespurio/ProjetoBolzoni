@@ -51,6 +51,7 @@ interface EventWithDetails extends Event {
   employeeNames?: string[];
   characterNames?: string[];
   packageName?: string;
+  buffetName?: string;
 }
 
 export default function Events() {
@@ -249,6 +250,7 @@ export default function Events() {
   const handleGenerateContract = async (event: EventWithDetails, contractType: "fisica" | "juridica") => {
     try {
       const location = [
+        event.buffetName,
         event.venueName,
         event.rua,
         event.bairro,
@@ -425,7 +427,7 @@ export default function Events() {
                       <div className="flex items-center gap-2">
                         <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                         <span className="truncate">
-                          {[event.cidade, event.estado]
+                          {event.buffetName || [event.cidade, event.estado]
                             .filter(Boolean)
                             .join(" - ") || "Local não informado"}
                         </span>

@@ -174,7 +174,11 @@ export function InventoryDialog({ open, onClose, item }: InventoryDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl !p-0 !gap-0 !h-fit max-h-[90vh] !flex !flex-col overflow-hidden">
+      <DialogContent 
+        className="max-w-2xl !p-0 !gap-0 !h-fit max-h-[90vh] !flex !flex-col overflow-hidden"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <div className="overflow-y-auto p-6">
           <DialogHeader className="mb-6">
             <DialogTitle>{isEdit ? "Editar Item" : "Novo Item"}</DialogTitle>

@@ -114,6 +114,7 @@ export interface IStorage {
   // Employees
   getAllEmployees(): Promise<Employee[]>;
   getEmployee(id: string): Promise<Employee | undefined>;
+  getEmployeeByUserId(userId: string): Promise<Employee | undefined>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee>;
   deleteEmployee(id: string): Promise<void>;
@@ -126,10 +127,23 @@ export interface IStorage {
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
+  createEvent(event: InsertEvent & { googleEventId?: string | null }, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent & { googleEventId?: string | null }>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
+  getEventDetailsForSync(eventId: string): Promise<{
+    clientName: string;
+    partyStartTime: string | null;
+    characters: string[];
+    packageName: string | null;
+    serviceName: string | null;
+    eventType: string | null;
+    buffetName: string | null;
+    startTime: string | null;
+    contractValue: string | null;
+    eventDuration: string | null;
+    notes: string | null;
+  }>;
 
   // Event Characters
   addEventCharacters(eventId: string, characterIds: string[]): Promise<void>;
@@ -286,6 +300,11 @@ export class DatabaseStorage implements IStorage {
 
   async getEmployee(id: string): Promise<Employee | undefined> {
     const [employee] = await db.select().from(employees).where(eq(employees.id, id));
+    return employee || undefined;
+  }
+
+  async getEmployeeByUserId(userId: string): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(eq(employees.userId, userId));
     return employee || undefined;
   }
 
@@ -476,7 +495,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createEvent(event: InsertEvent, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
+  async createEvent(event: InsertEvent & { googleEventId?: string | null }, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
 
     if (characterIds && characterIds.length > 0) {
@@ -504,7 +523,7 @@ export class DatabaseStorage implements IStorage {
     return newEvent;
   }
 
-  async updateEvent(id: string, event: Partial<InsertEvent>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
+  async updateEvent(id: string, event: Partial<InsertEvent & { googleEventId?: string | null }>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
 
     if (characterIds !== undefined) {
@@ -630,6 +649,73 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
 
     return upcomingEvents;
+  }
+
+  async getEventDetailsForSync(eventId: string): Promise<{
+    clientName: string;
+    partyStartTime: string | null;
+    characters: string[];
+    packageName: string | null;
+    serviceName: string | null;
+    eventType: string | null;
+    buffetName: string | null;
+    startTime: string | null;
+    contractValue: string | null;
+    eventDuration: string | null;
+    notes: string | null;
+  }> {
+    const [event] = await db.select().from(events).where(eq(events.id, eventId));
+    if (!event) throw new Error("Evento não encontrado");
+
+    const [client] = await db.select().from(clients).where(eq(clients.id, event.clientId));
+    const hiredCharacters = await db
+      .select({ name: inventoryItems.name })
+      .from(eventCharacters)
+      .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
+      .where(eq(eventCharacters.eventId, eventId));
+
+    // Fetch packages (from packageId and event_packages table)
+    const packageNames = new Set<string>();
+    if (event.packageId) {
+      const [pkg] = await db.select().from(packages).where(eq(packages.id, event.packageId));
+      if (pkg) packageNames.add(pkg.name);
+    }
+    const otherPkgs = await db
+      .select({ name: packages.name })
+      .from(eventPackages)
+      .leftJoin(packages, eq(eventPackages.packageId, packages.id))
+      .where(eq(eventPackages.eventId, eventId));
+    otherPkgs.forEach(p => { if (p.name) packageNames.add(p.name); });
+
+    let serviceName = null;
+    if (event.serviceId) {
+      const [service] = await db.select().from(services).where(eq(services.id, event.serviceId));
+      serviceName = service?.name || null;
+    }
+
+    let buffetName = null;
+    if (event.buffetId) {
+      console.log(`[SYNC DEBUG] Event ${eventId} has buffetId: ${event.buffetId}`);
+      const [buffet] = await db.select().from(buffets).where(eq(buffets.id, event.buffetId));
+      buffetName = buffet?.name || null;
+      console.log(`[SYNC DEBUG] Found buffetName: ${buffetName}`);
+    } else {
+      console.log(`[SYNC DEBUG] Event ${eventId} has NO buffetId. Fields:`, Object.keys(event));
+    }
+
+    return {
+      clientName: client?.name || "Cliente não encontrado",
+      partyStartTime: event.partyStartTime,
+      characters: hiredCharacters.map(c => c.name).filter(Boolean) as string[],
+      packageName: Array.from(packageNames).join(", ") || null,
+      serviceName,
+      eventType: event.eventType,
+      buffetName,
+      startTime: event.startTime,
+      contractValue: event.contractValue ? event.contractValue.toString() : null,
+      eventDuration: event.eventDuration,
+      notes: event.notes,
+    };
   }
 
   // Inventory

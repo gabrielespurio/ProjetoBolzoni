@@ -90,7 +90,11 @@ export function BuffetDialog({ open, onClose, buffet }: BuffetDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent 
+        className="max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{buffet ? "Editar Buffet" : "Novo Buffet"}</DialogTitle>
         </DialogHeader>

@@ -118,7 +118,13 @@ export default function TimeTracking() {
     });
 
     const { data: summary, isLoading: summaryLoading } = useQuery<TimeSummary>({
-        queryKey: ["/api/time-records/summary"],
+        queryKey: ["/api/time-records/summary", selectedUserId],
+        queryFn: async () => {
+            const url = selectedUserId 
+                ? `/api/time-records/summary?userId=${selectedUserId}`
+                : `/api/time-records/summary`;
+            return await apiRequest("GET", url);
+        },
         refetchInterval: 60000,
     });
 
@@ -305,7 +311,7 @@ export default function TimeTracking() {
             </Card>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 {/* Today */}
                 <Card className="border-card-border">
                     <CardHeader className="pb-2 p-3 md:p-6 md:pb-2">
@@ -363,6 +369,27 @@ export default function TimeTracking() {
                             <>
                                 <div className="text-2xl md:text-3xl font-bold">
                                     {formatMinutes(summary?.month.workedMinutes || 0)}
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Overtime */}
+                <Card className="border-card-border bg-green-50/50 dark:bg-green-900/10 border-green-100 dark:border-green-900/20">
+                    <CardHeader className="pb-2 p-3 md:p-6 md:pb-2">
+                        <CardTitle className="text-xs md:text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4" />
+                            Horas Extras
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                        {summaryLoading ? (
+                            <Skeleton className="h-10 w-32" />
+                        ) : (
+                            <>
+                                <div className="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
+                                    {formatMinutes(Math.max(0, summary?.month.balanceMinutes || 0))}
                                 </div>
                             </>
                         )}
