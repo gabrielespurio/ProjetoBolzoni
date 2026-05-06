@@ -1824,7 +1824,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Calendar Integration Routes
   app.get("/api/settings/google-calendar/auth-url", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
     try {
-      const url = await GoogleCalendarService.getAuthUrl();
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      const url = await GoogleCalendarService.getAuthUrl(baseUrl);
       res.json({ url });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -1835,7 +1838,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { code } = req.query;
       if (!code) throw new Error("Código de autorização não fornecido.");
-      await GoogleCalendarService.handleCallback(code as string);
+      
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      
+      await GoogleCalendarService.handleCallback(code as string, baseUrl);
       res.send("<html><body onload=\"window.close()\">Conectado com sucesso! Você pode fechar esta aba.</body></html>");
     } catch (error: any) {
       res.status(500).send(`Erro na autenticação: ${error.message}`);

@@ -1,12 +1,19 @@
 import { google } from "googleapis";
 import { storage } from "./storage";
 
-const REDIRECT_URI = process.env.APP_URL 
-  ? `${process.env.APP_URL.replace(/\/$/, "")}/api/settings/google-calendar/callback`
-  : "http://localhost:5005/api/settings/google-calendar/callback";
+const DEFAULT_REDIRECT_URI = "http://localhost:5005/api/settings/google-calendar/callback";
 
 export class GoogleCalendarService {
   private static oauth2Client = new google.auth.OAuth2();
+  
+  private static getRedirectUri(baseUrl?: string) {
+    if (baseUrl) {
+      return `${baseUrl.replace(/\/$/, "")}/api/settings/google-calendar/callback`;
+    }
+    return process.env.APP_URL 
+      ? `${process.env.APP_URL.replace(/\/$/, "")}/api/settings/google-calendar/callback`
+      : DEFAULT_REDIRECT_URI;
+  }
 
   private static async getClient() {
     const clientId = await storage.getSystemSetting("google_calendar_client_id");
@@ -20,7 +27,7 @@ export class GoogleCalendarService {
     const client = new google.auth.OAuth2(
       clientId.value,
       clientSecret.value,
-      REDIRECT_URI
+      this.getRedirectUri()
     );
 
     if (tokens?.value) {
@@ -30,7 +37,7 @@ export class GoogleCalendarService {
     return client;
   }
 
-  static async getAuthUrl() {
+  static async getAuthUrl(baseUrl?: string) {
     const clientId = await storage.getSystemSetting("google_calendar_client_id");
     const clientSecret = await storage.getSystemSetting("google_calendar_client_secret");
 
@@ -38,10 +45,13 @@ export class GoogleCalendarService {
       throw new Error("Configure o Client ID e Client Secret antes de conectar.");
     }
 
+    const redirectUri = this.getRedirectUri(baseUrl);
+    console.log("Generating Auth URL with redirectUri:", redirectUri);
+    
     const client = new google.auth.OAuth2(
       clientId.value,
       clientSecret.value,
-      REDIRECT_URI
+      redirectUri
     );
 
     return client.generateAuthUrl({
@@ -51,14 +61,17 @@ export class GoogleCalendarService {
     });
   }
 
-  static async handleCallback(code: string) {
+  static async handleCallback(code: string, baseUrl?: string) {
     const clientId = await storage.getSystemSetting("google_calendar_client_id");
     const clientSecret = await storage.getSystemSetting("google_calendar_client_secret");
+
+    const redirectUri = this.getRedirectUri(baseUrl);
+    console.log("Handling Callback with redirectUri:", redirectUri);
 
     const client = new google.auth.OAuth2(
       clientId?.value,
       clientSecret?.value,
-      REDIRECT_URI
+      redirectUri
     );
 
     const { tokens } = await client.getToken(code);
