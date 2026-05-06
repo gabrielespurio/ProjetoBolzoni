@@ -1,7 +1,9 @@
 import { google } from "googleapis";
 import { storage } from "./storage";
 
-const REDIRECT_URI = "http://localhost:5005/api/settings/google-calendar/callback";
+const REDIRECT_URI = process.env.APP_URL 
+  ? `${process.env.APP_URL.replace(/\/$/, "")}/api/settings/google-calendar/callback`
+  : "http://localhost:5005/api/settings/google-calendar/callback";
 
 export class GoogleCalendarService {
   private static oauth2Client = new google.auth.OAuth2();
