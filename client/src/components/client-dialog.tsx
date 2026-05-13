@@ -38,6 +38,7 @@ const clientFormSchema = insertClientSchema.extend({
   cidade: z.string().optional(),
   estado: z.string().optional(),
   numero: z.string().optional(),
+  profession: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -89,6 +90,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
       cidade: client?.cidade || "",
       estado: client?.estado || "",
       numero: client?.numero || "",
+      profession: client?.profession || "",
       notes: client?.notes || "",
     },
   });
@@ -127,6 +129,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
         cidade: client?.cidade || "",
         estado: client?.estado || "",
         numero: client?.numero || "",
+        profession: client?.profession || "",
         notes: client?.notes || "",
       });
     }
@@ -343,6 +346,27 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                       </FormItem>
                     )}
                   />
+                  {personType === "fisica" && (
+                    <FormField
+                      control={form.control}
+                      name="profession"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Profissão</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              value={field.value || ""}
+                              placeholder="Ex: Advogada" 
+                              data-testid="input-client-profession" 
+                              disabled={isReadOnly}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   {personType === "juridica" && (
                     <>
                       <FormField

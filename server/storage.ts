@@ -26,6 +26,7 @@ import {
   characterComponents,
   buffets,
   timeRecords,
+  timeRecordAdjustments,
   type User,
   type InsertUser,
   type Client,
@@ -72,6 +73,8 @@ import {
   type InsertBuffet,
   type TimeRecord,
   type InsertTimeRecord,
+  type TimeRecordAdjustment,
+  type InsertTimeRecordAdjustment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, ne, like } from "drizzle-orm";
@@ -236,11 +239,16 @@ export interface IStorage {
   deleteBuffet(id: string): Promise<void>;
 
   // Time Records
-  getTimeRecords(userId: string, startDate?: Date, endDate?: Date): Promise<TimeRecord[]>;
+  getTimeRecords(userId: string, startDate?: Date, endDate?: Date, limit?: number, offset?: number): Promise<{ records: TimeRecord[], total: number }>;
   createTimeRecord(record: InsertTimeRecord): Promise<TimeRecord>;
   deleteTimeRecord(id: string): Promise<void>;
   getLatestTimeRecord(userId: string): Promise<TimeRecord | undefined>;
-  getAllUsersTimeRecords(startDate?: Date, endDate?: Date): Promise<(TimeRecord & { userName: string })[]>;
+  getAllUsersTimeRecords(startDate?: Date, endDate?: Date, limit?: number, offset?: number, userId?: string): Promise<{ records: (TimeRecord & { userName: string })[], total: number }>;
+
+  // Time Record Adjustments
+  createTimeRecordAdjustment(adjustment: InsertTimeRecordAdjustment): Promise<TimeRecordAdjustment>;
+  getTimeRecordAdjustments(userId?: string): Promise<(TimeRecordAdjustment & { userName: string })[]>;
+  updateTimeRecordAdjustment(id: string, status: "approved" | "rejected", reviewerId: string): Promise<TimeRecordAdjustment>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -377,6 +385,7 @@ export class DatabaseStorage implements IStorage {
         buffetId: events.buffetId,
         buffetName: buffets.name,
         status: events.status,
+        complementaryNotes: events.complementaryNotes,
         notes: events.notes,
         createdAt: events.createdAt,
         clientName: clients.name,
@@ -393,6 +402,7 @@ export class DatabaseStorage implements IStorage {
         clientEstado: clients.estado,
         clientResponsibleName: clients.responsibleName,
         clientCargo: clients.cargo,
+        clientProfession: clients.profession,
       })
       .from(events)
       .leftJoin(clients, eq(events.clientId, clients.id))
@@ -695,12 +705,8 @@ export class DatabaseStorage implements IStorage {
 
     let buffetName = null;
     if (event.buffetId) {
-      console.log(`[SYNC DEBUG] Event ${eventId} has buffetId: ${event.buffetId}`);
       const [buffet] = await db.select().from(buffets).where(eq(buffets.id, event.buffetId));
       buffetName = buffet?.name || null;
-      console.log(`[SYNC DEBUG] Found buffetName: ${buffetName}`);
-    } else {
-      console.log(`[SYNC DEBUG] Event ${eventId} has NO buffetId. Fields:`, Object.keys(event));
     }
 
     return {
@@ -872,44 +878,40 @@ export class DatabaseStorage implements IStorage {
       return t.type === 'receivable' ? acc + amount : acc - amount;
     }, 0);
 
-    // Calculate monthly revenue (current month)
+    // Get all events
+    const allEvents = await this.getAllEvents();
+
+    // Calculate monthly revenue (current month) based on event contract values
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    const monthlyRevenue = allTransactions
-      .filter(t => {
-        const date = new Date(t.createdAt);
-        return t.type === 'receivable' &&
-          t.isPaid &&
-          date >= firstDayOfMonth &&
-          date <= lastDayOfMonth;
+    const monthlyRevenue = allEvents
+      .filter(e => {
+        const date = new Date(e.date);
+        return date >= firstDayOfMonth && date <= lastDayOfMonth;
       })
-      .reduce((acc, t) => acc + parseFloat(t.amount), 0);
+      .reduce((acc, e) => acc + parseFloat(e.contractValue || "0"), 0);
 
     // Count events this month
-    const allEvents = await this.getAllEvents();
     const eventsThisMonth = allEvents.filter(e => {
       const date = new Date(e.date);
       return date >= firstDayOfMonth && date <= lastDayOfMonth;
     }).length;
 
-    // Monthly revenue chart (last 6 months)
+    // Monthly revenue chart (last 6 months) based on event contract values
     const monthlyRevenueChart = [];
     for (let i = 5; i >= 0; i--) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
       const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'short' });
 
-      const revenue = allTransactions
-        .filter(t => {
-          const date = new Date(t.createdAt);
-          return t.type === 'receivable' &&
-            t.isPaid &&
-            date >= monthDate &&
-            date < nextMonthDate;
+      const revenue = allEvents
+        .filter(e => {
+          const date = new Date(e.date);
+          return date >= monthDate && date < nextMonthDate;
         })
-        .reduce((acc, t) => acc + parseFloat(t.amount), 0);
+        .reduce((acc, e) => acc + parseFloat(e.contractValue || "0"), 0);
 
       monthlyRevenueChart.push({ month: monthName, revenue });
     }
@@ -1327,11 +1329,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Time Records
-  async getTimeRecords(userId: string, startDate?: Date, endDate?: Date): Promise<TimeRecord[]> {
+  async getTimeRecords(userId: string, startDate?: Date, endDate?: Date, limit?: number, offset?: number): Promise<{ records: TimeRecord[], total: number }> {
     const conditions = [eq(timeRecords.userId, userId)];
     if (startDate) conditions.push(gte(timeRecords.timestamp, startDate));
     if (endDate) conditions.push(lte(timeRecords.timestamp, endDate));
-    return await db.select().from(timeRecords).where(and(...conditions)).orderBy(desc(timeRecords.timestamp));
+    
+    const whereClause = and(...conditions);
+    
+    // Get total count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(timeRecords)
+      .where(whereClause);
+    const total = Number(countResult?.count || 0);
+
+    let query: any = db.select().from(timeRecords).where(whereClause);
+    
+    query = query.orderBy(desc(timeRecords.timestamp));
+    
+    let records: TimeRecord[];
+    if (limit !== undefined && offset !== undefined) {
+      records = await query.limit(limit).offset(offset);
+    } else if (limit !== undefined) {
+      records = await query.limit(limit);
+    } else {
+      records = await query;
+    }
+    
+    return { records, total };
   }
 
   async createTimeRecord(record: InsertTimeRecord): Promise<TimeRecord> {
@@ -1354,12 +1379,26 @@ export class DatabaseStorage implements IStorage {
     return record || undefined;
   }
 
-  async getAllUsersTimeRecords(startDate?: Date, endDate?: Date): Promise<(TimeRecord & { userName: string })[]> {
+  async getAllUsersTimeRecords(startDate?: Date, endDate?: Date, limit?: number, offset?: number, userId?: string): Promise<{ records: (TimeRecord & { userName: string })[], total: number }> {
     const conditions: any[] = [];
     if (startDate) conditions.push(gte(timeRecords.timestamp, startDate));
     if (endDate) conditions.push(lte(timeRecords.timestamp, endDate));
+    if (userId) conditions.push(eq(timeRecords.userId, userId));
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const records = await db.select({
+    
+    // Get total count
+    const countQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(timeRecords);
+    
+    if (whereClause) {
+      countQuery.where(whereClause);
+    }
+    
+    const [countResult] = await countQuery;
+    const total = Number(countResult?.count || 0);
+
+    let query: any = db.select({
       id: timeRecords.id,
       userId: timeRecords.userId,
       type: timeRecords.type,
@@ -1368,10 +1407,73 @@ export class DatabaseStorage implements IStorage {
       createdAt: timeRecords.createdAt,
       userName: users.name,
     }).from(timeRecords)
-      .leftJoin(users, eq(timeRecords.userId, users.id))
-      .where(whereClause)
-      .orderBy(desc(timeRecords.timestamp));
-    return records.map(r => ({ ...r, userName: r.userName || 'Desconhecido' }));
+      .leftJoin(users, eq(timeRecords.userId, users.id));
+
+    if (whereClause) {
+      query = query.where(whereClause);
+    }
+
+    query = query.orderBy(desc(timeRecords.timestamp));
+
+    let records: any[];
+    if (limit !== undefined && offset !== undefined) {
+      records = await query.limit(limit).offset(offset);
+    } else if (limit !== undefined) {
+      records = await query.limit(limit);
+    } else {
+      records = await query;
+    }
+
+    return { 
+      records: records.map(r => ({ ...r, userName: r.userName || 'Desconhecido' })),
+      total 
+    };
+  }
+
+  // Time Record Adjustments
+  async createTimeRecordAdjustment(adjustment: InsertTimeRecordAdjustment): Promise<TimeRecordAdjustment> {
+    const [newAdjustment] = await db.insert(timeRecordAdjustments).values({
+      ...adjustment,
+      timestamp: adjustment.timestamp ? (adjustment.timestamp instanceof Date ? adjustment.timestamp : new Date(adjustment.timestamp as string)) : new Date(),
+    }).returning();
+    return newAdjustment;
+  }
+
+  async getTimeRecordAdjustments(userId?: string): Promise<(TimeRecordAdjustment & { userName: string })[]> {
+    let query: any = db.select({
+      id: timeRecordAdjustments.id,
+      userId: timeRecordAdjustments.userId,
+      type: timeRecordAdjustments.type,
+      timestamp: timeRecordAdjustments.timestamp,
+      reason: timeRecordAdjustments.reason,
+      status: timeRecordAdjustments.status,
+      reviewedBy: timeRecordAdjustments.reviewedBy,
+      reviewedAt: timeRecordAdjustments.reviewedAt,
+      createdAt: timeRecordAdjustments.createdAt,
+      userName: users.name,
+    }).from(timeRecordAdjustments)
+      .leftJoin(users, eq(timeRecordAdjustments.userId, users.id));
+
+    if (userId) {
+      query = query.where(eq(timeRecordAdjustments.userId, userId));
+    }
+
+    query = query.orderBy(desc(timeRecordAdjustments.createdAt));
+
+    const records = await query;
+    return records.map((r: any) => ({ ...r, userName: r.userName || 'Desconhecido' }));
+  }
+
+  async updateTimeRecordAdjustment(id: string, status: "approved" | "rejected", reviewerId: string): Promise<TimeRecordAdjustment> {
+    const [updated] = await db.update(timeRecordAdjustments)
+      .set({
+        status,
+        reviewedBy: reviewerId,
+        reviewedAt: new Date()
+      })
+      .where(eq(timeRecordAdjustments.id, id))
+      .returning();
+    return updated;
   }
 }
 

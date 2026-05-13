@@ -52,6 +52,9 @@ interface EventWithDetails extends Event {
   characterNames?: string[];
   packageName?: string;
   buffetName?: string;
+  clientProfession?: string;
+  complementaryNotes?: string;
+  childrenCount?: number;
 }
 
 export default function Events() {
@@ -278,6 +281,7 @@ export default function Events() {
         clientEstado: event.clientEstado,
         clientResponsibleName: event.clientResponsibleName,
         clientCargo: event.clientCargo,
+        clientProfession: event.clientProfession,
         eventDate: eventDate,
         eventTime: eventTime,
         eventEndTime: eventEndTime,
@@ -289,7 +293,8 @@ export default function Events() {
           ? event.characterNames
           : ["Personagem não especificado"],
         employees: event.employeeNames,
-        estimatedChildren: 15,
+        estimatedChildren: event.childrenCount || 15,
+        complementaryNotes: event.complementaryNotes,
       }, contractType);
 
       toast({

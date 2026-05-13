@@ -51,6 +51,45 @@ export const insertTimeRecordSchema = createInsertSchema(timeRecords).omit({
 export type TimeRecord = typeof timeRecords.$inferSelect;
 export type InsertTimeRecord = z.infer<typeof insertTimeRecordSchema>;
 
+// Time Record Adjustments
+export const adjustmentStatusEnum = pgEnum("adjustment_status", ["pending", "approved", "rejected"]);
+
+export const timeRecordAdjustments = pgTable("time_record_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // "clock_in" | "clock_out"
+  timestamp: timestamp("timestamp").notNull(),
+  reason: text("reason").notNull(),
+  status: adjustmentStatusEnum("status").notNull().default("pending"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const timeRecordAdjustmentsRelations = relations(timeRecordAdjustments, ({ one }) => ({
+  user: one(users, {
+    fields: [timeRecordAdjustments.userId],
+    references: [users.id],
+    relationName: "user_adjustments"
+  }),
+  reviewer: one(users, {
+    fields: [timeRecordAdjustments.reviewedBy],
+    references: [users.id],
+    relationName: "reviewer_adjustments"
+  }),
+}));
+
+export const insertTimeRecordAdjustmentSchema = createInsertSchema(timeRecordAdjustments).omit({
+  id: true,
+  status: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  createdAt: true,
+});
+
+export type TimeRecordAdjustment = typeof timeRecordAdjustments.$inferSelect;
+export type InsertTimeRecordAdjustment = z.infer<typeof insertTimeRecordAdjustmentSchema>;
+
 export const userRoleEnum = pgEnum("user_role", ["admin", "employee", "secretaria"]);
 export const eventStatusEnum = pgEnum("event_status", ["scheduled", "completed", "cancelled", "deleted", "rescheduled", "paid_entry", "paid_full"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["receivable", "payable"]);
@@ -86,6 +125,7 @@ export const clients = pgTable("clients", {
   cidade: text("cidade"),
   estado: text("estado"),
   numero: text("numero"),
+  profession: text("profession"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -151,6 +191,7 @@ export const events = pgTable("events", {
   childrenCount: integer("children_count"),
   buffetId: varchar("buffet_id").references(() => buffets.id),
   status: eventStatusEnum("status").notNull().default("scheduled"),
+  complementaryNotes: text("complementary_notes"),
   notes: text("notes"),
   googleEventId: text("google_event_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

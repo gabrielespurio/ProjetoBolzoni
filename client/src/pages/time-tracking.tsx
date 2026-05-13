@@ -22,12 +22,23 @@ import {
     User as UserIcon,
     Users,
     Minus,
+    ChevronLeft,
+    ChevronRight,
+    Check,
+    X,
+    AlertCircle,
+    FileEdit,
 } from "lucide-react";
 import type { TimeRecord } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type UserRole = "admin" | "employee" | "secretaria";
 
 interface TimeSummary {
+    workloadHours: number;
     today: { workedMinutes: number; expectedMinutes: number; balanceMinutes: number };
     week: { workedMinutes: number; expectedMinutes: number; balanceMinutes: number };
     month: { workedMinutes: number; expectedMinutes: number; balanceMinutes: number };
@@ -38,10 +49,12 @@ interface TimeStatus {
     latestRecord: TimeRecord | null;
 }
 
-function formatMinutes(totalMinutes: number): string {
+function formatMinutes(totalMinutes: number, showPlusSign = false): string {
+    const isNegative = totalMinutes < 0;
     const hrs = Math.floor(Math.abs(totalMinutes) / 60);
-    const mins = Math.abs(totalMinutes) % 60;
-    return `${hrs}h${mins.toString().padStart(2, "0")}m`;
+    const mins = Math.floor(Math.abs(totalMinutes) % 60);
+    const sign = isNegative ? "-" : (showPlusSign && totalMinutes > 0 ? "+" : "");
+    return `${sign}${hrs}h${mins.toString().padStart(2, "0")}m`;
 }
 
 function formatTime(dateStr: string | Date): string {
@@ -99,6 +112,15 @@ export default function TimeTracking() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("my-records");
+    const [myPage, setMyPage] = useState(0);
+    const [allPage, setAllPage] = useState(0);
+    const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
+    const [adjustmentType, setAdjustmentType] = useState<"clock_in" | "clock_out">("clock_in");
+    const [adjustmentDate, setAdjustmentDate] = useState("");
+    const [adjustmentTime, setAdjustmentTime] = useState("");
+    const [adjustmentReason, setAdjustmentReason] = useState("");
+    
+    const PAGE_SIZE = 50;
 
     const userStr = localStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : {};
@@ -110,6 +132,13 @@ export default function TimeTracking() {
         const interval = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(interval);
     }, []);
+
+    // Force refetch on mount to clear any stuck cache
+    useEffect(() => {
+        if (isAdmin) {
+            queryClient.invalidateQueries({ queryKey: ["/api/time-records/all"] });
+        }
+    }, [isAdmin]);
 
     // Queries
     const { data: status, isLoading: statusLoading } = useQuery<TimeStatus>({
@@ -128,20 +157,50 @@ export default function TimeTracking() {
         refetchInterval: 60000,
     });
 
-    const { data: records, isLoading: recordsLoading } = useQuery<TimeRecord[]>({
-        queryKey: ["/api/time-records"],
+    const { data: recordsData, isLoading: recordsLoading } = useQuery<{ records: TimeRecord[], total: number } | TimeRecord[]>({
+        queryKey: ["/api/time-records", myPage],
+        queryFn: async () => {
+            return await apiRequest("GET", `/api/time-records?limit=${PAGE_SIZE}&offset=${myPage * PAGE_SIZE}`);
+        }
     });
 
-    const { data: allRecords, isLoading: allRecordsLoading } = useQuery<
-        (TimeRecord & { userName: string })[]
-    >({
-        queryKey: ["/api/time-records/all"],
+    // Safely handle both new paginated format {records, total} and old format [records]
+    const myRecords = Array.isArray(recordsData)
+        ? recordsData
+        : (recordsData?.records || []);
+        
+    const myTotal = Array.isArray(recordsData)
+        ? recordsData.length
+        : (recordsData?.total || 0);
+
+    const { data: allRecordsData, isLoading: allRecordsLoading } = useQuery<any>({
+        queryKey: ["/api/time-records/all-v2", allPage, selectedUserId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            params.append("limit", PAGE_SIZE.toString());
+            params.append("offset", (allPage * PAGE_SIZE).toString());
+            if (selectedUserId) params.append("userId", selectedUserId);
+            return await apiRequest("GET", `/api/time-records/all?${params.toString()}`);
+        },
         enabled: isAdmin,
     });
+
+    // Safely handle both new paginated format {records, total} and old format [records]
+    const allRecords = Array.isArray(allRecordsData) 
+        ? allRecordsData 
+        : (allRecordsData?.records || []);
+    
+    const allTotal = Array.isArray(allRecordsData)
+        ? allRecordsData.length
+        : (allRecordsData?.total || 0);
 
     const { data: allUsers } = useQuery<any[]>({
         queryKey: ["/api/employees"],
         enabled: isAdmin,
+    });
+
+    const { data: adjustments, isLoading: adjustmentsLoading } = useQuery<any[]>({
+        queryKey: ["/api/time-records/adjustments"],
     });
 
     // Mutations
@@ -191,29 +250,91 @@ export default function TimeTracking() {
         },
     });
 
+    const createAdjustmentMutation = useMutation({
+        mutationFn: async (data: { type: "clock_in" | "clock_out", timestamp: string, reason: string }) => {
+            return await apiRequest("POST", "/api/time-records/adjustments", data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/time-records/adjustments"] });
+            toast({
+                title: "Ajuste solicitado",
+                description: "Sua solicitação de ajuste foi enviada para aprovação.",
+            });
+            setIsAdjustmentModalOpen(false);
+            setAdjustmentDate("");
+            setAdjustmentTime("");
+            setAdjustmentReason("");
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Erro ao solicitar ajuste",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    const updateAdjustmentStatusMutation = useMutation({
+        mutationFn: async ({ id, status }: { id: string, status: "approved" | "rejected" }) => {
+            return await apiRequest("PATCH", `/api/time-records/adjustments/${id}/status`, { status });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/time-records/adjustments"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/time-records"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/time-records/status"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/time-records/summary"] });
+            if (isAdmin) queryClient.invalidateQueries({ queryKey: ["/api/time-records/all"] });
+            toast({
+                title: "Status atualizado",
+                description: "O status da solicitação de ajuste foi atualizado.",
+            });
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Erro ao atualizar status",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
     const isClockedIn = status?.isClockedIn ?? false;
 
     const handleClock = () => {
         clockMutation.mutate(isClockedIn ? "clock_out" : "clock_in");
     };
 
-    // Group records for display
-    const myDayGroups = useMemo(() => groupByDay(records || []), [records]);
-    const allDayGroups = useMemo(() => {
-        if (!allRecords) return [];
-        const filtered = selectedUserId
-            ? allRecords.filter((r) => r.userId === selectedUserId)
-            : allRecords;
-        return groupByDay(filtered);
-    }, [allRecords, selectedUserId]);
+    const handleAdjustmentSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!adjustmentDate || !adjustmentTime || !adjustmentReason) {
+            toast({
+                title: "Campos obrigatórios",
+                description: "Preencha todos os campos para solicitar o ajuste.",
+                variant: "destructive",
+            });
+            return;
+        }
+        
+        // Combine date and time
+        const datetimeString = `${adjustmentDate}T${adjustmentTime}:00`;
+        createAdjustmentMutation.mutate({
+            type: adjustmentType,
+            timestamp: datetimeString,
+            reason: adjustmentReason,
+        });
+    };
 
-    // Get unique users from records
-    const uniqueUsers = useMemo(() => {
-        if (!allRecords) return [];
-        const map = new Map<string, string>();
-        allRecords.forEach((r) => map.set(r.userId, r.userName));
-        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-    }, [allRecords]);
+    // Group records for display
+    const myDayGroups = useMemo(() => groupByDay(myRecords), [myRecords]);
+    const allDayGroups = useMemo(() => groupByDay(allRecords), [allRecords]);
+
+    // Get employees for the filter
+    const filterUsers = useMemo(() => {
+        if (!allUsers) return [];
+        return allUsers
+            .filter((u) => u.userId)
+            .map((u) => ({ id: u.userId, name: u.name }));
+    }, [allUsers]);
 
     return (
         <div className="space-y-4 md:space-y-6">
@@ -375,26 +496,31 @@ export default function TimeTracking() {
                     </CardContent>
                 </Card>
 
-                {/* Overtime */}
-                <Card className="border-card-border bg-green-50/50 dark:bg-green-900/10 border-green-100 dark:border-green-900/20">
-                    <CardHeader className="pb-2 p-3 md:p-6 md:pb-2">
-                        <CardTitle className="text-xs md:text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4" />
-                            Horas Extras
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
-                        {summaryLoading ? (
-                            <Skeleton className="h-10 w-32" />
-                        ) : (
-                            <>
-                                <div className="text-2xl md:text-3xl font-bold text-green-600 dark:text-green-400">
-                                    {formatMinutes(Math.max(0, summary?.month.balanceMinutes || 0))}
-                                </div>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                {/* Balance */}
+                {(() => {
+                    const balance = summary?.month.balanceMinutes || 0;
+                    const isPositive = balance >= 0;
+                    
+                    return (
+                        <Card className={`border-card-border ${isPositive ? 'bg-green-50/50 dark:bg-green-900/10 border-green-100 dark:border-green-900/20' : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/20'}`}>
+                            <CardHeader className="pb-2 p-3 md:p-6 md:pb-2">
+                                <CardTitle className={`text-xs md:text-sm font-medium flex items-center gap-2 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                                    Saldo de Horas
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+                                {summaryLoading ? (
+                                    <Skeleton className="h-10 w-32" />
+                                ) : (
+                                    <div className={`text-2xl md:text-3xl font-bold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                        {formatMinutes(balance, true)}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    );
+                })()}
             </div>
 
             {/* History */}
@@ -408,18 +534,98 @@ export default function TimeTracking() {
                                     Histórico de Ponto
                                 </CardTitle>
                             </div>
-                            {isAdmin && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Dialog open={isAdjustmentModalOpen} onOpenChange={setIsAdjustmentModalOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="h-8">
+                                            <FileEdit className="h-4 w-4 mr-1" />
+                                            Solicitar Ajuste
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Solicitar Ajuste de Ponto</DialogTitle>
+                                        </DialogHeader>
+                                        <form onSubmit={handleAdjustmentSubmit} className="space-y-4 pt-4">
+                                            <div className="space-y-2">
+                                                <Label>Tipo de Registro</Label>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant={adjustmentType === "clock_in" ? "default" : "outline"}
+                                                        onClick={() => setAdjustmentType("clock_in")}
+                                                        className="flex-1"
+                                                    >
+                                                        <LogIn className="w-4 h-4 mr-2" />
+                                                        Entrada
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant={adjustmentType === "clock_out" ? "default" : "outline"}
+                                                        onClick={() => setAdjustmentType("clock_out")}
+                                                        className="flex-1"
+                                                    >
+                                                        <LogOut className="w-4 h-4 mr-2" />
+                                                        Saída
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="adj-date">Data</Label>
+                                                    <Input
+                                                        id="adj-date"
+                                                        type="date"
+                                                        value={adjustmentDate}
+                                                        onChange={(e) => setAdjustmentDate(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="adj-time">Hora</Label>
+                                                    <Input
+                                                        id="adj-time"
+                                                        type="time"
+                                                        value={adjustmentTime}
+                                                        onChange={(e) => setAdjustmentTime(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="adj-reason">Motivo</Label>
+                                                <Textarea
+                                                    id="adj-reason"
+                                                    placeholder="Descreva o motivo do ajuste (ex: esqueci de bater o ponto, sistema fora do ar...)"
+                                                    value={adjustmentReason}
+                                                    onChange={(e) => setAdjustmentReason(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <Button type="submit" className="w-full" disabled={createAdjustmentMutation.isPending}>
+                                                {createAdjustmentMutation.isPending ? "Enviando..." : "Enviar Solicitação"}
+                                            </Button>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                                
                                 <TabsList>
                                     <TabsTrigger value="my-records" className="text-xs md:text-sm">
                                         <UserIcon className="h-4 w-4 mr-1" />
                                         Meu Ponto
                                     </TabsTrigger>
-                                    <TabsTrigger value="all-records" className="text-xs md:text-sm">
-                                        <Users className="h-4 w-4 mr-1" />
-                                        Todos
+                                    <TabsTrigger value="adjustments" className="text-xs md:text-sm">
+                                        <AlertCircle className="h-4 w-4 mr-1" />
+                                        Ajustes {adjustments?.filter((a: any) => a.status === 'pending').length ? `(${adjustments.filter((a: any) => a.status === 'pending').length})` : ''}
                                     </TabsTrigger>
+                                    {isAdmin && (
+                                        <TabsTrigger value="all-records" className="text-xs md:text-sm">
+                                            <Users className="h-4 w-4 mr-1" />
+                                            Todos
+                                        </TabsTrigger>
+                                    )}
                                 </TabsList>
-                            )}
+                            </div>
                         </div>
                     </CardHeader>
 
@@ -440,9 +646,32 @@ export default function TimeTracking() {
                                                 <h3 className="text-sm font-semibold text-foreground capitalize">
                                                     {formatFullDate(group.fullDate)}
                                                 </h3>
-                                                <Badge variant="outline" className="text-xs">
-                                                    {formatMinutes(calculateDayHours(group.records))} trabalhadas
-                                                </Badge>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="text-[10px] md:text-xs">
+                                                        {formatMinutes(calculateDayHours(group.records))} trabalhadas
+                                                    </Badge>
+                                                    {summary && (
+                                                        (() => {
+                                                            const worked = calculateDayHours(group.records);
+                                                            const expected = summary.workloadHours * 60;
+                                                            const balance = worked - expected;
+                                                            // Only show balance for weekdays (Mon-Fri)
+                                                            const dayOfWeek = new Date(group.fullDate).getDay();
+                                                            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                                                            
+                                                            if (isWeekend && worked === 0) return null;
+
+                                                            return (
+                                                                <Badge 
+                                                                    variant={balance >= 0 ? "default" : "destructive"} 
+                                                                    className={`text-[10px] md:text-xs ${balance >= 0 ? "bg-green-500 hover:bg-green-600 border-none" : ""}`}
+                                                                >
+                                                                    {balance >= 0 ? "+" : "-"}{formatMinutes(balance)}
+                                                                </Badge>
+                                                            );
+                                                        })()
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="space-y-2">
                                                 {group.records.map((record: any) => (
@@ -480,6 +709,35 @@ export default function TimeTracking() {
                                             </div>
                                         </div>
                                     ))}
+
+                                    {/* Pagination Controls */}
+                                    {myTotal > PAGE_SIZE && (
+                                        <div className="p-4 flex items-center justify-between border-t border-border bg-muted/20">
+                                            <p className="text-xs text-muted-foreground">
+                                                Mostrando {myPage * PAGE_SIZE + 1} - {Math.min((myPage + 1) * PAGE_SIZE, myTotal)} de {myTotal} registros
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setMyPage(p => Math.max(0, p - 1))}
+                                                    disabled={myPage === 0}
+                                                >
+                                                    <ChevronLeft className="h-4 w-4 mr-1" />
+                                                    Anterior
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setMyPage(p => p + 1)}
+                                                    disabled={(myPage + 1) * PAGE_SIZE >= myTotal}
+                                                >
+                                                    Próxima
+                                                    <ChevronRight className="h-4 w-4 ml-1" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="p-8 md:p-12 text-center">
@@ -503,14 +761,17 @@ export default function TimeTracking() {
                                 <div className="p-3 md:p-6 pb-0 md:pb-0">
                                     <Select
                                         value={selectedUserId || "all"}
-                                        onValueChange={(v) => setSelectedUserId(v === "all" ? null : v)}
+                                        onValueChange={(v) => {
+                                            setSelectedUserId(v === "all" ? null : v);
+                                            setAllPage(0); // Reset page on filter change
+                                        }}
                                     >
                                         <SelectTrigger className="w-full sm:w-[250px]">
                                             <SelectValue placeholder="Filtrar por funcionário" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">Todos os funcionários</SelectItem>
-                                            {uniqueUsers.map((u) => (
+                                            {filterUsers.map((u) => (
                                                 <SelectItem key={u.id} value={u.id}>
                                                     {u.name}
                                                 </SelectItem>
@@ -533,9 +794,31 @@ export default function TimeTracking() {
                                                     <h3 className="text-sm font-semibold text-foreground capitalize">
                                                         {formatFullDate(group.fullDate)}
                                                     </h3>
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {formatMinutes(calculateDayHours(group.records))} trabalhadas
-                                                    </Badge>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="text-[10px] md:text-xs">
+                                                            {formatMinutes(calculateDayHours(group.records))} trabalhadas
+                                                        </Badge>
+                                                        {summary && (
+                                                            (() => {
+                                                                const worked = calculateDayHours(group.records);
+                                                                const expected = summary.workloadHours * 60;
+                                                                const balance = worked - expected;
+                                                                const dayOfWeek = new Date(group.fullDate).getDay();
+                                                                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                                                                
+                                                                if (isWeekend && worked === 0) return null;
+
+                                                                return (
+                                                                    <Badge 
+                                                                        variant={balance >= 0 ? "default" : "destructive"} 
+                                                                        className={`text-[10px] md:text-xs ${balance >= 0 ? "bg-green-500 hover:bg-green-600 border-none" : ""}`}
+                                                                    >
+                                                                        {balance >= 0 ? "+" : "-"}{formatMinutes(balance)}
+                                                                    </Badge>
+                                                                );
+                                                            })()
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-2">
                                                     {group.records.map((record: any) => (
@@ -582,6 +865,35 @@ export default function TimeTracking() {
                                                 </div>
                                             </div>
                                         ))}
+
+                                        {/* Pagination Controls */}
+                                        {allTotal > PAGE_SIZE && (
+                                            <div className="p-4 flex items-center justify-between border-t border-border bg-muted/20">
+                                                <p className="text-xs text-muted-foreground">
+                                                    Mostrando {allPage * PAGE_SIZE + 1} - {Math.min((allPage + 1) * PAGE_SIZE, allTotal)} de {allTotal} registros
+                                                </p>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setAllPage(p => Math.max(0, p - 1))}
+                                                        disabled={allPage === 0}
+                                                    >
+                                                        <ChevronLeft className="h-4 w-4 mr-1" />
+                                                        Anterior
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setAllPage(p => p + 1)}
+                                                        disabled={(allPage + 1) * PAGE_SIZE >= allTotal}
+                                                    >
+                                                        Próxima
+                                                        <ChevronRight className="h-4 w-4 ml-1" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="p-8 md:p-12 text-center">
@@ -594,6 +906,95 @@ export default function TimeTracking() {
                             </CardContent>
                         </TabsContent>
                     )}
+                    {/* Adjustments Tab */}
+                    <TabsContent value="adjustments" className="m-0">
+                        <CardContent className="p-0">
+                            {adjustmentsLoading ? (
+                                <div className="space-y-3 p-3 md:p-6">
+                                    {[...Array(3)].map((_, i) => (
+                                        <Skeleton key={i} className="h-20 w-full" />
+                                    ))}
+                                </div>
+                            ) : adjustments && adjustments.length > 0 ? (
+                                <div className="divide-y divide-border">
+                                    {adjustments.map((adj: any) => (
+                                        <div key={adj.id} className="p-3 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors">
+                                            <div className="flex gap-4">
+                                                <div
+                                                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${adj.type === "clock_in"
+                                                        ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+                                                        : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                                        }`}
+                                                >
+                                                    {adj.type === "clock_in" ? <LogIn className="h-5 w-5" /> : <LogOut className="h-5 w-5" />}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-medium text-foreground">
+                                                            {adj.type === "clock_in" ? "Ajuste de Entrada" : "Ajuste de Saída"}
+                                                        </h4>
+                                                        {isAdmin && <Badge variant="secondary" className="text-[10px]">{adj.userName}</Badge>}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 mt-1">
+                                                        <span className="flex items-center gap-1 font-medium">
+                                                            <Calendar className="h-3 w-3" />
+                                                            {formatFullDate(adj.timestamp)} às {formatTime(adj.timestamp)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm mt-2 font-medium">Motivo: <span className="font-normal text-muted-foreground">{adj.reason}</span></p>
+                                                    
+                                                    {adj.status !== "pending" && (
+                                                        <p className="text-xs mt-2 text-muted-foreground">
+                                                            Respondido em: {adj.reviewedAt ? new Date(adj.reviewedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                                <Badge 
+                                                    variant={adj.status === "approved" ? "default" : adj.status === "rejected" ? "destructive" : "outline"}
+                                                    className={adj.status === "approved" ? "bg-green-500 hover:bg-green-600 border-none" : adj.status === "pending" ? "text-yellow-600 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20" : ""}
+                                                >
+                                                    {adj.status === "pending" && "Pendente"}
+                                                    {adj.status === "approved" && "Aprovado"}
+                                                    {adj.status === "rejected" && "Rejeitado"}
+                                                </Badge>
+                                                
+                                                {isAdmin && adj.status === "pending" && (
+                                                    <div className="flex gap-2 mt-2">
+                                                        <Button 
+                                                            size="sm" 
+                                                            className="bg-green-500 hover:bg-green-600 text-white h-8"
+                                                            onClick={() => updateAdjustmentStatusMutation.mutate({ id: adj.id, status: "approved" })}
+                                                            disabled={updateAdjustmentStatusMutation.isPending}
+                                                        >
+                                                            <Check className="h-4 w-4 mr-1" /> Aprovar
+                                                        </Button>
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="destructive"
+                                                            className="h-8"
+                                                            onClick={() => updateAdjustmentStatusMutation.mutate({ id: adj.id, status: "rejected" })}
+                                                            disabled={updateAdjustmentStatusMutation.isPending}
+                                                        >
+                                                            <X className="h-4 w-4 mr-1" /> Rejeitar
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-8 md:p-12 text-center">
+                                    <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                                    <p className="text-sm text-muted-foreground">
+                                        Nenhuma solicitação de ajuste de ponto encontrada
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </TabsContent>
                 </Tabs>
             </Card>
         </div>

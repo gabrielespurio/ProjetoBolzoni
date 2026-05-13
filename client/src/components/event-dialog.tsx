@@ -62,6 +62,7 @@ const eventFormSchema = insertEventSchema.extend({
     amount: z.string(),
     description: z.string().optional(),
   })).optional(),
+  complementaryNotes: z.string().optional(),
   installments: z.coerce.number().int().min(1).optional(),
 });
 
@@ -209,6 +210,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       buffetId: "",
       packageNotes: "",
       status: "scheduled",
+      complementaryNotes: "",
       notes: "",
       characterIds: [],
     },
@@ -333,6 +335,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         packageNotes: (event as any).packageNotes || "",
         buffetId: (event as any).buffetId || "",
         status: event.status || "scheduled",
+        complementaryNotes: (event as any).complementaryNotes || "",
         notes: event.notes || "",
         characterIds: [],
       });
@@ -385,6 +388,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         partyStartTime: "",
         eventDuration: "",
         status: "scheduled" as const,
+        complementaryNotes: "",
         notes: "",
         characterIds: [],
       });
@@ -2024,6 +2028,26 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               </div>
 
               <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="complementaryNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações Complementares (Contrato)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Ex: NF será enviada via whatsapp, saldo no dia do evento..."
+                          className="resize-none"
+                          rows={3}
+                          data-testid="input-event-complementary-notes"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="notes"

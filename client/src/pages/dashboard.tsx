@@ -109,7 +109,7 @@ export default function Dashboard() {
 
       <div className="grid gap-3 md:gap-6 grid-cols-2 lg:grid-cols-4">
         {metricCards.map((metric) => (
-          <Card key={metric.title} className="border-card-border">
+          <Card key={metric.title} className="border-none shadow-md hover:shadow-lg transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 md:p-6 pb-1 md:pb-2">
               <CardTitle className="text-[10px] md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {metric.title}
@@ -132,7 +132,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-3 md:gap-6 lg:grid-cols-2">
-        <Card className="border-card-border">
+        <Card className="border-none shadow-md hover:shadow-lg transition-all duration-300">
           <CardHeader className="p-3 md:p-6">
             <CardTitle className="text-base md:text-lg font-semibold">Faturamento Mensal</CardTitle>
           </CardHeader>
@@ -144,8 +144,10 @@ export default function Dashboard() {
                 <BarChart data={metrics?.monthlyRevenueChart || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} width={50} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} width={80} tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)} />
                   <Tooltip
+                    formatter={(value: number) => [formatCurrency(value), "Faturamento"]}
+                    labelFormatter={(label) => `Mês: ${label}`}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
@@ -153,14 +155,14 @@ export default function Dashboard() {
                       fontSize: "12px",
                     }}
                   />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" name="Faturamento" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-card-border">
+        <Card className="border-none shadow-md hover:shadow-lg transition-all duration-300">
           <CardHeader className="p-3 md:p-6">
             <CardTitle className="text-base md:text-lg font-semibold">Fluxo de Caixa</CardTitle>
           </CardHeader>
@@ -172,8 +174,10 @@ export default function Dashboard() {
                 <LineChart data={metrics?.cashFlowChart || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} width={50} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 10 }} width={80} tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)} />
                   <Tooltip
+                    formatter={(value: number) => [formatCurrency(value), "Saldo"]}
+                    labelFormatter={(label) => `Data: ${label}`}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
@@ -184,6 +188,7 @@ export default function Dashboard() {
                   <Line
                     type="monotone"
                     dataKey="balance"
+                    name="Saldo"
                     stroke="hsl(var(--chart-2))"
                     strokeWidth={2}
                     dot={{ fill: "hsl(var(--chart-2))" }}
@@ -195,7 +200,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <Card className="border-card-border">
+      <Card className="border-none shadow-md hover:shadow-lg transition-all duration-300">
         <CardHeader className="p-3 md:p-6">
           <CardTitle className="text-base md:text-lg font-semibold">Próximos Eventos</CardTitle>
         </CardHeader>

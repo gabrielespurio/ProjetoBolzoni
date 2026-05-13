@@ -1652,14 +1652,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Time Records routes (Departamento Pessoal)
+  
+  // Time Record Adjustments routes
+  app.get("/api/time-records/adjustments", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const isAdmin = req.userRole === "admin";
+      // Employees can only see their own requests
+      const userIdToQuery = isAdmin ? undefined : req.userId;
+      const adjustments = await storage.getTimeRecordAdjustments(userIdToQuery);
+      res.json(adjustments);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar solicitações de ajuste" });
+    }
+  });
+
+  app.post("/api/time-records/adjustments", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { type, timestamp, reason } = req.body;
+      if (!type || !["clock_in", "clock_out"].includes(type)) {
+        return res.status(400).json({ message: "Tipo inválido. Use 'clock_in' ou 'clock_out'" });
+      }
+      if (!timestamp || !reason) {
+        return res.status(400).json({ message: "Data/hora e motivo são obrigatórios" });
+      }
+
+      const adjustment = await storage.createTimeRecordAdjustment({
+        userId: req.userId!,
+        type,
+        timestamp: new Date(timestamp),
+        reason,
+      });
+      res.status(201).json(adjustment);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao solicitar ajuste de ponto" });
+    }
+  });
+
+  app.patch("/api/time-records/adjustments/:id/status", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Status inválido" });
+      }
+
+      // Find the adjustment to see its details
+      const adjustments = await storage.getTimeRecordAdjustments();
+      const adjustment = adjustments.find((a: any) => a.id === req.params.id);
+      
+      if (!adjustment) {
+        return res.status(404).json({ message: "Solicitação não encontrada" });
+      }
+
+      if (adjustment.status !== "pending") {
+        return res.status(400).json({ message: "Esta solicitação já foi respondida" });
+      }
+
+      const updatedAdjustment = await storage.updateTimeRecordAdjustment(req.params.id, status, req.userId!);
+
+      // Se aprovado, criar o registro de ponto efetivo
+      if (status === "approved") {
+        await storage.createTimeRecord({
+          userId: adjustment.userId,
+          type: adjustment.type,
+          timestamp: new Date(adjustment.timestamp),
+          notes: `Ajuste aprovado: ${adjustment.reason}`,
+        });
+      }
+
+      res.json(updatedAdjustment);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar status da solicitação" });
+    }
+  });
+
   app.get("/api/time-records", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const userId = req.userId!;
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, limit, offset } = req.query;
       const start = startDate ? new Date(startDate as string) : undefined;
       const end = endDate ? new Date(endDate as string) : undefined;
-      const records = await storage.getTimeRecords(userId, start, end);
-      res.json(records);
+      const l = limit ? parseInt(limit as string) : undefined;
+      const o = offset ? parseInt(offset as string) : undefined;
+      const result = await storage.getTimeRecords(userId, start, end, l, o);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao buscar registros de ponto" });
     }
@@ -1706,12 +1781,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/time-records/all", authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, limit, offset, userId } = req.query;
       const start = startDate ? new Date(startDate as string) : undefined;
       const end = endDate ? new Date(endDate as string) : undefined;
-      const records = await storage.getAllUsersTimeRecords(start, end);
-      res.json(records);
+      const l = limit ? parseInt(limit as string) : undefined;
+      const o = offset ? parseInt(offset as string) : undefined;
+      const u = userId ? (userId as string) : undefined;
+      const result = await storage.getAllUsersTimeRecords(start, end, l, o, u);
+      
+      // DEBUG LOG
+      try {
+        const fs = require('fs');
+        fs.writeFileSync('C:\\Users\\Gabriel\\Desktop\\BolzoniProducoes\\ProjetoBolzoni\\scratch\\debug_route_all.json', JSON.stringify({ query: req.query, result }, null, 2));
+      } catch (err) {}
+
+      res.json(result);
     } catch (error: any) {
+      try {
+        const fs = require('fs');
+        fs.writeFileSync('C:\\Users\\Gabriel\\Desktop\\BolzoniProducoes\\ProjetoBolzoni\\scratch\\debug_route_error.txt', error.stack || error.message || "Unknown error");
+      } catch (err) {}
+      
       res.status(500).json({ message: error.message || "Erro ao buscar registros de ponto" });
     }
   });
@@ -1726,7 +1816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const now = new Date();
-      const allUserRecords = await storage.getTimeRecords(userId);
+      const { records: allUserRecords } = await storage.getTimeRecords(userId);
       
       const isSameDay = (d1: Date, d2: Date) => 
         d1.getFullYear() === d2.getFullYear() && 
@@ -1756,20 +1846,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const calculateHours = (records: any[]) => {
         const sorted = [...records].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         let totalMinutes = 0;
-        for (let i = 0; i < sorted.length; i++) {
-          if (sorted[i].type === "clock_in") {
-            const clockOut = sorted.find((r, idx) => idx > i && r.type === "clock_out");
-            if (clockOut) {
-              const diff = new Date(clockOut.timestamp).getTime() - new Date(sorted[i].timestamp).getTime();
-              totalMinutes += diff / (1000 * 60);
-            } else {
-              const diff = now.getTime() - new Date(sorted[i].timestamp).getTime();
-              totalMinutes += diff / (1000 * 60);
+        let lastClockIn: Date | null = null;
+
+        for (const record of sorted) {
+          const recordTime = new Date(record.timestamp);
+          
+          if (record.type === "clock_in") {
+            // Se já tivermos um clock_in sem clock_out, ignoramos este clock_in duplicado
+            if (!lastClockIn) {
+              lastClockIn = recordTime;
             }
+          } else if (record.type === "clock_out") {
+            if (lastClockIn) {
+              // Verifica se o clock_out é no mesmo dia do clock_in
+              if (isSameDay(lastClockIn, recordTime)) {
+                const diff = recordTime.getTime() - lastClockIn.getTime();
+                totalMinutes += diff / (1000 * 60);
+              } else {
+                // Se esqueceu de bater o ponto no dia anterior, limitamos a jornada até às 23:59 daquele dia (ou ignoramos). 
+                // Vamos somar apenas até às 23:59 do dia do clock_in para não gerar centenas de horas extras.
+                const endOfDay = new Date(lastClockIn);
+                endOfDay.setHours(23, 59, 59, 999);
+                const diff = endOfDay.getTime() - lastClockIn.getTime();
+                // Adicionamos no máximo 12 horas para evitar absurdos
+                totalMinutes += Math.min(diff / (1000 * 60), 12 * 60);
+              }
+              lastClockIn = null;
+            }
+            // Se tiver um clock_out sem clock_in, ignoramos
           }
         }
+
+        // Se ainda estiver "logado" e o clock_in foi hoje, soma até o momento atual
+        if (lastClockIn) {
+          if (isSameDay(lastClockIn, now)) {
+            const diff = now.getTime() - lastClockIn.getTime();
+            totalMinutes += diff / (1000 * 60);
+          } else {
+            // Esqueceu de deslogar em um dia passado. Adiciona até o fim daquele dia (max 12h)
+            const endOfDay = new Date(lastClockIn);
+            endOfDay.setHours(23, 59, 59, 999);
+            const diff = endOfDay.getTime() - lastClockIn.getTime();
+            totalMinutes += Math.min(diff / (1000 * 60), 12 * 60);
+          }
+        }
+
         return totalMinutes;
       };
+
 
       const todayMinutes = calculateHours(todayRecords);
       const weekMinutes = calculateHours(weekRecords);
@@ -1800,6 +1924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const monthExpected = monthWorkDays * DAILY_HOURS * 60;
 
       res.json({
+        workloadHours: DAILY_HOURS,
         today: {
           workedMinutes: Math.round(todayMinutes),
           expectedMinutes: todayExpected,

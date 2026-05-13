@@ -23,6 +23,7 @@ interface ContractData {
   clientEstado?: string;
   clientResponsibleName?: string;
   clientCargo?: string;
+  clientProfession?: string;
   eventDate: Date;
   eventTime: string;
   eventEndTime?: string;
@@ -34,6 +35,7 @@ interface ContractData {
   employees?: string[];
   estimatedChildren: number;
   eventDuration?: number;
+  complementaryNotes?: string;
 }
 
 export function generateContract(data: ContractData, forceContractType?: "fisica" | "juridica") {
@@ -134,8 +136,15 @@ function generateCorporateContract(data: ContractData) {
       },
       {
         text: `Com ${employeeText} para executar a atividade, com duração de ${duration} horas (com 1 pausa de 15 minutos)`,
-        margin: [0, 0, 0, 10]
+        margin: [0, 0, 0, 5]
       },
+      data.complementaryNotes ? {
+        text: [
+          { text: 'Observações complementares: ', bold: true },
+          data.complementaryNotes
+        ],
+        margin: [0, 0, 0, 10]
+      } : { text: '', margin: [0, 0, 0, 0] },
       {
         text: [
           { text: 'Parágrafo Segundo. ', bold: true },
@@ -278,7 +287,7 @@ function generateCorporateContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 12ª. ', bold: true },
-          `O presente serviço será remunerado pela quantia de ${data.contractValue} devendo ser pago a título de reserva da data no ato da assinatura do contrato o percentual de 30% (trinta por cento) do valor do contrato, que será efetuado por pix no CNPJ: 42.508.153/0001-94.`
+          `O presente serviço será remunerado pela quantia de ${data.contractValue} devendo ser pago mínimo de 50% (cinquenta por cento) para reserva da data, que será efetuado por pix no CNPJ: 42.508.153/0001-94.`
         ],
         margin: [0, 0, 0, 10]
       },
@@ -460,6 +469,7 @@ function generatePartyContract(data: ContractData) {
           `${data.clientName}`,
           data.clientCpf ? `, CPF: ${data.clientCpf}` : '',
           data.clientRg ? `, RG: ${data.clientRg}` : '',
+          data.clientProfession ? `, profissão: ${data.clientProfession}` : '',
           data.clientRua ? `, residente à ${data.clientRua}` : '',
           data.clientNumero ? `, nº ${data.clientNumero}` : '',
           data.clientBairro ? `, ${data.clientBairro}` : '',
@@ -498,7 +508,8 @@ function generatePartyContract(data: ContractData) {
           `${data.characters.length} personage${data.characters.length > 1 ? 'ns caracterizados' : 'm caracterizado'}: ${data.characters.join(', ')};`,
           'Apresentação musical temática com ambientação sonora;',
           'Dança e interação com as crianças ao longo do evento;',
-          'Pintura artística e escultura em bexiga realizadas pelos produtores;',
+          'Pintura artística;',
+          'Escultura em bexiga realizada pelos produtores;',
           'Retomada do entretenimento e condução do momento do parabéns;',
           'Acompanhamento por produtores para suporte técnico e organizacional durante toda a festa;'
         ],
@@ -533,7 +544,7 @@ function generatePartyContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 3ª. ', bold: true },
-          'O serviço de recreação terá início e término conforme horário acordado entre as partes.'
+          `O serviço de recreação terá início às ${data.eventTime} às ${data.eventEndTime || '---'}.`
         ],
         margin: [0, 0, 0, 10]
       },
@@ -561,7 +572,7 @@ function generatePartyContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 5ª. ', bold: true },
-          `Estima-se participação de ${data.estimatedChildren || 15} (${numberToWords(data.estimatedChildren || 15)}) crianças. Caso o número exceda, será cobrado adicional de R$ 10,00 (dez reais) por criança.`
+          `Estima-se participação de ${data.estimatedChildren || 15} (${numberToWords(data.estimatedChildren || 15)}) crianças. Caso o número exceda, será cobrado adicional de R$ 8,00 (oito reais) por criança.`
         ],
         margin: [0, 0, 0, 10]
       },
@@ -665,7 +676,7 @@ function generatePartyContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 13ª. ', bold: true },
-          `O valor total dos serviços é de ${data.contractValue}, sendo pago o valor mínimo de 30% do valor do contrato como entrada.`
+          `O valor total dos serviços é de ${data.contractValue}, sendo pago o percentual de 30% como sinal para reserva da data, que deverá ser pago via pix no CNPJ: 42.508.153/0001-94.`
         ],
         margin: [0, 0, 0, 10]
       },
