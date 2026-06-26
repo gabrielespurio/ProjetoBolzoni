@@ -3,10 +3,11 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertServiceSchema, insertEmployeePaymentSchema, insertBuffetSchema } from "@shared/schema";
+import { insertUserSchema, insertClientSchema, insertEmployeeSchema, insertEventSchema, insertInventoryItemSchema, insertFinancialTransactionSchema, insertPurchaseSchema, validatePurchaseSchema, insertEventCategorySchema, insertEmployeeRoleSchema, insertPackageSchema, insertSkillSchema, insertServiceSchema, insertEmployeePaymentSchema, insertBuffetSchema, insertQuoteSchema } from "@shared/schema";
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { GoogleCalendarService } from "./google-calendar";
+import { handleChat } from "./chat";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "bolzoni-secret-key-2024";
 
@@ -182,6 +183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message || "Erro ao buscar usuário" });
     }
   });
+
+  // Virtual Assistant Chat Route
+  app.post("/api/chat", authenticateToken, handleChat);
 
   // Clients routes
   app.get("/api/clients", authenticateToken, async (req: AuthRequest, res) => {
@@ -415,6 +419,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notifications route for pending payments
+  app.get("/api/notifications/pending-payments", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const role = req.userRole || "";
+      if (role !== 'admin' && role !== 'secretaria') {
+        return res.json([]);
+      }
+
+      const events = await storage.getAllEvents();
+      const notifications = [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const limitDate = new Date(today);
+      limitDate.setDate(today.getDate() + 2);
+
+      for (const event of events) {
+        if (event.status === "completed" || event.status === "cancelled") continue;
+        
+        const eventDate = new Date(event.date);
+        eventDate.setHours(0, 0, 0, 0);
+
+        if (eventDate <= limitDate) {
+          const contractValueStr = event.contractValue?.toString() || "0";
+          const contractValue = parseFloat(contractValueStr);
+          
+          if (contractValue > 0) {
+            const payments = await storage.getEventInstallments(event.id);
+            const totalPaid = payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount?.toString() || "0"), 0);
+            
+            if (totalPaid < contractValue) {
+              const diffTime = eventDate.getTime() - today.getTime();
+              const daysUntil = Math.ceil(diffTime / (1000 * 3600 * 24));
+              
+              notifications.push({
+                eventId: event.id,
+                title: event.title,
+                date: event.date,
+                contractValue,
+                totalPaid,
+                remaining: contractValue - totalPaid,
+                daysUntil,
+              });
+            }
+          }
+        }
+      }
+
+      notifications.sort((a, b) => a.daysUntil - b.daysUntil);
+
+      res.json(notifications);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar notificações" });
+    }
+  });
+
   // Events routes
   app.get("/api/events", authenticateToken, async (req: AuthRequest, res) => {
     try {
@@ -591,7 +651,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               details.notes ? `\nObservações Gerais: ${details.notes}` : null,
             ].filter(Boolean).join("\n");
 
-            if (eventToSync.googleEventId) {
+            if (eventToSync.status === "deleted") {
+              if (eventToSync.googleEventId) {
+                await GoogleCalendarService.deleteEvent(eventToSync.googleEventId);
+              }
+            } else if (eventToSync.googleEventId) {
               await GoogleCalendarService.updateEvent(eventToSync.googleEventId, {
                 title: eventToSync.title,
                 start: new Date(eventToSync.date),
@@ -649,6 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(event);
     } catch (error: any) {
+      console.error("Erro ao atualizar evento (PATCH):", error);
       res.status(400).json({ message: error.message || "Erro ao atualizar evento" });
     }
   });
@@ -670,6 +735,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Erro ao deletar evento" });
+    }
+  });
+
+  // Event Payments routes
+  app.get("/api/events/:id/payments", authenticateToken, async (req, res) => {
+    try {
+      const payments = await storage.getEventInstallments(req.params.id);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar pagamentos" });
+    }
+  });
+
+  app.post("/api/events/:id/payments", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const { amount, paymentDate, paymentMethod } = req.body;
+      if (!amount || !paymentDate || !paymentMethod) {
+        return res.status(400).json({ message: "Valor, data e método de pagamento são obrigatórios" });
+      }
+      const payment = await storage.createEventInstallment({
+        eventId: req.params.id,
+        amount: amount.toString(),
+        paymentDate: new Date(paymentDate),
+        paymentMethod,
+      });
+      res.status(201).json(payment);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao registrar pagamento" });
+    }
+  });
+
+  app.delete("/api/events/:eventId/payments/:paymentId", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      await storage.deleteEventInstallment(req.params.paymentId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao excluir pagamento" });
     }
   });
 
@@ -773,6 +875,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: error.message || "Erro ao dar baixa na transação" });
     }
   });
+
+  // Quotes routes
+  app.get("/api/quotes", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const quotesList = await storage.getAllQuotes();
+      res.json(quotesList);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar orçamentos" });
+    }
+  });
+
+  app.get("/api/quotes/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) return res.status(404).json({ message: "Orçamento não encontrado" });
+      res.json(quote);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao buscar orçamento" });
+    }
+  });
+
+  app.post("/api/quotes", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const data = insertQuoteSchema.parse(req.body);
+      const quote = await storage.createQuote(data);
+      res.status(201).json(quote);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao criar orçamento" });
+    }
+  });
+
+  app.patch("/api/quotes/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const data = insertQuoteSchema.partial().parse(req.body);
+      const quote = await storage.updateQuote(req.params.id, data);
+      res.json(quote);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Erro ao atualizar orçamento" });
+    }
+  });
+
+  app.delete("/api/quotes/:id", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      await storage.deleteQuote(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao deletar orçamento" });
+    }
+  });
+
+  app.post("/api/quotes/:id/convert", authenticateToken, requireAdminOrSecretaria, async (req, res) => {
+    try {
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) {
+        return res.status(404).json({ message: "Orçamento não encontrado" });
+      }
+
+      if (quote.status === "approved") {
+        return res.status(400).json({ message: "Este orçamento já foi convertido em evento." });
+      }
+
+      // 1. Procurar ou criar cliente
+      const allClients = await storage.getAllClients();
+      let client = allClients.find((c: any) => c.name.toLowerCase().trim() === quote.clientName.toLowerCase().trim());
+      if (!client) {
+        client = await storage.createClient({
+          name: quote.clientName,
+          personType: "fisica",
+        } as any);
+      }
+
+      // 2. Mapear personagens do orçamento para IDs do estoque (se existirem)
+      const allInventory = await storage.getAllInventoryItems();
+      const characterIds: string[] = [];
+      const quoteDetails = quote.details as any;
+      const quoteCharacters = quoteDetails?.characters || [];
+      if (Array.isArray(quoteCharacters)) {
+        for (const char of quoteCharacters) {
+          const foundItem = allInventory.find((item: any) => 
+            item.type === "character" && 
+            item.name.toLowerCase().trim() === char.name.toLowerCase().trim()
+          );
+          if (foundItem) {
+            characterIds.push(foundItem.id);
+          }
+        }
+      }
+
+      // 3. Criar evento
+      const eventTitle = `Festa - ${quote.clientName}`;
+      const eventDate = quote.eventDate ? new Date(quote.eventDate) : new Date();
+      
+      const newEvent = await storage.createEvent(
+        {
+          clientId: client.id,
+          title: eventTitle,
+          date: eventDate,
+          contractValue: quote.totalValue,
+          status: "scheduled",
+          eventType: quote.eventType === "15anos" ? "service" : "package",
+          notes: `Convertido automaticamente a partir do Orçamento #${quote.id.slice(0, 8)}`,
+        } as any,
+        characterIds
+      );
+
+      // 4. Sincronizar com Google Calendar
+      try {
+        if (await GoogleCalendarService.isConnected()) {
+          const details = await storage.getEventDetailsForSync(newEvent.id);
+          const description = [
+            `Cliente: ${details.clientName}`,
+            `Horário da festa: Não informado`,
+            `Horário de inicio da recreação: Não informado`,
+            `Duração do evento: ${quoteDetails?.scope?.estimatedDuration || "Não informado"}`,
+            `Pessoas: ${quoteDetails?.scope?.approximateAttendees || "?"} | Crianças: ${quoteDetails?.scope?.childrenCount || "?"}`,
+            `Aberto ao público: ${quoteDetails?.scope?.isPublicEvent ? "Sim" : "Não"}`,
+            `Valor do contrato: R$ ${details.contractValue}`,
+            `Personagens: ${details.characters.join(", ") || "Nenhum"}`,
+            `Observações: Convertido a partir do Orçamento #${quote.id.slice(0, 8)}`,
+          ].filter(Boolean).join("\n");
+
+          const googleEventId = await GoogleCalendarService.createEvent({
+            title: newEvent.title,
+            start: new Date(newEvent.date),
+            location: "",
+            description: description,
+          });
+          if (googleEventId) {
+            await storage.updateEvent(newEvent.id, { googleEventId });
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao sincronizar com Google Calendar na conversão:", err);
+      }
+
+      // 5. Atualizar o status do orçamento para aprovado
+      await storage.updateQuote(quote.id, { status: "approved" });
+
+      res.status(201).json({ message: "Orçamento convertido em evento com sucesso!", eventId: newEvent.id });
+    } catch (error: any) {
+      console.error("Erro ao converter orçamento:", error);
+      res.status(400).json({ message: error.message || "Erro ao converter orçamento" });
+    }
+  });
+
 
   // Purchases routes
   // Purchases routes (admin only)

@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ import { DateFilter, type DateFilterValue } from "@/components/date-filter";
 import { filterByDateRange } from "@/lib/date-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { Event } from "@shared/schema";
+import type { Event, Package } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { generateContract } from "@/lib/contractGenerator";
@@ -51,10 +52,9 @@ interface EventWithDetails extends Event {
   employeeNames?: string[];
   characterNames?: string[];
   packageName?: string;
+  packageIds?: string[];
   buffetName?: string;
   clientProfession?: string;
-  complementaryNotes?: string;
-  childrenCount?: number;
 }
 
 export default function Events() {
@@ -80,6 +80,51 @@ export default function Events() {
   const { data: events, isLoading } = useQuery<EventWithDetails[]>({
     queryKey: ["/api/events"],
   });
+
+  const { data: packages } = useQuery<Package[]>({
+    queryKey: ["/api/settings/packages"],
+  });
+
+  const [location, setLocation] = useLocation();
+  const searchString = useSearch();
+
+  // Extract event ID from query parameter and open event if exists
+  useEffect(() => {
+    if (!isLoading && events && events.length > 0) {
+      const params = new URLSearchParams(searchString);
+      const eventId = params.get('id');
+      
+      if (eventId) {
+        const eventToOpen = events.find(e => e.id === eventId);
+        
+        if (eventToOpen) {
+          setSelectedEvent(eventToOpen);
+          setIsDialogOpen(true);
+          // Limpar o parâmetro da URL para evitar reabrir
+          setLocation('/events', { replace: true });
+          console.log('[EVENTS PAGE] Event dialog opened for ID:', eventId);
+        }
+      }
+    }
+  }, [events, isLoading, location, searchString, setLocation]);
+
+  // Listen for custom event when already on the page
+  useEffect(() => {
+    const handleOpenEvent = (e: CustomEvent<{ id: string }>) => {
+      const eventId = e.detail.id;
+      if (events) {
+        const eventToOpen = events.find(ev => ev.id === eventId);
+        if (eventToOpen) {
+          setSelectedEvent(eventToOpen);
+          setIsDialogOpen(true);
+          setLocation('/events', { replace: true });
+        }
+      }
+    };
+    
+    window.addEventListener('open-event-modal', handleOpenEvent as EventListener);
+    return () => window.removeEventListener('open-event-modal', handleOpenEvent as EventListener);
+  }, [events, setLocation]);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -264,6 +309,20 @@ export default function Events() {
       const eventDate = new Date(event.date);
       const eventTime = (event as any).startTime || format(eventDate, "HH:mm");
       const eventEndTime = (event as any).endTime || undefined;
+      const partyStartTime = event.partyStartTime || undefined;
+      const recreationStartTime = event.startTime || undefined;
+
+      const resolvedPackageNames = event.packageIds && packages
+        ? event.packageIds.map(id => packages.find(p => p.id === id)?.name).filter(Boolean)
+        : [];
+      
+      let packageText = resolvedPackageNames.length > 0 ? resolvedPackageNames.join(", ") : "";
+      if (!packageText && event.packageId && packages) {
+        packageText = packages.find(p => p.id === event.packageId)?.name || "";
+      }
+      if (!packageText) {
+        packageText = event.packageName || "Pacote não especificado";
+      }
 
       generateContract({
         eventTitle: event.title,
@@ -285,16 +344,18 @@ export default function Events() {
         eventDate: eventDate,
         eventTime: eventTime,
         eventEndTime: eventEndTime,
+        partyStartTime: partyStartTime,
+        recreationStartTime: recreationStartTime,
         location: location,
         contractValue: formatCurrency(event.contractValue),
-        package: event.packageName || "Pacote não especificado",
+        package: packageText,
         packageNotes: event.packageNotes || undefined,
         characters: event.characterNames && event.characterNames.length > 0
           ? event.characterNames
           : ["Personagem não especificado"],
         employees: event.employeeNames,
         estimatedChildren: event.childrenCount || 15,
-        complementaryNotes: event.complementaryNotes,
+        complementaryNotes: event.complementaryNotes || undefined,
       }, contractType);
 
       toast({

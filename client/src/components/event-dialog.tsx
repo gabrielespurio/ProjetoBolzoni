@@ -5,6 +5,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertEventSchema, type Event, type Client, type Employee, type InventoryItem, type EventCategory, type Package, type Buffet } from "@shared/schema";
 import { z } from "zod";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X, Search, Plus, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, X, Search, Plus, Check, ChevronsUpDown, User, MapPin, ClipboardList, Wallet, Users, Drama, Info, Receipt } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { EventPaymentsSection } from "@/components/event-payments-section";
 
 const eventFormSchema = insertEventSchema.extend({
   notes: z.string().optional(),
@@ -83,6 +85,7 @@ interface EventDialogProps {
 export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const { toast } = useToast();
   const isEdit = !!event;
+  const [activeTab, setActiveTab] = useState("info");
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [expenses, setExpenses] = useState<EventExpense[]>([]);
@@ -618,7 +621,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
-        className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0"
+        className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
@@ -631,8 +634,21 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
             <div className="flex-1 overflow-y-auto px-6 py-2 space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <FormField
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-4 mb-4">
+                  <TabsTrigger value="info" className="text-xs sm:text-sm">📋 Informações</TabsTrigger>
+                  <TabsTrigger value="characters" className="text-xs sm:text-sm">🎭 Personagens</TabsTrigger>
+                  <TabsTrigger value="cast" className="text-xs sm:text-sm">👥 Elenco</TabsTrigger>
+                  <TabsTrigger value="payments" className="text-xs sm:text-sm" disabled={!isEdit}>💰 Pagamentos</TabsTrigger>
+                </TabsList>
+                <TabsContent value="info" className="space-y-8 mt-0">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 border-b pb-2 text-primary">
+                      <User className="h-5 w-5" />
+                      <h3 className="font-semibold text-base">Informações Principais</h3>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <FormField
                   control={form.control}
                   name="title"
                   render={({ field }) => (
@@ -1078,9 +1094,13 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   />
                 )}
               </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Endereço do Evento</h3>
+              </div>
+              
+              <div className="space-y-4 pt-6">
+                <div className="flex items-center gap-2 border-b pb-2 text-primary">
+                  <MapPin className="h-5 w-5" />
+                  <h3 className="font-semibold text-base">Endereço do Evento</h3>
+                </div>
                 <div className="grid gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
@@ -1276,329 +1296,40 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   )}
                 </div>
               </div>
-
-              {canViewFinancials && (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium">Informações de Pagamento</h3>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <FormField
-                      control={form.control}
-                      name="ticketValue"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valor da Entrada</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">R$</span>
-                              <Input
-                                {...field}
-                                type="number"
-                                step="0.01"
-                                placeholder="0.00"
-                                className="pl-10"
-                                data-testid="input-event-ticket-value"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="paymentMethod"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Forma de Pagamento</FormLabel>
-                          <Popover open={methodPopoverOpen} onOpenChange={setMethodPopoverOpen}>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  role="combobox"
-                                  className={cn(
-                                    "w-full justify-between",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                  data-testid="select-payment-method"
-                                >
-                                  {field.value === "dinheiro" ? "Dinheiro" :
-                                    field.value === "pix" ? "PIX" :
-                                      field.value === "cartao_credito" ? "Cartão de Crédito" :
-                                        field.value === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[400px] p-0" align="start">
-                              <Command>
-                                <CommandInput placeholder="Buscar forma..." />
-                                <CommandList>
-                                  <CommandGroup>
-                                    {[
-                                      { value: "dinheiro", label: "Dinheiro" },
-                                      { value: "pix", label: "PIX" },
-                                      { value: "cartao_credito", label: "Cartão de Crédito" },
-                                      { value: "cartao_debito", label: "Cartão de Débito" }
-                                    ].map((item) => (
-                                      <CommandItem
-                                        key={item.value}
-                                        value={item.label}
-                                        onSelect={() => {
-                                          field.onChange(item.value);
-                                          setMethodPopoverOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            field.value === item.value ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        {item.label}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {paymentMethod === "cartao_debito" && (
-                      <FormField
-                        control={form.control}
-                        name="cardType"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Tipo de Cartão</FormLabel>
-                            <Popover open={cardPopoverOpen} onOpenChange={setCardPopoverOpen}>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    role="combobox"
-                                    className={cn(
-                                      "w-full justify-between",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                    data-testid="select-card-type"
-                                  >
-                                    {field.value === "visa_master" ? "Visa/Master" :
-                                      field.value === "outros" ? "Outros" : "Selecione"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[400px] p-0" align="start">
-                                <Command>
-                                  <CommandInput placeholder="Buscar tipo..." />
-                                  <CommandList>
-                                    <CommandGroup>
-                                      {[
-                                        { value: "visa_master", label: "Visa/Master" },
-                                        { value: "outros", label: "Outros" }
-                                      ].map((item) => (
-                                        <CommandItem
-                                          key={item.value}
-                                          value={item.label}
-                                          onSelect={() => {
-                                            field.onChange(item.value);
-                                            setCardPopoverOpen(false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              field.value === item.value ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          {item.label}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                    <FormField
-                      control={form.control}
-                      name="paymentDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data do Pagamento</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="date" data-testid="input-payment-date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <div className="space-y-4 pt-6 border-t mt-6">
+                  <div className="flex items-center gap-2 border-b pb-2 text-primary">
+                    <Info className="h-5 w-5" />
+                    <h3 className="font-semibold text-base">Observações Adicionais</h3>
                   </div>
-
-                  <div className="space-y-4 border rounded-md p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium">Parcelas Pagas</h4>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowInstallmentForm(!showInstallmentForm)}
-                        data-testid="button-add-installment"
-                      >
-                        {showInstallmentForm ? "Cancelar" : "Adicionar Parcela"}
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 py-2 border-b">
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground uppercase">Valor do Contrato</p>
-                        <p className="text-sm font-semibold text-primary">R$ {parseFloat(contractValue || "0").toFixed(2)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground uppercase">Total Pago</p>
-                        <p className="text-sm font-semibold text-green-600">R$ {totalPaid.toFixed(2)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground uppercase">Pendente</p>
-                        <p className={`text-sm font-semibold ${pendingValue > 0 ? "text-destructive" : "text-green-600"}`}>
-                          R$ {pendingValue.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {showInstallmentForm && (
-                      <div className="grid gap-4 p-4 border rounded-md bg-muted/50">
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <div className="space-y-2">
-                            <FormLabel>Valor</FormLabel>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={newInstallment.amount}
-                              onChange={(e) => setNewInstallment({ ...newInstallment, amount: e.target.value })}
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <FormLabel>Data</FormLabel>
-                            <Input
-                              type="date"
-                              value={newInstallment.paymentDate}
-                              onChange={(e) => setNewInstallment({ ...newInstallment, paymentDate: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-2 flex flex-col">
-                            <FormLabel>Forma</FormLabel>
-                            <Popover open={installmentMethodPopoverOpen} onOpenChange={setInstallmentMethodPopoverOpen}>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className={cn(
-                                    "w-full justify-between",
-                                    !newInstallment.paymentMethod && "text-muted-foreground"
-                                  )}
-                                >
-                                  {newInstallment.paymentMethod === "dinheiro" ? "Dinheiro" :
-                                    newInstallment.paymentMethod === "pix" ? "PIX" :
-                                      newInstallment.paymentMethod === "cartao_credito" ? "Cartão de Crédito" :
-                                        newInstallment.paymentMethod === "cartao_debito" ? "Cartão de Débito" : "Selecione"}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[200px] p-0">
-                                <Command>
-                                  <CommandInput placeholder="Buscar forma..." />
-                                  <CommandList>
-                                    <CommandGroup>
-                                      {[
-                                        { value: "dinheiro", label: "Dinheiro" },
-                                        { value: "pix", label: "PIX" },
-                                        { value: "cartao_credito", label: "Cartão de Crédito" },
-                                        { value: "cartao_debito", label: "Cartão de Débito" }
-                                      ].map((item) => (
-                                        <CommandItem
-                                          key={item.value}
-                                          value={item.label}
-                                          onSelect={() => {
-                                            setNewInstallment({ ...newInstallment, paymentMethod: item.value });
-                                            setInstallmentMethodPopoverOpen(false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              newInstallment.paymentMethod === item.value ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          {item.label}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            if (!newInstallment.amount || !newInstallment.paymentDate || !newInstallment.paymentMethod) {
-                              toast({ title: "Erro", description: "Preencha todos os campos da parcela.", variant: "destructive" });
-                              return;
-                            }
-                            setEventInstallments([...eventInstallments, newInstallment]);
-                            setNewInstallment({ amount: "", paymentDate: "", paymentMethod: "" });
-                            setShowInstallmentForm(false);
-                          }}
-                        >
-                          Confirmar Parcela
-                        </Button>
-                      </div>
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações Gerais</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="Observações gerais sobre o evento..."
+                            className="resize-none"
+                            rows={3}
+                            data-testid="input-event-notes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-
-                    <div className="space-y-2">
-                      {eventInstallments.map((inst, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 border rounded-md bg-background">
-                          <div className="text-sm">
-                            <span className="font-medium">R$ {parseFloat(inst?.amount || "0").toFixed(2)}</span>
-                            <span className="mx-2">•</span>
-                            <span>{inst?.paymentDate ? new Date(inst.paymentDate).toLocaleDateString("pt-BR") : ""}</span>
-                            <span className="mx-2">•</span>
-                            <span className="capitalize">{(inst?.paymentMethod || "").replace("_", " ")}</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEventInstallments(eventInstallments.filter((_, i) => i !== index))}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      {eventInstallments.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-2">Nenhuma parcela registrada</p>
-                      )}
-                    </div>
-                  </div>
+                  />
                 </div>
-              )}
+              </TabsContent>
 
-              <div className="space-y-4">
-                <div>
-                  <FormLabel>Personagens</FormLabel>
+              <TabsContent value="characters" className="space-y-8 mt-0">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-2 text-primary">
+                    <Drama className="h-5 w-5" />
+                    <h3 className="font-semibold text-base">Personagens</h3>
+                  </div>
                   <p className="text-sm text-muted-foreground mb-3">
                     Busque e selecione os personagens que serão utilizados neste evento
                   </p>
@@ -1684,9 +1415,18 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   </div>
                 </div>
 
+              </TabsContent>
+
+              <TabsContent value="cast" className="space-y-8 mt-0">
                 <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-2 text-primary">
+                    <Users className="h-5 w-5" />
+                    <h3 className="font-semibold text-base">Colaboradores & Cachês</h3>
+                  </div>
                   <div className="flex items-center justify-between">
-                    <FormLabel>Colaboradores & Cachês</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Selecione a equipe de apoio e o elenco que participará deste evento.
+                    </p>
                     <Button
                       type="button"
                       variant="outline"
@@ -1799,10 +1539,14 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     </div>
                   )}
                 </div>
-              </div>
+              </TabsContent>
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Financeiro</h3>
+              <TabsContent value="payments" className="space-y-8 mt-0">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-2 text-primary">
+                    <Wallet className="h-5 w-5" />
+                    <h3 className="font-semibold text-base">Financeiro</h3>
+                  </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2 p-3 border rounded-md bg-muted/30">
                     <div className="flex items-center justify-between">
@@ -1944,9 +1688,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <FormLabel>Outros Gastos (Logística, Insumos, etc)</FormLabel>
+              <div className="space-y-4 pt-6 border-t mt-6">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Receipt className="h-5 w-5" />
+                    <h3 className="font-semibold text-base">Outros Gastos (Logística, Insumos, etc)</h3>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
@@ -2027,7 +1774,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 )}
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 pt-6 border-t mt-6">
+                <div className="flex items-center gap-2 border-b pb-2 text-primary mb-4">
+                  <ClipboardList className="h-5 w-5" />
+                  <h3 className="font-semibold text-base">Observações do Contrato</h3>
+                </div>
                 <FormField
                   control={form.control}
                   name="complementaryNotes"
@@ -2048,27 +1799,19 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Observações Gerais</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          value={field.value || ""}
-                          placeholder="Observações gerais sobre o evento..."
-                          className="resize-none"
-                          rows={3}
-                          data-testid="input-event-notes"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Payments Section - only when editing */}
+                {isEdit && event && canViewFinancials && (
+                  <div className="border-t pt-6">
+                    <EventPaymentsSection
+                      eventId={event.id}
+                      contractValue={form.watch("contractValue") || "0"}
+                      isReadOnly={isReadOnly}
+                    />
+                  </div>
+                )}
               </div>
+              </TabsContent>
+              </Tabs>
             </div>
             <div className="p-6 border-t shrink-0 flex justify-end gap-2 bg-background">
               <Button

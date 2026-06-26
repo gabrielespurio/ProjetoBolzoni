@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, integer, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, integer, boolean, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -355,6 +355,19 @@ export const eventPackages = pgTable("event_packages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   packageId: varchar("package_id").notNull().references(() => packages.id, { onDelete: "cascade" }),
+});
+
+export const quotes = pgTable("quotes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientName: text("client_name").notNull(),
+  eventType: text("event_type").notNull(),
+  eventDate: timestamp("event_date"),
+  details: jsonb("details").notNull().default({}), 
+  totalCosts: decimal("total_costs", { precision: 10, scale: 2 }).notNull().default("0"),
+  profitMargin: decimal("profit_margin", { precision: 5, scale: 2 }).notNull().default("0"),
+  totalValue: decimal("total_value", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("draft"), // draft, sent, approved, rejected
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
@@ -736,6 +749,13 @@ export type InsertEventExpense = z.infer<typeof insertEventExpenseSchema>;
 
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+
+export const insertQuoteSchema = createInsertSchema(quotes, {
+  eventDate: z.coerce.date().nullable(),
+});
+
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 
 export type EmployeePayment = typeof employeePayments.$inferSelect;
 export type InsertEmployeePayment = z.infer<typeof insertEmployeePaymentSchema>;

@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
+import { NotificationsPopover } from "@/components/notifications-popover";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { VirtualAssistant } from "@/components/virtual-assistant";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -20,6 +22,7 @@ import Inventory from "@/pages/inventory";
 import Purchases from "@/pages/purchases";
 import Settings from "@/pages/settings";
 import Reports from "@/pages/reports";
+import Quotes from "@/pages/quotes";
 import TimeTracking from "@/pages/time-tracking";
 
 type UserRole = 'admin' | 'employee' | 'secretaria';
@@ -63,10 +66,15 @@ function Router() {
           <AppSidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
             <header className="flex h-14 md:h-16 items-center justify-between border-b border-border px-3 md:px-6">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <h1 className="text-xs md:text-sm font-medium text-muted-foreground truncate ml-2">
-                Sistema de Gestão - Bolzoni Produções
-              </h1>
+              <div className="flex items-center">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <h1 className="text-xs md:text-sm font-medium text-muted-foreground truncate ml-2">
+                  Sistema de Gestão - Bolzoni Produções
+                </h1>
+              </div>
+              <div className="flex items-center gap-2">
+                <NotificationsPopover />
+              </div>
             </header>
             <main className="flex-1 overflow-y-auto bg-background p-3 md:p-6 lg:p-8">
               <div className="mx-auto max-w-7xl">
@@ -98,6 +106,9 @@ function Router() {
                   <Route path="/reports">
                     <RoleProtectedRoute component={Reports} allowedRoles={['admin']} />
                   </Route>
+                  <Route path="/quotes">
+                    <RoleProtectedRoute component={Quotes} allowedRoles={['admin', 'secretaria']} />
+                  </Route>
                   <Route path="/settings">
                     <RoleProtectedRoute component={Settings} allowedRoles={['admin', 'secretaria']} />
                   </Route>
@@ -118,6 +129,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
+          <VirtualAssistant />
           <Router />
         </TooltipProvider>
       </QueryClientProvider>

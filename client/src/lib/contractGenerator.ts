@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 if (pdfMake && pdfFonts) {
-  (pdfMake as any).vfs = pdfFonts.pdfMake?.vfs || pdfFonts;
+  (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || pdfFonts;
 }
 
 interface ContractData {
@@ -27,6 +27,8 @@ interface ContractData {
   eventDate: Date;
   eventTime: string;
   eventEndTime?: string;
+  partyStartTime?: string;
+  recreationStartTime?: string;
   location: string;
   contractValue: string;
   package: string;
@@ -52,10 +54,11 @@ function generateCorporateContract(data: ContractData) {
   const formattedDate = format(new Date(data.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const contractDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   
-  const eventHour = data.eventTime || "00:00";
+  const partyHour = data.partyStartTime || data.eventTime || "00:00";
+  const recreationHour = data.recreationStartTime || data.eventTime || "00:00";
   const endHour = data.eventEndTime || (() => {
     const duration = data.eventDuration || 3;
-    const [hours, minutes] = eventHour.split(':').map(Number);
+    const [hours, minutes] = recreationHour.split(':').map(Number);
     const startMinutes = hours * 60 + minutes;
     const endMinutes = startMinutes + duration * 60;
     const endH = Math.floor(endMinutes / 60) % 24;
@@ -160,7 +163,7 @@ function generateCorporateContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 2ª. ', bold: true },
-          `O Evento Corporativo será realizado no dia ${formattedDate} às ${eventHour} horas, em ${data.location}.`
+          `O Evento Corporativo será realizado no dia ${formattedDate} às ${partyHour} horas, em ${data.location}.`
         ],
         margin: [0, 0, 0, 10]
       },
@@ -174,7 +177,7 @@ function generateCorporateContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 3ª. ', bold: true },
-          `A recreação terá início às ${eventHour} horas, encerrando-se às ${endHour} horas.`
+          `A recreação terá início às ${recreationHour} horas, encerrando-se às ${endHour} horas.`
         ],
         margin: [0, 0, 0, 10]
       },
@@ -448,6 +451,9 @@ function generatePartyContract(data: ContractData) {
   const formattedDate = format(new Date(data.eventDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   const contractDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   
+  const partyHour = data.partyStartTime || data.eventTime || "00:00";
+  const recreationHour = data.recreationStartTime || data.eventTime || "00:00";
+  
   const docDefinition: any = {
     pageSize: 'A4',
     pageMargins: [60, 60, 60, 60],
@@ -530,7 +536,7 @@ function generatePartyContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 2ª. ', bold: true },
-          `A festa será realizada em ${formattedDate}, às ${data.eventTime}, em ${data.location}.`
+          `A festa será realizada em ${formattedDate}, às ${partyHour}, em ${data.location}.`
         ],
         margin: [0, 0, 0, 10]
       },
@@ -544,7 +550,7 @@ function generatePartyContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 3ª. ', bold: true },
-          `O serviço de recreação terá início às ${data.eventTime} às ${data.eventEndTime || '---'}.`
+          `O serviço de recreação terá início às ${recreationHour} e término às ${data.eventEndTime || '---'}.`
         ],
         margin: [0, 0, 0, 10]
       },

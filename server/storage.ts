@@ -12,6 +12,7 @@ import {
   eventEmployees,
   eventCharacters,
   eventCategories,
+  quotes,
   employeeRoles,
   packages,
   packageServices,
@@ -75,6 +76,8 @@ import {
   type InsertTimeRecord,
   type TimeRecordAdjustment,
   type InsertTimeRecordAdjustment,
+  type Quote,
+  type InsertQuote,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, ne, like } from "drizzle-orm";
@@ -237,6 +240,13 @@ export interface IStorage {
   createBuffet(buffet: InsertBuffet): Promise<Buffet>;
   updateBuffet(id: string, buffet: Partial<InsertBuffet>): Promise<Buffet>;
   deleteBuffet(id: string): Promise<void>;
+
+  // Quotes
+  getAllQuotes(): Promise<Quote[]>;
+  getQuote(id: string): Promise<Quote | undefined>;
+  createQuote(quote: InsertQuote): Promise<Quote>;
+  updateQuote(id: string, quote: Partial<InsertQuote>): Promise<Quote>;
+  deleteQuote(id: string): Promise<void>;
 
   // Time Records
   getTimeRecords(userId: string, startDate?: Date, endDate?: Date, limit?: number, offset?: number): Promise<{ records: TimeRecord[], total: number }>;
@@ -593,6 +603,20 @@ export class DatabaseStorage implements IStorage {
     await db.delete(eventInstallments).where(eq(eventInstallments.eventId, eventId));
   }
 
+  async createEventInstallment(data: { eventId: string; amount: string; paymentDate: Date; paymentMethod: string }): Promise<EventInstallment> {
+    const [installment] = await db.insert(eventInstallments).values({
+      eventId: data.eventId,
+      amount: data.amount,
+      paymentDate: data.paymentDate,
+      paymentMethod: data.paymentMethod,
+    }).returning();
+    return installment;
+  }
+
+  async deleteEventInstallment(id: string): Promise<void> {
+    await db.delete(eventInstallments).where(eq(eventInstallments.id, id));
+  }
+
   async addEventPackages(eventId: string, packageIds: string[]): Promise<void> {
     const values = packageIds.map(packageId => ({
       eventId,
@@ -870,18 +894,17 @@ export class DatabaseStorage implements IStorage {
   async getDashboardMetrics(): Promise<any> {
     const allTransactions = await this.getAllTransactions();
     const lowStockItems = await this.getLowStockItems();
+    const allEvents = await this.getAllEvents();
+    const allQuotes = await this.getAllQuotes();
+    const allInventory = await this.getAllInventoryItems();
 
-    // Calculate cash balance
+    // 1. Geral / Cash Balance
     const cashBalance = allTransactions.reduce((acc, t) => {
       if (!t.isPaid) return acc;
       const amount = parseFloat(t.amount);
       return t.type === 'receivable' ? acc + amount : acc - amount;
     }, 0);
 
-    // Get all events
-    const allEvents = await this.getAllEvents();
-
-    // Calculate monthly revenue (current month) based on event contract values
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -893,13 +916,12 @@ export class DatabaseStorage implements IStorage {
       })
       .reduce((acc, e) => acc + parseFloat(e.contractValue || "0"), 0);
 
-    // Count events this month
     const eventsThisMonth = allEvents.filter(e => {
       const date = new Date(e.date);
       return date >= firstDayOfMonth && date <= lastDayOfMonth;
     }).length;
 
-    // Monthly revenue chart (last 6 months) based on event contract values
+    // Monthly revenue chart (last 6 months)
     const monthlyRevenueChart = [];
     for (let i = 5; i >= 0; i--) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -943,6 +965,88 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
+    // 2. Financeiro Tab Metrics
+    const totalReceivablePending = allTransactions
+      .filter(t => t.type === 'receivable' && !t.isPaid)
+      .reduce((acc, t) => acc + parseFloat(t.amount), 0);
+
+    const totalPayablePending = allTransactions
+      .filter(t => t.type === 'payable' && !t.isPaid)
+      .reduce((acc, t) => acc + parseFloat(t.amount), 0);
+
+    const totalReceivablePaid = allTransactions
+      .filter(t => t.type === 'receivable' && t.isPaid)
+      .reduce((acc, t) => acc + parseFloat(t.amount), 0);
+
+    const totalPayablePaid = allTransactions
+      .filter(t => t.type === 'payable' && t.isPaid)
+      .reduce((acc, t) => acc + parseFloat(t.amount), 0);
+
+    const recentTransactions = allTransactions.slice(0, 5);
+
+    // 3. Eventos Tab Metrics
+    const totalEvents = allEvents.length;
+    const scheduledEvents = allEvents.filter(e => e.status === 'scheduled').length;
+    const completedEvents = allEvents.filter(e => e.status === 'completed').length;
+    const cancelledEvents = allEvents.filter(e => e.status === 'cancelled').length;
+    const recentEvents = allEvents.slice(0, 5);
+
+    // Event volume chart (last 6 months)
+    const eventsByMonthChart = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonthDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'short' });
+
+      const count = allEvents.filter(e => {
+        const date = new Date(e.date);
+        return date >= monthDate && date < nextMonthDate;
+      }).length;
+
+      eventsByMonthChart.push({ month: monthName, count });
+    }
+
+    // 4. Orçamentos Tab Metrics
+    const totalQuotes = allQuotes.length;
+    const approvedQuotes = allQuotes.filter(q => q.status === 'approved').length;
+    const pendingQuotes = allQuotes.filter(q => q.status === 'draft' || q.status === 'sent').length;
+    const rejectedQuotes = allQuotes.filter(q => q.status === 'rejected').length;
+    const totalQuotesValue = allQuotes.reduce((acc, q) => acc + parseFloat(q.totalValue), 0);
+    const recentQuotes = allQuotes.slice(0, 5);
+    const conversionRate = totalQuotes > 0 ? Math.round((approvedQuotes / totalQuotes) * 100) : 0;
+
+    // 5. Estoque Tab Metrics
+    const totalItems = allInventory.length;
+    const lowStockItemsCount = lowStockItems.length;
+    
+    // Total stock value (based on quantity * costPrice)
+    const totalStockValue = allInventory.reduce((acc, item) => {
+      const cost = item.costPrice ? parseFloat(item.costPrice.toString()) : 0;
+      return acc + (item.quantity * cost);
+    }, 0);
+
+    const lowStockItemsList = lowStockItems.slice(0, 5).map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      minQuantity: item.minQuantity,
+      unit: item.unit,
+    }));
+
+    const recentMovements = await db
+      .select({
+        id: stockMovements.id,
+        itemName: inventoryItems.name,
+        quantity: stockMovements.quantity,
+        type: stockMovements.type,
+        createdAt: stockMovements.createdAt,
+        notes: stockMovements.notes,
+      })
+      .from(stockMovements)
+      .leftJoin(inventoryItems, eq(stockMovements.itemId, inventoryItems.id))
+      .orderBy(desc(stockMovements.createdAt))
+      .limit(5);
+
     return {
       cashBalance,
       monthlyRevenue,
@@ -950,6 +1054,37 @@ export class DatabaseStorage implements IStorage {
       lowStockItems: lowStockItems.length,
       monthlyRevenueChart,
       cashFlowChart,
+      financialSummary: {
+        totalReceivablePending,
+        totalPayablePending,
+        totalReceivablePaid,
+        totalPayablePaid,
+        recentTransactions,
+      },
+      eventSummary: {
+        totalEvents,
+        scheduledEvents,
+        completedEvents,
+        cancelledEvents,
+        recentEvents,
+        eventsByMonthChart,
+      },
+      quoteSummary: {
+        totalQuotes,
+        approvedQuotes,
+        pendingQuotes,
+        rejectedQuotes,
+        totalQuotesValue,
+        recentQuotes,
+        conversionRate,
+      },
+      inventorySummary: {
+        totalItems,
+        lowStockItemsCount,
+        totalStockValue,
+        lowStockItemsList,
+        recentMovements,
+      }
     };
   }
 
@@ -1474,6 +1609,45 @@ export class DatabaseStorage implements IStorage {
       .where(eq(timeRecordAdjustments.id, id))
       .returning();
     return updated;
+  }
+
+  // Quotes
+  async getAllQuotes(): Promise<Quote[]> {
+    return await db.select().from(quotes).orderBy(desc(quotes.createdAt));
+  }
+
+  async getQuote(id: string): Promise<Quote | undefined> {
+    const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
+    return quote || undefined;
+  }
+
+  async createQuote(quote: InsertQuote): Promise<Quote> {
+    const [newQuote] = await db.insert(quotes).values({
+      ...quote,
+      eventDate: quote.eventDate ? new Date(quote.eventDate) : null,
+      totalValue: quote.totalValue ? quote.totalValue.toString() : "0"
+    }).returning();
+    return newQuote;
+  }
+
+  async updateQuote(id: string, quoteData: Partial<InsertQuote>): Promise<Quote> {
+    const dataToUpdate = { ...quoteData };
+    if (dataToUpdate.eventDate !== undefined) {
+      dataToUpdate.eventDate = dataToUpdate.eventDate ? new Date(dataToUpdate.eventDate) : null;
+    }
+    if (dataToUpdate.totalValue !== undefined) {
+      dataToUpdate.totalValue = dataToUpdate.totalValue ? dataToUpdate.totalValue.toString() : "0";
+    }
+
+    const [updated] = await db.update(quotes)
+      .set(dataToUpdate)
+      .where(eq(quotes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteQuote(id: string): Promise<void> {
+    await db.delete(quotes).where(eq(quotes.id, id));
   }
 }
 

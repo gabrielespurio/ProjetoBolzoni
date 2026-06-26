@@ -1,4 +1,5 @@
-import { isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
+import { isWithinInterval, parseISO, startOfDay, endOfDay, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import type { DateFilterValue } from "@/components/date-filter";
 
 /**
@@ -35,7 +36,7 @@ export function filterByDateRange<T extends Record<string, any>>(
     } else if (dateValue instanceof Date) {
       itemDate = dateValue;
     } else {
-      itemDate = new Date(dateValue);
+      itemDate = new Date(dateValue as any);
     }
 
     // Valida se a data é válida
@@ -53,3 +54,43 @@ export function filterByDateRange<T extends Record<string, any>>(
     });
   });
 }
+
+/**
+ * Formata uma data de forma segura sem sofrer com desvios de fuso horário.
+ * Suporta objetos Date, strings no formato YYYY-MM-DD e strings ISO completas.
+ */
+export function formatLocalDate(dateValue: any, formatStr: string = "dd/MM/yyyy"): string {
+  if (!dateValue) return "";
+
+  let dateStr = "";
+  if (dateValue instanceof Date) {
+    dateStr = dateValue.toISOString();
+  } else if (typeof dateValue === "string") {
+    dateStr = dateValue;
+  } else {
+    dateStr = String(dateValue);
+  }
+
+  // Se for uma string no formato YYYY-MM-DD (com ou sem horário depois)
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, year, month, day] = match;
+    if (formatStr === "dd/MM/yyyy") {
+      return `${day}/${month}/${year}`;
+    }
+    return format(new Date(`${year}-${month}-${day}T12:00:00`), formatStr, { locale: ptBR });
+  }
+
+  // Fallback para outros formatos
+  try {
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) {
+      return format(date, formatStr, { locale: ptBR });
+    }
+  } catch (e) {
+    console.error("Error formatting date:", e);
+  }
+
+  return "";
+}
+
