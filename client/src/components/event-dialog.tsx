@@ -639,7 +639,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                   <TabsTrigger value="info" className="text-xs sm:text-sm">📋 Informações</TabsTrigger>
                   <TabsTrigger value="characters" className="text-xs sm:text-sm">🎭 Personagens</TabsTrigger>
                   <TabsTrigger value="cast" className="text-xs sm:text-sm">👥 Elenco</TabsTrigger>
-                  <TabsTrigger value="payments" className="text-xs sm:text-sm" disabled={!isEdit}>💰 Pagamentos</TabsTrigger>
+                  <TabsTrigger value="payments" className="text-xs sm:text-sm">💰 Pagamentos</TabsTrigger>
                 </TabsList>
                 <TabsContent value="info" className="space-y-8 mt-0">
                   <div className="space-y-4">
@@ -1799,11 +1799,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     </FormItem>
                   )}
                 />
-                {/* Payments Section - only when editing */}
-                {isEdit && event && canViewFinancials && (
+                {/* Payments Section */}
+                {canViewFinancials && (
                   <div className="border-t pt-6">
                     <EventPaymentsSection
-                      eventId={event.id}
+                      payments={eventInstallments}
+                      onChange={setEventInstallments}
                       contractValue={form.watch("contractValue") || "0"}
                       isReadOnly={isReadOnly}
                     />

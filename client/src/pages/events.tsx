@@ -324,6 +324,13 @@ export default function Events() {
         packageText = event.packageName || "Pacote não especificado";
       }
 
+      let packageDesc = event.packageIds && packages
+        ? event.packageIds.map(id => packages.find(p => p.id === id)?.description).filter(Boolean).join("\n")
+        : "";
+      if (!packageDesc && event.packageId && packages) {
+        packageDesc = packages.find(p => p.id === event.packageId)?.description || "";
+      }
+
       generateContract({
         eventTitle: event.title,
         clientName: event.clientName || "Cliente não informado",
@@ -350,6 +357,7 @@ export default function Events() {
         contractValue: formatCurrency(event.contractValue),
         package: packageText,
         packageNotes: event.packageNotes || undefined,
+        packageDescription: packageDesc || undefined,
         characters: event.characterNames && event.characterNames.length > 0
           ? event.characterNames
           : ["Personagem não especificado"],

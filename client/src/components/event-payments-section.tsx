@@ -1,13 +1,11 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, DollarSign, Calendar, CreditCard, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Plus, Trash2, DollarSign, Calendar, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -21,17 +19,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface EventPayment {
-  id: string;
-  eventId: string;
+export interface EventPayment {
+  id?: string;
   amount: string;
   paymentDate: string;
   paymentMethod: string;
-  createdAt: string;
 }
 
 interface EventPaymentsSectionProps {
-  eventId: string;
+  payments: EventPayment[];
+  onChange: (payments: EventPayment[]) => void;
   contractValue: string;
   isReadOnly?: boolean;
 }
@@ -54,65 +51,13 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export function EventPaymentsSection({ eventId, contractValue, isReadOnly = false }: EventPaymentsSectionProps) {
+export function EventPaymentsSection({ payments, onChange, contractValue, isReadOnly = false }: EventPaymentsSectionProps) {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentMethod, setPaymentMethod] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const { data: payments, isLoading } = useQuery<EventPayment[]>({
-    queryKey: [`/api/events/${eventId}/payments`],
-    enabled: !!eventId,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (data: { amount: string; paymentDate: string; paymentMethod: string }) => {
-      return await apiRequest("POST", `/api/events/${eventId}/payments`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/payments`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      toast({
-        title: "Pagamento registrado",
-        description: "O pagamento foi registrado com sucesso.",
-      });
-      setAmount("");
-      setPaymentDate(format(new Date(), "yyyy-MM-dd"));
-      setPaymentMethod("");
-      setShowForm(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao registrar pagamento",
-        description: error.message || "Não foi possível registrar o pagamento.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (paymentId: string) => {
-      return await apiRequest("DELETE", `/api/events/${eventId}/payments/${paymentId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/payments`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      toast({
-        title: "Pagamento excluído",
-        description: "O pagamento foi removido com sucesso.",
-      });
-      setDeleteId(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao excluir pagamento",
-        description: error.message || "Não foi possível excluir o pagamento.",
-        variant: "destructive",
-      });
-    },
-  });
 
   const totalPaid = useMemo(() => {
     return (payments || []).reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
@@ -133,7 +78,24 @@ export function EventPaymentsSection({ eventId, contractValue, isReadOnly = fals
       });
       return;
     }
-    createMutation.mutate({ amount, paymentDate, paymentMethod });
+    const newPayment: EventPayment = {
+      id: Math.random().toString(36).substring(7),
+      amount,
+      paymentDate,
+      paymentMethod,
+    };
+    onChange([...(payments || []), newPayment]);
+    setAmount("");
+    setPaymentDate(format(new Date(), "yyyy-MM-dd"));
+    setPaymentMethod("");
+    setShowForm(false);
+  };
+
+  const handleDelete = () => {
+    if (deleteId) {
+      onChange((payments || []).filter(p => p.id !== deleteId));
+      setDeleteId(null);
+    }
   };
 
   return (
@@ -252,23 +214,20 @@ export function EventPaymentsSection({ eventId, contractValue, isReadOnly = fals
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)} className="text-xs">
               Cancelar
             </Button>
-            <Button type="button" onClick={handleSubmit} size="sm" disabled={createMutation.isPending} className="text-xs bg-emerald-600 hover:bg-emerald-700">
-              {createMutation.isPending ? "Salvando..." : "Salvar Pagamento"}
+            <Button type="button" onClick={handleSubmit} size="sm" className="text-xs bg-emerald-600 hover:bg-emerald-700">
+              Salvar Pagamento
             </Button>
           </div>
         </div>
       )}
 
-      {/* Payment History */}
-      {isLoading ? (
-        <div className="text-xs text-muted-foreground text-center py-4">Carregando pagamentos...</div>
-      ) : payments && payments.length > 0 ? (
+      {payments && payments.length > 0 ? (
         <div className="space-y-2">
           {payments
             .sort((a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime())
             .map((payment, index) => (
             <div
-              key={payment.id}
+              key={payment.id || index}
               className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -300,7 +259,7 @@ export function EventPaymentsSection({ eventId, contractValue, isReadOnly = fals
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                  onClick={() => setDeleteId(payment.id)}
+                  onClick={() => setDeleteId(payment.id || null)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -326,7 +285,7 @@ export function EventPaymentsSection({ eventId, contractValue, isReadOnly = fals
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir

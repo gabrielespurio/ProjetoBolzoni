@@ -33,6 +33,7 @@ interface ContractData {
   contractValue: string;
   package: string;
   packageNotes?: string;
+  packageDescription?: string;
   characters: string[];
   employees?: string[];
   estimatedChildren: number;
@@ -510,7 +511,7 @@ function generatePartyContract(data: ContractData) {
         margin: [0, 0, 0, 5]
       },
       {
-        ul: [
+        ul: data.packageDescription ? data.packageDescription.split('\n').filter(Boolean) : [
           `${data.characters.length} personage${data.characters.length > 1 ? 'ns caracterizados' : 'm caracterizado'}: ${data.characters.join(', ')};`,
           'Apresentação musical temática com ambientação sonora;',
           'Dança e interação com as crianças ao longo do evento;',
