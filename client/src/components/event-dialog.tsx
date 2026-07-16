@@ -278,6 +278,15 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     enabled: open,
   });
 
+  const { data: fetchedEventDetails } = useQuery<any>({
+    queryKey: ["/api/events", event?.id],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/events/${event?.id}`);
+      return res;
+    },
+    enabled: open && isEdit && !!event?.id,
+  });
+
   const eventType = form.watch("eventType");
   const contractValue = form.watch("contractValue");
 
@@ -292,75 +301,78 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     return Math.max(0, total - totalPaid);
   }, [contractValue, totalPaid]);
 
+  const activeEventData = (isEdit && fetchedEventDetails && fetchedEventDetails.id === event?.id) ? fetchedEventDetails : event;
+
   useEffect(() => {
-    if (open && event) {
+    if (open && activeEventData) {
       form.reset({
-        title: event.title || "",
-        clientId: event.clientId || "",
-        categoryId: event.categoryId || undefined,
-        date: event.date ? (() => {
-          const d = new Date(event.date);
+        title: activeEventData.title || "",
+        clientId: activeEventData.clientId || "",
+        categoryId: activeEventData.categoryId || undefined,
+        date: activeEventData.date ? (() => {
+          const d = new Date(activeEventData.date);
           const year = d.getFullYear();
           const month = String(d.getMonth() + 1).padStart(2, '0');
           const day = String(d.getDate()).padStart(2, '0');
           return `${year}-${month}-${day}`;
         })() : "",
-        partyStartTime: (event as any).partyStartTime || "",
-        eventDuration: (event as any).eventDuration || "",
-        childrenCount: (event as any).childrenCount?.toString() || "",
-        startTime: (event as any).startTime || (event.date ? (() => {
-          const d = new Date(event.date);
+        partyStartTime: (activeEventData as any).partyStartTime || "",
+        eventDuration: (activeEventData as any).eventDuration || "",
+        childrenCount: (activeEventData as any).childrenCount?.toString() || "",
+        startTime: (activeEventData as any).startTime || (activeEventData.date ? (() => {
+          const d = new Date(activeEventData.date);
           if (d.getHours() === 0 && d.getMinutes() === 0) return "";
           return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         })() : ""),
-        endTime: (event as any).endTime || (event.date ? (() => {
-          const d = new Date(event.date);
+        endTime: (activeEventData as any).endTime || (activeEventData.date ? (() => {
+          const d = new Date(activeEventData.date);
           if (d.getHours() === 0 && d.getMinutes() === 0) return "";
           return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         })() : ""),
-        cep: (event as any).cep || "",
-        estado: (event as any).estado || "",
-        cidade: (event as any).cidade || "",
-        bairro: (event as any).bairro || "",
-        rua: (event as any).rua || "",
-        venueName: (event as any).venueName || "",
-        venueNumber: (event as any).venueNumber || "",
-        kmDistance: (event as any).kmDistance || "",
-        contractValue: event.contractValue || "0",
-        ticketValue: (event as any).ticketValue || "",
-        paymentMethod: (event as any).paymentMethod || "",
-        cardType: (event as any).cardType || "",
-        installments: (event as any).installments || 1,
-        paymentDate: (event as any).paymentDate ? new Date((event as any).paymentDate).toISOString().slice(0, 10) : "",
-        packageIds: (event as any).packageIds || [],
-        serviceId: (event as any).serviceId || "",
-        eventType: (event as any).eventType || "package",
-        packageNotes: (event as any).packageNotes || "",
-        buffetId: (event as any).buffetId || "",
-        status: event.status || "scheduled",
-        complementaryNotes: (event as any).complementaryNotes || "",
-        notes: event.notes || "",
+        cep: (activeEventData as any).cep || "",
+        estado: (activeEventData as any).estado || "",
+        cidade: (activeEventData as any).cidade || "",
+        bairro: (activeEventData as any).bairro || "",
+        rua: (activeEventData as any).rua || "",
+        venueName: (activeEventData as any).venueName || "",
+        venueNumber: (activeEventData as any).venueNumber || "",
+        kmDistance: (activeEventData as any).kmDistance || "",
+        contractValue: activeEventData.contractValue || "0",
+        ticketValue: (activeEventData as any).ticketValue || "",
+        paymentMethod: (activeEventData as any).paymentMethod || "",
+        cardType: (activeEventData as any).cardType || "",
+        installments: (activeEventData as any).installments || 1,
+        paymentDate: (activeEventData as any).paymentDate ? new Date((activeEventData as any).paymentDate).toISOString().slice(0, 10) : "",
+        packageIds: (activeEventData as any).packageIds || [],
+        serviceId: (activeEventData as any).serviceId || "",
+        eventType: (activeEventData as any).eventType || "package",
+        packageNotes: (activeEventData as any).packageNotes || "",
+        buffetId: (activeEventData as any).buffetId || "",
+        status: activeEventData.status || "scheduled",
+        complementaryNotes: (activeEventData as any).complementaryNotes || "",
+        notes: activeEventData.notes || "",
         characterIds: [],
       });
-      setSelectedCharacters((event as any).characterIds || []);
-      const loadedExpenses = (event as any).expenses || [];
+      setSelectedCharacters((activeEventData as any).characterIds || []);
+      const loadedExpenses = (activeEventData as any).expenses || [];
       setExpenses(loadedExpenses.map((exp: any) => ({
         title: exp.title || "",
         amount: exp.amount?.toString() || "0",
         description: exp.description || ""
       })));
-      setKmDistance((event as any).kmDistance || "");
-      setEventInstallments((event as any).eventInstallments?.map((inst: any) => ({
+      setKmDistance((activeEventData as any).kmDistance || "");
+      setEventInstallments((activeEventData as any).eventInstallments?.map((inst: any) => ({
+        id: inst.id,
         amount: inst.amount?.toString() || "0",
         paymentDate: inst.paymentDate ? new Date(inst.paymentDate).toISOString().slice(0, 10) : "",
         paymentMethod: inst.paymentMethod || ""
       })) || []);
-      setSelectedEmployees((event as any).eventEmployees?.map((ee: any) => ({
+      setSelectedEmployees((activeEventData as any).eventEmployees?.map((ee: any) => ({
         employeeId: ee.employeeId,
         characterId: ee.characterId || "",
         cacheValue: ee.cacheValue || "0"
       })) || []);
-    } else if (open && !event) {
+    } else if (open && !event && !activeEventData) {
       form.reset({
         title: "",
         clientId: "",
@@ -401,7 +413,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       setEventInstallments([]);
       setSelectedEmployees([]);
     }
-  }, [open, event]);
+  }, [open, event, activeEventData]);
 
   const charactersTotal = useMemo(() => {
     return selectedCharacters.reduce((sum, characterId) => {
@@ -457,10 +469,14 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         return apiRequest("POST", "/api/events", payload);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+    onSuccess: async () => {
+      if (isEdit && event?.id) {
+        await queryClient.invalidateQueries({ queryKey: ["/api/events", event.id] });
+      }
+      await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/upcoming-events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/pending-payments"] });
       toast({
         title: isEdit ? "Evento atualizado" : "Evento criado",
         description: isEdit ? "Evento atualizado com sucesso." : "Novo evento cadastrado com sucesso.",
@@ -1803,9 +1819,11 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 {canViewFinancials && (
                   <div className="border-t pt-6">
                     <EventPaymentsSection
+                      eventId={isEdit ? event?.id : undefined}
                       payments={eventInstallments}
                       onChange={setEventInstallments}
                       contractValue={form.watch("contractValue") || "0"}
+                      ticketValue={form.watch("ticketValue") || "0"}
                       isReadOnly={isReadOnly}
                     />
                   </div>

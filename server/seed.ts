@@ -32,7 +32,7 @@ async function seed() {
       name: "Maria Silva",
       phone: "(11) 98765-4321",
       email: "maria.silva@email.com",
-      city: "São Paulo",
+      cidade: "São Paulo",
       notes: "Cliente preferencial, gosta de temas da Disney",
     });
     
@@ -40,7 +40,7 @@ async function seed() {
       name: "João Santos",
       phone: "(11) 91234-5678",
       email: "joao.santos@email.com",
-      city: "Campinas",
+      cidade: "Campinas",
       notes: "Eventos corporativos e festas infantis",
     });
     
@@ -53,7 +53,9 @@ async function seed() {
       phone: "(11) 99999-1111",
       email: "carlos@bolzoni.com",
       isAvailable: true,
-    });
+      clocksIn: false,
+      workloadHours: 8,
+    } as any);
     
     await storage.createEmployee({
       name: "Ana Caracterista",
@@ -61,7 +63,9 @@ async function seed() {
       phone: "(11) 99999-2222",
       email: "ana@bolzoni.com",
       isAvailable: true,
-    });
+      clocksIn: false,
+      workloadHours: 8,
+    } as any);
     
     console.log(`✅ Created ${2} sample employees`);
     
@@ -86,7 +90,7 @@ async function seed() {
     
     await storage.createInventoryItem({
       name: "Balões coloridos",
-      type: "consumable",
+      type: "material",
       quantity: 500,
       minQuantity: 100,
       unit: "un",
@@ -95,7 +99,7 @@ async function seed() {
     
     await storage.createInventoryItem({
       name: "Tinta facial",
-      type: "consumable",
+      type: "material",
       quantity: 15,
       minQuantity: 20,
       unit: "un",

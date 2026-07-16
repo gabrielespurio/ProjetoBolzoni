@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,9 +28,11 @@ export interface EventPayment {
 }
 
 interface EventPaymentsSectionProps {
+  eventId?: string;
   payments: EventPayment[];
   onChange: (payments: EventPayment[]) => void;
   contractValue: string;
+  ticketValue?: string;
   isReadOnly?: boolean;
 }
 
@@ -51,24 +54,33 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export function EventPaymentsSection({ payments, onChange, contractValue, isReadOnly = false }: EventPaymentsSectionProps) {
+export function EventPaymentsSection({ eventId, payments, onChange, contractValue, ticketValue = "0", isReadOnly = false }: EventPaymentsSectionProps) {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentMethod, setPaymentMethod] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const entryValue = parseFloat(ticketValue || "0") || 0;
+  const contract = parseFloat(contractValue || "0") || 0;
+
+  const hasMatchingEntryInInstallments = useMemo(() => {
+    return entryValue > 0 && (payments || []).some((p) => Math.abs(parseFloat(p.amount || "0") - entryValue) < 0.01);
+  }, [payments, entryValue]);
 
   const totalPaid = useMemo(() => {
-    return (payments || []).reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
-  }, [payments]);
+    const installmentsSum = (payments || []).reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
+    const isCoveredByInstallments = contract > 0 && installmentsSum >= contract - 0.01;
+    return (hasMatchingEntryInInstallments || isCoveredByInstallments) ? installmentsSum : installmentsSum + entryValue;
+  }, [payments, entryValue, contract, hasMatchingEntryInInstallments]);
 
-  const contract = parseFloat(contractValue || "0");
   const remaining = Math.max(0, contract - totalPaid);
   const percentage = contract > 0 ? Math.min(100, (totalPaid / contract) * 100) : 0;
-  const isFullyPaid = remaining <= 0 && contract > 0;
+  const isFullyPaid = remaining <= 0.01 && contract > 0;
 
-  const handleSubmit = (e?: React.MouseEvent) => {
+  const handleSubmit = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     if (!amount || !paymentDate || !paymentMethod) {
       toast({
@@ -78,23 +90,83 @@ export function EventPaymentsSection({ payments, onChange, contractValue, isRead
       });
       return;
     }
-    const newPayment: EventPayment = {
-      id: Math.random().toString(36).substring(7),
-      amount,
-      paymentDate,
-      paymentMethod,
-    };
-    onChange([...(payments || []), newPayment]);
+
+    if (eventId) {
+      try {
+        setIsSaving(true);
+        const savedPayment = await apiRequest("POST", `/api/events/${eventId}/payments`, {
+          amount,
+          paymentDate,
+          paymentMethod,
+        });
+        const newPayment: EventPayment = {
+          id: savedPayment?.id,
+          amount: savedPayment?.amount?.toString() || amount,
+          paymentDate: savedPayment?.paymentDate ? new Date(savedPayment.paymentDate).toISOString().slice(0, 10) : paymentDate,
+          paymentMethod: savedPayment?.paymentMethod || paymentMethod,
+        };
+        onChange([...(payments || []), newPayment]);
+        await queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/payments`] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/events", eventId] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/notifications/pending-payments"] });
+        toast({
+          title: "Pagamento salvo no evento!",
+          description: "O pagamento foi registrado no banco de dados com sucesso.",
+        });
+      } catch (err: any) {
+        toast({
+          title: "Erro ao registrar pagamento",
+          description: err.message || "Não foi possível registrar o pagamento.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      const newPayment: EventPayment = {
+        id: Math.random().toString(36).substring(7),
+        amount,
+        paymentDate,
+        paymentMethod,
+      };
+      onChange([...(payments || []), newPayment]);
+    }
+
     setAmount("");
     setPaymentDate(format(new Date(), "yyyy-MM-dd"));
     setPaymentMethod("");
     setShowForm(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
+      if (eventId && !deleteId.includes(".")) {
+        try {
+          await apiRequest("DELETE", `/api/events/${eventId}/payments/${deleteId}`);
+          await queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/payments`] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/events", eventId] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/notifications/pending-payments"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/financial/transactions"] });
+        } catch (err: any) {
+          toast({
+            title: "Erro ao excluir pagamento",
+            description: err.message || "Não foi possível remover do banco de dados.",
+            variant: "destructive",
+          });
+          setDeleteId(null);
+          return;
+        }
+      }
       onChange((payments || []).filter(p => p.id !== deleteId));
       setDeleteId(null);
+      toast({
+        title: "Pagamento excluído com sucesso!",
+        description: "O pagamento e seu respectivo lançamento financeiro foram removidos.",
+      });
     }
   };
 
@@ -214,9 +286,39 @@ export function EventPaymentsSection({ payments, onChange, contractValue, isRead
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)} className="text-xs">
               Cancelar
             </Button>
-            <Button type="button" onClick={handleSubmit} size="sm" className="text-xs bg-emerald-600 hover:bg-emerald-700">
-              Salvar Pagamento
+            <Button type="button" onClick={handleSubmit} size="sm" disabled={isSaving} className="text-xs bg-emerald-600 hover:bg-emerald-700">
+              {isSaving ? "Salvando..." : "Salvar Pagamento"}
             </Button>
+          </div>
+        </div>
+      )}
+
+      {entryValue > 0 && (
+        <div className="flex items-center justify-between p-3 rounded-lg border border-purple-200 bg-purple-50/50 dark:border-purple-900/30 dark:bg-purple-950/20 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-300">★</span>
+            </div>
+            <div>
+              <div className="flex items-center flex-wrap gap-2">
+                <span className="text-sm font-semibold font-mono text-purple-600 dark:text-purple-300">
+                  {formatCurrency(entryValue)}
+                </span>
+                <Badge variant="outline" className="text-[10px] border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-300">
+                  Entrada / Sinal
+                </Badge>
+                {hasMatchingEntryInInstallments && (
+                  <Badge className="bg-purple-600 hover:bg-purple-700 text-white text-[10px]">
+                    Registrado em Pagamentos abaixo
+                  </Badge>
+                )}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {hasMatchingEntryInInstallments
+                  ? 'Valor informado na aba Informações (já contabilizado no lançamento de pagamento registrado abaixo)'
+                  : 'Valor informado no campo "Entrada / Sinal" na aba Informações'}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -269,7 +371,7 @@ export function EventPaymentsSection({ payments, onChange, contractValue, isRead
         </div>
       ) : (
         <div className="text-center py-4 text-xs text-muted-foreground">
-          Nenhum pagamento registrado para este evento.
+          {entryValue > 0 ? "Nenhuma parcela adicional cadastrada." : "Nenhum pagamento registrado para este evento."}
         </div>
       )}
 

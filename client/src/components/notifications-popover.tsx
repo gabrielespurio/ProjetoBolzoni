@@ -43,9 +43,8 @@ export function NotificationsPopover() {
         <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
           <Bell className="h-4 w-4" />
           {hasNotifications && (
-            <span className="absolute top-1 right-1 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm animate-pulse">
+              {notifications.length > 99 ? "99+" : notifications.length}
             </span>
           )}
         </Button>

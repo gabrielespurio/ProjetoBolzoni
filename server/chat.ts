@@ -144,9 +144,10 @@ export async function handleChat(req: Request, res: Response) {
     if (call) {
       console.log("Chamada de função detectada:", call.name, call.args);
       let apiResponse = {};
+      const args = call.args as Record<string, any>;
       try {
         if (call.name === "create_quote") {
-          const { clientName, eventType, eventDate, totalValue } = call.args;
+          const { clientName, eventType, eventDate, totalValue } = args;
           const newQuote = await storage.createQuote({
             clientName: clientName as string,
             eventType: eventType as string,
@@ -157,7 +158,7 @@ export async function handleChat(req: Request, res: Response) {
           } as any);
           apiResponse = { success: true, message: "Orçamento criado com sucesso!", quoteId: newQuote.id };
         } else if (call.name === "create_event") {
-          const { clientName, clientPhone, title, date, contractValue } = call.args;
+          const { clientName, clientPhone, title, date, contractValue } = args;
           
           // Cria o cliente primeiro
           const newClient = await storage.createClient({
@@ -178,12 +179,12 @@ export async function handleChat(req: Request, res: Response) {
           
           apiResponse = { success: true, message: "Cliente e Evento criados com sucesso!", eventId: newEvent.id };
         } else if (call.name === "search_quotes") {
-          const { clientName } = call.args;
+          const { clientName } = args;
           const quotes = await storage.getAllQuotes();
           const filtered = quotes.filter(q => q.clientName.toLowerCase().includes((clientName as string).toLowerCase()));
           apiResponse = { success: true, quotes: filtered.map(q => ({ id: q.id, clientName: q.clientName, eventType: q.eventType, totalValue: q.totalValue, date: q.eventDate })) };
         } else if (call.name === "convert_quote_to_event") {
-          const { quoteId, title } = call.args;
+          const { quoteId, title } = args;
           const quote = await storage.getQuote(quoteId as string);
           if (!quote) throw new Error("Orçamento não encontrado.");
 

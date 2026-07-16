@@ -63,6 +63,7 @@ export function FinancialDialog({ open, onClose, transaction }: FinancialDialogP
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/financial/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/pending-payments"] });
       toast({
         title: isEdit ? "Transação atualizada" : "Transação criada",
         description: isEdit ? "Transação atualizada com sucesso." : "Nova transação cadastrada com sucesso.",

@@ -164,6 +164,12 @@ export interface IStorage {
   addEventEmployees(eventId: string, employees: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, eventTitle?: string, eventDate?: Date): Promise<void>;
   removeEventEmployees(eventId: string): Promise<void>;
 
+  // Event Installments & Financial Sync
+  getEventInstallments(eventId: string): Promise<EventInstallment[]>;
+  createEventInstallment(data: { eventId: string; amount: string; paymentDate: Date; paymentMethod: string }): Promise<EventInstallment>;
+  deleteEventInstallment(id: string): Promise<void>;
+  syncEventFinancialTransactions(eventId: string): Promise<void>;
+
   // Inventory
   getAllInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItem(id: string): Promise<InventoryItem | undefined>;
@@ -540,6 +546,12 @@ export class DatabaseStorage implements IStorage {
       await this.addEventPackages(newEvent.id, packageIds);
     }
 
+    try {
+      await this.syncEventFinancialTransactions(newEvent.id);
+    } catch (err) {
+      console.error("Erro ao sincronizar transações no createEvent:", err);
+    }
+
     return newEvent;
   }
 
@@ -583,6 +595,12 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    try {
+      await this.syncEventFinancialTransactions(id);
+    } catch (err) {
+      console.error("Erro ao sincronizar transações no updateEvent:", err);
+    }
+
     return updated;
   }
 
@@ -610,11 +628,144 @@ export class DatabaseStorage implements IStorage {
       paymentDate: data.paymentDate,
       paymentMethod: data.paymentMethod,
     }).returning();
+    try {
+      await this.syncEventFinancialTransactions(data.eventId);
+    } catch (err) {
+      console.error("Erro ao sincronizar transações no createEventInstallment:", err);
+    }
     return installment;
   }
 
   async deleteEventInstallment(id: string): Promise<void> {
+    const [existing] = await db.select().from(eventInstallments).where(eq(eventInstallments.id, id));
     await db.delete(eventInstallments).where(eq(eventInstallments.id, id));
+    if (existing?.eventId) {
+      try {
+        await this.syncEventFinancialTransactions(existing.eventId);
+      } catch (err) {
+        console.error("Erro ao sincronizar transações no deleteEventInstallment:", err);
+      }
+    }
+  }
+
+  async syncEventFinancialTransactions(eventId: string): Promise<void> {
+    const event = await this.getEvent(eventId);
+    if (!event) return;
+
+    const allTxs = await this.getAllTransactions();
+    const eventDate = (event as any).date instanceof Date ? (event as any).date : new Date((event as any).date);
+    const paymentDate = (event as any).paymentDate ? ((event as any).paymentDate instanceof Date ? (event as any).paymentDate : new Date((event as any).paymentDate)) : eventDate;
+
+    // 1. Sincronizar Entrada / Sinal (ticketValue) se > 0
+    const ticketValue = parseFloat((event as any).ticketValue?.toString() || "0");
+    const sinalTx = allTxs.find(t => t.notes && t.notes.includes(`[SINAL_REF:${eventId}]`));
+    if (ticketValue > 0) {
+      if (sinalTx) {
+        await this.updateTransaction(sinalTx.id, {
+          amount: ticketValue.toString(),
+          dueDate: eventDate,
+          paidDate: paymentDate,
+          isPaid: true,
+          description: `Entrada / Sinal - Evento: ${event.title}`,
+        });
+      } else {
+        await this.createTransaction({
+          type: 'receivable',
+          description: `Entrada / Sinal - Evento: ${event.title}`,
+          amount: ticketValue.toString(),
+          eventId: event.id,
+          dueDate: eventDate,
+          paidDate: paymentDate,
+          isPaid: true,
+          notes: `[SINAL_REF:${eventId}] Entrada/Sinal registrada via aba Informações do Evento`,
+        });
+      }
+    } else if (sinalTx) {
+      await this.deleteTransaction(sinalTx.id);
+    }
+
+    // 2. Sincronizar Parcelas (eventInstallments)
+    const installments = await this.getEventInstallments(eventId);
+    for (const inst of installments) {
+      if (!inst.id) continue;
+      const instTx = allTxs.find(t => t.notes && t.notes.includes(`[INSTALLMENT_REF:${inst.id}]`));
+      const instDate = inst.paymentDate instanceof Date ? inst.paymentDate : new Date(inst.paymentDate);
+      if (instTx) {
+        await this.updateTransaction(instTx.id, {
+          amount: inst.amount.toString(),
+          dueDate: instDate,
+          paidDate: instDate,
+          isPaid: true,
+          description: `Pagamento Parcela - Evento: ${event.title} (${inst.paymentMethod})`,
+        });
+      } else {
+        await this.createTransaction({
+          type: 'receivable',
+          description: `Pagamento Parcela - Evento: ${event.title} (${inst.paymentMethod})`,
+          amount: inst.amount.toString(),
+          eventId: event.id,
+          dueDate: instDate,
+          paidDate: instDate,
+          isPaid: true,
+          notes: `[INSTALLMENT_REF:${inst.id}] Pagamento cadastrado na aba Pagamentos do Evento`,
+        });
+      }
+    }
+
+    // Remover transações de parcelas que foram deletadas do evento
+    const installmentIds = new Set(installments.map(i => i.id));
+    const existingInstTxs = allTxs.filter(t => t.notes && t.notes.includes(`[INSTALLMENT_REF:`) && t.eventId === eventId);
+    for (const tx of existingInstTxs) {
+      const match = tx.notes?.match(/\[INSTALLMENT_REF:([^\]]+)\]/);
+      if (match && match[1] && !installmentIds.has(match[1])) {
+        await this.deleteTransaction(tx.id);
+      }
+    }
+
+    // 3. Sincronizar Saldo Devedor / Status Concluído
+    const installmentsSum = installments.reduce((sum, p) => sum + parseFloat(p.amount?.toString() || "0"), 0);
+    const totalPaid = ticketValue + installmentsSum;
+    const contractValue = parseFloat(event.contractValue?.toString() || "0");
+    const remaining = Math.max(0, contractValue - totalPaid);
+
+    const completionTxs = allTxs.filter(t => 
+      t.eventId === eventId && 
+      t.type === 'receivable' && 
+      (!t.notes || (!t.notes.includes(`[SINAL_REF:`) && !t.notes.includes(`[INSTALLMENT_REF:`)))
+    );
+
+    if (completionTxs.length > 0) {
+      if (remaining <= 0.01 || event.status === "paid_full") {
+        for (const tx of completionTxs) {
+          if (!tx.isPaid) {
+            await this.updateTransaction(tx.id, {
+              isPaid: true,
+              paidDate: new Date(),
+              notes: `${tx.notes || ""} [Quitado automaticamente por pagamentos na aba Eventos]`,
+            });
+          }
+        }
+      } else {
+        for (const tx of completionTxs) {
+          if (!tx.isPaid) {
+            await this.updateTransaction(tx.id, {
+              amount: remaining.toString(),
+              description: `Evento: ${event.title} (Saldo Restante Pendente)`,
+            });
+          }
+        }
+      }
+    } else if (event.status === "completed" && remaining > 0.01) {
+      await this.createTransaction({
+        type: 'receivable',
+        description: `Evento: ${event.title} (Saldo Restante Pendente)`,
+        amount: remaining.toString(),
+        eventId: event.id,
+        dueDate: eventDate,
+        isPaid: false,
+        notes: `Saldo pendente a receber do evento concluído`,
+      });
+    }
   }
 
   async addEventPackages(eventId: string, packageIds: string[]): Promise<void> {

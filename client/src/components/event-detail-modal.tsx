@@ -82,7 +82,12 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
 
   const contractValue = parseFloat(event.contractValue) || 0;
   const ticketValue = event.ticketValue ? parseFloat(event.ticketValue) : 0;
-  const remainingValue = contractValue - ticketValue;
+  const installmentsList = (event as any).eventInstallments || [];
+  const installmentsSum = installmentsList.reduce((sum: number, p: any) => sum + parseFloat(p.amount?.toString() || "0"), 0);
+  const hasMatchingEntry = ticketValue > 0 && installmentsList.some((p: any) => Math.abs(parseFloat(p.amount?.toString() || "0") - ticketValue) < 0.01);
+  const isCoveredByInstallments = contractValue > 0 && installmentsSum >= contractValue - 0.01;
+  const totalPaid = (hasMatchingEntry || isCoveredByInstallments) ? installmentsSum : installmentsSum + ticketValue;
+  const remainingValue = Math.max(0, contractValue - totalPaid);
   const installments = event.installments && event.installments > 0 ? event.installments : 1;
   const installmentValue = installments > 0 ? remainingValue / installments : remainingValue;
 
@@ -129,87 +134,43 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
 
   const renderPaymentInfo = () => {
     const hasEntry = ticketValue > 0;
-    const hasInstallments = event.installments && event.installments > 1;
-
-    if (hasEntry && hasInstallments) {
-      return (
-        <div className="space-y-2">
+    return (
+      <div className="space-y-2">
+        {hasEntry && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Entrada:</span>
+            <span className="text-muted-foreground">Entrada / Sinal (Contrato):</span>
             <span className="font-medium">{formatCurrency(ticketValue)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Valor Parcelado:</span>
-            <span className="font-medium">{formatCurrency(remainingValue)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Parcelas:</span>
-            <span className="font-medium">{installments}x de {formatCurrency(installmentValue)}</span>
-          </div>
-          {paymentDateObj && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data de Pagamento:</span>
-              <span className="font-medium">{format(paymentDateObj, "dd/MM/yyyy", { locale: ptBR })}</span>
-            </div>
-          )}
+        )}
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total Recebido:</span>
+          <span className="font-semibold text-emerald-600">{formatCurrency(totalPaid)}</span>
         </div>
-      );
-    } else if (hasEntry) {
-      return (
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Entrada:</span>
-            <span className="font-medium">{formatCurrency(ticketValue)}</span>
-          </div>
-          {remainingValue > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Valor Restante:</span>
-              <span className="font-medium">{formatCurrency(remainingValue)}</span>
-            </div>
-          )}
-          {paymentDateObj && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data de Pagamento:</span>
-              <span className="font-medium">{format(paymentDateObj, "dd/MM/yyyy", { locale: ptBR })}</span>
-            </div>
-          )}
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Valor Restante:</span>
+          <span className={`font-semibold ${remainingValue > 0.01 ? "text-red-600" : "text-emerald-600"}`}>
+            {remainingValue > 0.01 ? formatCurrency(remainingValue) : "R$ 0,00 (Quitado)"}
+          </span>
         </div>
-      );
-    } else if (hasInstallments) {
-      return (
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Valor Total:</span>
-            <span className="font-medium">{formatCurrency(contractValue)}</span>
+        {installmentsList && installmentsList.length > 0 && (
+          <div className="mt-3 pt-3 border-t text-xs space-y-1.5">
+            <span className="text-muted-foreground font-semibold block mb-1">Pagamentos Registrados:</span>
+            {installmentsList.map((p: any, idx: number) => (
+              <div key={p.id || idx} className="flex justify-between items-center text-muted-foreground bg-background/50 p-1.5 rounded border">
+                <span>{idx + 1}. {p.paymentMethod ? p.paymentMethod.toUpperCase() : 'PAGAMENTO'} {p.paymentDate ? `(${format(new Date(p.paymentDate), "dd/MM/yyyy")})` : ''}</span>
+                <span className="font-mono text-foreground font-semibold">{formatCurrency(parseFloat(p.amount || "0"))}</span>
+              </div>
+            ))}
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Parcelas:</span>
-            <span className="font-medium">{installments}x de {formatCurrency(installmentValue)}</span>
+        )}
+        {paymentDateObj && (
+          <div className="flex justify-between pt-2 border-t text-xs">
+            <span className="text-muted-foreground">Data Prevista do Saldo:</span>
+            <span className="font-medium">{format(paymentDateObj, "dd/MM/yyyy", { locale: ptBR })}</span>
           </div>
-          {paymentDateObj && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data de Pagamento:</span>
-              <span className="font-medium">{format(paymentDateObj, "dd/MM/yyyy", { locale: ptBR })}</span>
-            </div>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Pagamento a vista:</span>
-            <span className="font-medium">{formatCurrency(contractValue)}</span>
-          </div>
-          {paymentDateObj && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data de Pagamento:</span>
-              <span className="font-medium">{format(paymentDateObj, "dd/MM/yyyy", { locale: ptBR })}</span>
-            </div>
-          )}
-        </div>
-      );
-    }
+        )}
+      </div>
+    );
   };
 
   return (

@@ -13,10 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, FileSpreadsheet, Users, UserCircle, Calendar, Package, DollarSign, ShoppingCart } from "lucide-react";
+import { Download, FileSpreadsheet, Users, UserCircle, Calendar, Package, DollarSign, ShoppingCart, AlertCircle } from "lucide-react";
 import type { Client, Employee, Event, InventoryItem, FinancialTransaction, Purchase } from "@shared/schema";
 
-type ReportType = "clients" | "employees" | "events" | "inventory" | "financial" | "purchases";
+type ReportType = "clients" | "employees" | "events" | "pending_events" | "inventory" | "financial" | "purchases";
 
 interface ReportTab {
   id: ReportType;
@@ -28,6 +28,7 @@ const reportTabs: ReportTab[] = [
   { id: "clients", title: "Clientes", icon: Users },
   { id: "employees", title: "Funcionários", icon: UserCircle },
   { id: "events", title: "Eventos", icon: Calendar },
+  { id: "pending_events", title: "Pendências de Eventos", icon: AlertCircle },
   { id: "inventory", title: "Estoque", icon: Package },
   { id: "financial", title: "Financeiro", icon: DollarSign },
   { id: "purchases", title: "Compras", icon: ShoppingCart },
@@ -94,9 +95,11 @@ function ClientsReport() {
     { key: "createdAt", label: "Data Cadastro" },
   ];
 
+  const clientList: Client[] = Array.isArray(clients) ? clients : [];
+
   const handleExport = () => {
-    if (!clients) return;
-    const csvContent = convertToCSV(clients, columns);
+    if (!clientList.length) return;
+    const csvContent = convertToCSV(clientList, columns);
     downloadCSV(csvContent, "relatorio_clientes");
   };
 
@@ -109,10 +112,10 @@ function ClientsReport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" data-testid="badge-clients-count">
-            {clients?.length || 0} registros
+            {clientList.length} registros
           </Badge>
         </div>
-        <Button onClick={handleExport} disabled={!clients?.length} data-testid="button-export-clients">
+        <Button onClick={handleExport} disabled={!clientList.length} data-testid="button-export-clients">
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
@@ -131,7 +134,7 @@ function ClientsReport() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clients?.map((client) => (
+            {clientList.map((client) => (
               <TableRow key={client.id} data-testid={`row-client-${client.id}`}>
                 <TableCell className="font-medium">{client.name}</TableCell>
                 <TableCell>{client.phone || "-"}</TableCell>
@@ -142,7 +145,7 @@ function ClientsReport() {
                 <TableCell>{formatDate(client.createdAt)}</TableCell>
               </TableRow>
             ))}
-            {!clients?.length && (
+            {!clientList.length && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   Nenhum cliente cadastrado
@@ -172,9 +175,11 @@ function EmployeesReport() {
     { key: "createdAt", label: "Data Cadastro" },
   ];
 
+  const employeeList: Employee[] = Array.isArray(employees) ? employees : [];
+
   const handleExport = () => {
-    if (!employees) return;
-    const dataToExport = employees.map((emp) => ({
+    if (!employeeList.length) return;
+    const dataToExport = employeeList.map((emp) => ({
       ...emp,
       isAvailable: emp.isAvailable ? "Sim" : "Não",
     }));
@@ -191,10 +196,10 @@ function EmployeesReport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" data-testid="badge-employees-count">
-            {employees?.length || 0} registros
+            {employeeList.length} registros
           </Badge>
         </div>
-        <Button onClick={handleExport} disabled={!employees?.length} data-testid="button-export-employees">
+        <Button onClick={handleExport} disabled={!employeeList.length} data-testid="button-export-employees">
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
@@ -214,7 +219,7 @@ function EmployeesReport() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees?.map((employee) => (
+            {employeeList.map((employee) => (
               <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
                 <TableCell className="font-medium">{employee.name}</TableCell>
                 <TableCell>{employee.role}</TableCell>
@@ -230,7 +235,7 @@ function EmployeesReport() {
                 <TableCell>{formatDate(employee.createdAt)}</TableCell>
               </TableRow>
             ))}
-            {!employees?.length && (
+            {!employeeList.length && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Nenhum funcionário cadastrado
@@ -253,6 +258,8 @@ function EventsReport() {
     queryKey: ["/api/events"],
   });
 
+  const eventList: EventWithDetails[] = Array.isArray(events) ? events : [];
+
   const columns = [
     { key: "title" as keyof EventWithDetails, label: "Título" },
     { key: "clientName" as keyof EventWithDetails, label: "Cliente" },
@@ -264,8 +271,8 @@ function EventsReport() {
   ];
 
   const handleExport = () => {
-    if (!events) return;
-    const dataToExport = events.map((event) => ({
+    if (!eventList.length) return;
+    const dataToExport = eventList.map((event) => ({
       ...event,
       status: getStatusLabel(event.status),
       contractValue: event.contractValue,
@@ -315,10 +322,10 @@ function EventsReport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" data-testid="badge-events-count">
-            {events?.length || 0} registros
+            {eventList.length} registros
           </Badge>
         </div>
-        <Button onClick={handleExport} disabled={!events?.length} data-testid="button-export-events">
+        <Button onClick={handleExport} disabled={!eventList.length} data-testid="button-export-events">
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
@@ -337,7 +344,7 @@ function EventsReport() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {events?.map((event) => (
+            {eventList.map((event) => (
               <TableRow key={event.id} data-testid={`row-event-${event.id}`}>
                 <TableCell className="font-medium">{event.title}</TableCell>
                 <TableCell>{event.clientName || "-"}</TableCell>
@@ -348,7 +355,7 @@ function EventsReport() {
                 <TableCell>{formatDate(event.createdAt)}</TableCell>
               </TableRow>
             ))}
-            {!events?.length && (
+            {!eventList.length && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   Nenhum evento cadastrado
@@ -378,18 +385,26 @@ function InventoryReport() {
     { key: "createdAt", label: "Data Cadastro" },
   ];
 
+  const itemList: InventoryItem[] = Array.isArray(items) ? items : [];
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case "character": return "Personagem";
+      case "part": return "Parte/Peça";
+      case "material": return "Material";
+      case "accessory": return "Acessório";
+      default: return type;
+    }
+  };
+
   const handleExport = () => {
-    if (!items) return;
-    const dataToExport = items.map((item) => ({
+    if (!itemList.length) return;
+    const dataToExport = itemList.map((item) => ({
       ...item,
-      type: item.type === "consumable" ? "Consumível" : "Personagem",
+      type: getTypeLabel(item.type),
     }));
     const csvContent = convertToCSV(dataToExport, columns);
     downloadCSV(csvContent, "relatorio_estoque");
-  };
-
-  const getTypeLabel = (type: string) => {
-    return type === "consumable" ? "Consumível" : "Personagem";
   };
 
   if (isLoading) {
@@ -401,10 +416,10 @@ function InventoryReport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" data-testid="badge-inventory-count">
-            {items?.length || 0} registros
+            {itemList.length} registros
           </Badge>
         </div>
-        <Button onClick={handleExport} disabled={!items?.length} data-testid="button-export-inventory">
+        <Button onClick={handleExport} disabled={!itemList.length} data-testid="button-export-inventory">
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
@@ -424,7 +439,7 @@ function InventoryReport() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items?.map((item) => (
+            {itemList.map((item) => (
               <TableRow key={item.id} data-testid={`row-inventory-${item.id}`}>
                 <TableCell className="font-medium">{item.name}</TableCell>
                 <TableCell>
@@ -442,7 +457,7 @@ function InventoryReport() {
                 <TableCell>{formatDate(item.createdAt)}</TableCell>
               </TableRow>
             ))}
-            {!items?.length && (
+            {!itemList.length && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Nenhum item cadastrado
@@ -471,9 +486,11 @@ function FinancialReport() {
     { key: "createdAt", label: "Data Cadastro" },
   ];
 
+  const transactionList: FinancialTransaction[] = Array.isArray(transactions) ? transactions : [];
+
   const handleExport = () => {
-    if (!transactions) return;
-    const dataToExport = transactions.map((t) => ({
+    if (!transactionList.length) return;
+    const dataToExport = transactionList.map((t) => ({
       ...t,
       type: t.type === "receivable" ? "A Receber" : "A Pagar",
       isPaid: t.isPaid ? "Sim" : "Não",
@@ -490,9 +507,9 @@ function FinancialReport() {
     return <ReportSkeleton />;
   }
 
-  const summary = transactions?.reduce(
+  const summary = transactionList.reduce(
     (acc, t) => {
-      const amount = parseFloat(t.amount);
+      const amount = parseFloat(t.amount || "0");
       if (t.type === "receivable") {
         acc.receivable += amount;
         if (t.isPaid) acc.received += amount;
@@ -503,7 +520,7 @@ function FinancialReport() {
       return acc;
     },
     { receivable: 0, payable: 0, received: 0, paid: 0 }
-  ) || { receivable: 0, payable: 0, received: 0, paid: 0 };
+  );
 
   return (
     <div className="space-y-4">
@@ -536,10 +553,10 @@ function FinancialReport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" data-testid="badge-financial-count">
-            {transactions?.length || 0} registros
+            {transactionList.length} registros
           </Badge>
         </div>
-        <Button onClick={handleExport} disabled={!transactions?.length} data-testid="button-export-financial">
+        <Button onClick={handleExport} disabled={!transactionList.length} data-testid="button-export-financial">
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
@@ -558,7 +575,7 @@ function FinancialReport() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions?.map((transaction) => (
+            {transactionList.map((transaction) => (
               <TableRow key={transaction.id} data-testid={`row-transaction-${transaction.id}`}>
                 <TableCell>
                   <Badge variant={transaction.type === "receivable" ? "default" : "secondary"}>
@@ -577,7 +594,7 @@ function FinancialReport() {
                 <TableCell>{formatDate(transaction.createdAt)}</TableCell>
               </TableRow>
             ))}
-            {!transactions?.length && (
+            {!transactionList.length && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   Nenhuma transação cadastrada
@@ -607,9 +624,11 @@ function PurchasesReport() {
     { key: "createdAt", label: "Data Cadastro" },
   ];
 
+  const purchaseList: Purchase[] = Array.isArray(purchases) ? purchases : [];
+
   const handleExport = () => {
-    if (!purchases) return;
-    const dataToExport = purchases.map((p) => ({
+    if (!purchaseList.length) return;
+    const dataToExport = purchaseList.map((p) => ({
       ...p,
       isInstallment: p.isInstallment ? "Sim" : "Não",
     }));
@@ -621,7 +640,7 @@ function PurchasesReport() {
     return <ReportSkeleton />;
   }
 
-  const totalAmount = purchases?.reduce((acc, p) => acc + parseFloat(p.amount), 0) || 0;
+  const totalAmount = purchaseList.reduce((acc, p) => acc + parseFloat(p.amount || "0"), 0);
 
   return (
     <div className="space-y-4">
@@ -635,17 +654,17 @@ function PurchasesReport() {
         <Card>
           <CardContent className="pt-4">
             <div className="text-sm text-muted-foreground">Quantidade de Compras</div>
-            <div className="text-2xl font-bold">{purchases?.length || 0}</div>
+            <div className="text-2xl font-bold">{purchaseList.length}</div>
           </CardContent>
         </Card>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" data-testid="badge-purchases-count">
-            {purchases?.length || 0} registros
+            {purchaseList.length} registros
           </Badge>
         </div>
-        <Button onClick={handleExport} disabled={!purchases?.length} data-testid="button-export-purchases">
+        <Button onClick={handleExport} disabled={!purchaseList.length} data-testid="button-export-purchases">
           <Download className="mr-2 h-4 w-4" />
           Exportar CSV
         </Button>
@@ -665,7 +684,7 @@ function PurchasesReport() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {purchases?.map((purchase) => (
+            {purchaseList.map((purchase) => (
               <TableRow key={purchase.id} data-testid={`row-purchase-${purchase.id}`}>
                 <TableCell className="font-medium">{purchase.supplier}</TableCell>
                 <TableCell>{purchase.description}</TableCell>
@@ -681,10 +700,160 @@ function PurchasesReport() {
                 <TableCell>{formatDate(purchase.createdAt)}</TableCell>
               </TableRow>
             ))}
-            {!purchases?.length && (
+            {!purchaseList.length && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Nenhuma compra cadastrada
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+interface PendingEventItem {
+  eventId: string;
+  title: string;
+  date: string;
+  contractValue: number;
+  ticketValue?: number;
+  installmentsTotal?: number;
+  totalPaid: number;
+  remaining: number;
+  daysUntil: number;
+}
+
+function PendingEventsReport() {
+  const { data: pendingEvents, isLoading } = useQuery<PendingEventItem[]>({
+    queryKey: ["/api/notifications/pending-payments"],
+  });
+
+  const columns = [
+    { key: "title" as const, label: "Evento" },
+    { key: "dataEvento" as const, label: "Data do Evento" },
+    { key: "situacao" as const, label: "Situação / Atraso" },
+    { key: "contratoStr" as const, label: "Valor Contrato" },
+    { key: "entradaStr" as const, label: "Entrada/Sinal Informada" },
+    { key: "parcelasStr" as const, label: "Soma das Parcelas" },
+    { key: "recebidoStr" as const, label: "Total Recebido" },
+    { key: "restanteStr" as const, label: "Saldo Restante Pendente" },
+  ];
+
+  const pendingList: PendingEventItem[] = Array.isArray(pendingEvents) ? pendingEvents : [];
+
+  const handleExport = () => {
+    if (!pendingList.length) return;
+    const dataToExport = pendingList.map((p) => ({
+      title: p.title,
+      dataEvento: formatDate(p.date),
+      situacao: p.daysUntil < 0 ? `${Math.abs(p.daysUntil)} dias atrás (Atrasado)` : p.daysUntil === 0 ? "HOJE" : `Daqui a ${p.daysUntil} dias`,
+      contratoStr: formatCurrency(p.contractValue),
+      entradaStr: formatCurrency(p.ticketValue || 0),
+      parcelasStr: formatCurrency(p.installmentsTotal || 0),
+      recebidoStr: formatCurrency(p.totalPaid),
+      restanteStr: formatCurrency(p.remaining),
+    }));
+    const csvContent = convertToCSV(dataToExport, columns);
+    downloadCSV(csvContent, "relatorio_pendencias_eventos");
+  };
+
+  if (isLoading) {
+    return <ReportSkeleton />;
+  }
+
+  const summary = pendingList.reduce(
+    (acc, p) => {
+      acc.contract += p.contractValue || 0;
+      acc.paid += p.totalPaid || 0;
+      acc.remaining += p.remaining || 0;
+      return acc;
+    },
+    { contract: 0, paid: 0, remaining: 0 }
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Eventos Pendentes</div>
+            <div className="text-2xl font-bold text-amber-600">{pendingList.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Total Contratado</div>
+            <div className="text-2xl font-bold">{formatCurrency(summary.contract)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Total Já Recebido</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.paid)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-sm text-muted-foreground">Saldo Pendente a Receber</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(summary.remaining)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" data-testid="badge-pending-events-count">
+            {pendingList.length} registros pendentes
+          </Badge>
+        </div>
+        <Button onClick={handleExport} disabled={!pendingList.length} data-testid="button-export-pending-events" className="bg-red-600 hover:bg-red-700 text-white">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar para Excel / CSV
+        </Button>
+      </div>
+
+      <div className="rounded-md border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Evento</TableHead>
+              <TableHead>Data do Evento</TableHead>
+              <TableHead>Situação / Atraso</TableHead>
+              <TableHead>Valor Contrato</TableHead>
+              <TableHead>Entrada / Sinal</TableHead>
+              <TableHead>Parcelas Pagas</TableHead>
+              <TableHead>Total Recebido</TableHead>
+              <TableHead>Saldo Restante</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pendingList.map((p) => (
+              <TableRow key={p.eventId} data-testid={`row-pending-event-${p.eventId}`}>
+                <TableCell className="font-medium">{p.title}</TableCell>
+                <TableCell>{formatDate(p.date)}</TableCell>
+                <TableCell>
+                  <Badge variant={p.daysUntil < 0 ? "destructive" : p.daysUntil === 0 ? "default" : "secondary"}>
+                    {p.daysUntil < 0
+                      ? `${Math.abs(p.daysUntil)} dias atrás`
+                      : p.daysUntil === 0
+                      ? "HOJE"
+                      : `Daqui a ${p.daysUntil} dias`}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-mono">{formatCurrency(p.contractValue)}</TableCell>
+                <TableCell className="text-purple-600 font-mono">{formatCurrency(p.ticketValue || 0)}</TableCell>
+                <TableCell className="font-mono">{formatCurrency(p.installmentsTotal || 0)}</TableCell>
+                <TableCell className="text-green-600 font-mono font-semibold">{formatCurrency(p.totalPaid)}</TableCell>
+                <TableCell className="text-red-600 font-mono font-bold">{formatCurrency(p.remaining)}</TableCell>
+              </TableRow>
+            ))}
+            {!pendingList.length && (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  Nenhuma pendência financeira encontrada nos eventos
                 </TableCell>
               </TableRow>
             )}
@@ -761,6 +930,9 @@ export default function Reports() {
             </TabsContent>
             <TabsContent value="events" className="mt-0">
               <EventsReport />
+            </TabsContent>
+            <TabsContent value="pending_events" className="mt-0">
+              <PendingEventsReport />
             </TabsContent>
             <TabsContent value="inventory" className="mt-0">
               <InventoryReport />

@@ -436,7 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       limitDate.setDate(today.getDate() + 2);
 
       for (const event of events) {
-        if (event.status === "completed" || event.status === "cancelled") continue;
+        if (event.status === "completed" || event.status === "cancelled" || event.status === "paid_full") continue;
         
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
@@ -447,9 +447,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (contractValue > 0) {
             const payments = await storage.getEventInstallments(event.id);
-            const totalPaid = payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount?.toString() || "0"), 0);
+            const installmentsTotal = payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount?.toString() || "0"), 0);
+            const ticketValue = parseFloat((event as any).ticketValue?.toString() || "0");
+            const hasMatchingEntry = ticketValue > 0 && payments.some((p: any) => Math.abs(parseFloat(p.amount?.toString() || "0") - ticketValue) < 0.01);
+            const isCoveredByInstallments = contractValue > 0 && installmentsTotal >= contractValue - 0.01;
+            const totalPaid = (hasMatchingEntry || isCoveredByInstallments) ? installmentsTotal : installmentsTotal + ticketValue;
+            const remaining = Math.max(0, contractValue - totalPaid);
             
-            if (totalPaid < contractValue) {
+            if (remaining > 0.01) {
               const diffTime = eventDate.getTime() - today.getTime();
               const daysUntil = Math.ceil(diffTime / (1000 * 3600 * 24));
               
@@ -458,8 +463,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 title: event.title,
                 date: event.date,
                 contractValue,
+                ticketValue,
+                installmentsTotal,
                 totalPaid,
-                remaining: contractValue - totalPaid,
+                remaining,
                 daysUntil,
               });
             }
@@ -599,7 +606,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Erro ao sincronizar com Google Calendar:", err);
       }
 
-      res.status(201).json(event);
+      const fullCreatedEvent = await storage.getEvent(event.id);
+      res.status(201).json(fullCreatedEvent || event);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Erro ao criar evento" });
     }
@@ -680,38 +688,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Erro ao sincronizar atualização com Google Calendar:", err);
       }
 
-      // Se o status mudou para "completed", criar transação de contas a receber
-      if (data.status === "completed" && previousStatus !== "completed" && currentEvent) {
-        const contractValue = currentEvent.contractValue || event.contractValue;
-        if (contractValue && parseFloat(contractValue) > 0) {
-          // Buscar nome do cliente para a descrição
-          let clientName = "Cliente";
-          if (currentEvent.clientId) {
-            const client = await storage.getClient(currentEvent.clientId);
-            if (client) {
-              clientName = client.name;
-            }
-          }
 
-          // Usar a data de pagamento do evento se existir, senão usar a data do evento
-          const eventDate = currentEvent.date instanceof Date ? currentEvent.date : new Date(currentEvent.date);
-          const paymentDate = currentEvent.paymentDate ?
-            (currentEvent.paymentDate instanceof Date ? currentEvent.paymentDate : new Date(currentEvent.paymentDate)) :
-            eventDate;
-
-          await storage.createTransaction({
-            type: "receivable",
-            description: `Evento: ${currentEvent.title} - ${clientName}`,
-            amount: contractValue,
-            eventId: req.params.id,
-            dueDate: paymentDate,
-            isPaid: false,
-            notes: `Evento concluído em ${new Date().toLocaleDateString('pt-BR')}`,
-          });
-        }
-      }
-
-      res.json(event);
+      const fullUpdatedEvent = await storage.getEvent(req.params.id);
+      res.json(fullUpdatedEvent || event);
     } catch (error: any) {
       console.error("Erro ao atualizar evento (PATCH):", error);
       res.status(400).json({ message: error.message || "Erro ao atualizar evento" });
