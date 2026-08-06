@@ -123,7 +123,7 @@ export default function TimeTracking() {
     const PAGE_SIZE = 50;
 
     const userStr = localStorage.getItem("user");
-    const user = userStr ? JSON.parse(userStr) : {};
+  const user = (userStr && userStr !== "undefined") ? JSON.parse(userStr) : {};
     const userRole = (user?.role || "employee") as UserRole;
     const isAdmin = userRole === "admin";
 

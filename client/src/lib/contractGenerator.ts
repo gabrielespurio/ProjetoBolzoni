@@ -511,15 +511,29 @@ function generatePartyContract(data: ContractData) {
         margin: [0, 0, 0, 5]
       },
       {
-        ul: data.packageDescription ? data.packageDescription.split('\n').filter(Boolean) : [
-          `${data.characters.length} personage${data.characters.length > 1 ? 'ns caracterizados' : 'm caracterizado'}: ${data.characters.join(', ')};`,
-          'Apresentação musical temática com ambientação sonora;',
-          'Dança e interação com as crianças ao longo do evento;',
-          'Pintura artística;',
-          'Escultura em bexiga realizada pelos produtores;',
-          'Retomada do entretenimento e condução do momento do parabéns;',
-          'Acompanhamento por produtores para suporte técnico e organizacional durante toda a festa;'
-        ],
+        ul: (() => {
+          if (data.packageDescription) {
+            const customItems = data.packageDescription.split('\n').filter(Boolean);
+            const hasCharacters = customItems.some(item => item.toLowerCase().includes('personage'));
+            if (hasCharacters) {
+              return customItems;
+            }
+            return [
+              `${data.characters.length} personage${data.characters.length > 1 ? 'ns caracterizados' : 'm caracterizado'}: ${data.characters.join(', ')}`,
+              ...customItems
+            ];
+          }
+          return [
+            `${data.characters.length} personage${data.characters.length > 1 ? 'ns caracterizados' : 'm caracterizado'}: ${data.characters.join(', ')}`,
+            'Apresentação musical temática com ambientação sonora',
+            'Dança e interação com as crianças ao longo do evento',
+            'Fotos',
+            'Oficina de Pintura artística',
+            'Oficina de Escultura em bexiga',
+            'Retomada do entretenimento e condução do momento do parabéns',
+            'Acompanhamento por produtores para suporte técnico e organizacional durante toda a permanência da atração no evento'
+          ];
+        })(),
         margin: [20, 0, 0, 10]
       },
       {
@@ -579,7 +593,7 @@ function generatePartyContract(data: ContractData) {
       {
         text: [
           { text: 'Cláusula 5ª. ', bold: true },
-          `Estima-se participação de ${data.estimatedChildren || 15} (${numberToWords(data.estimatedChildren || 15)}) crianças. Caso o número exceda, será cobrado adicional de R$ 8,00 (oito reais) por criança.`
+          `Estima-se participação de ${data.estimatedChildren || 15} (${numberToWords(data.estimatedChildren || 15)}) crianças. Caso o número exceda, será cobrado adicional de ${(data.package && data.package.toLowerCase().includes('momento encantado')) ? 'R$ 0,00 (zero reais)' : 'R$ 8,00 (oito reais)'} por criança.`
         ],
         margin: [0, 0, 0, 10]
       },
@@ -736,7 +750,7 @@ function generatePartyContract(data: ContractData) {
       },
       {
         ul: [
-          'Com antecedência superior a 15 (quinze) dias: retenção de 30% do valor total;',
+          'Com antecedência superior a 20 (vinte) dias: retenção de 30% do valor total;',
           'Com menos de 5 (cinco) dias úteis: cobrança integral do contrato.'
         ],
         margin: [20, 0, 0, 10]

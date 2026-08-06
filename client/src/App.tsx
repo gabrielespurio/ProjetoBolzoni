@@ -35,7 +35,7 @@ function RoleProtectedRoute({
   allowedRoles?: UserRole[];
 }) {
   const userStr = localStorage.getItem("user");
-  const user = userStr ? JSON.parse(userStr) : {};
+  const user = (userStr && userStr !== "undefined") ? JSON.parse(userStr) : {};
   const userRole = user?.role || user?.function || 'employee';
 
   const hasAccess = allowedRoles.includes(userRole as UserRole);

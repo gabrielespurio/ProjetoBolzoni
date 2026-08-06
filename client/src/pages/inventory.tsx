@@ -39,7 +39,7 @@ export default function Inventory() {
   });
   const { toast } = useToast();
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const _userStr = localStorage.getItem("user"); const user = (_userStr && _userStr !== "undefined") ? JSON.parse(_userStr) : {};
   const isAdmin = user?.role === 'admin';
   const isSecretaria = user?.role === 'secretaria';
   const canEdit = isAdmin || isSecretaria;

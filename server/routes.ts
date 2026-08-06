@@ -436,7 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       limitDate.setDate(today.getDate() + 2);
 
       for (const event of events) {
-        if (event.status === "completed" || event.status === "cancelled" || event.status === "paid_full") continue;
+        if (event.status === "completed" || event.status === "cancelled" || event.status === "paid_full" || event.status === "deleted") continue;
         
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
@@ -942,51 +942,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 3. Criar evento
-      const eventTitle = `Festa - ${quote.clientName}`;
-      const eventDate = quote.eventDate ? new Date(quote.eventDate) : new Date();
-      
-      const newEvent = await storage.createEvent(
-        {
-          clientId: client.id,
-          title: eventTitle,
-          date: eventDate,
-          contractValue: quote.totalValue,
-          status: "scheduled",
-          eventType: quote.eventType === "15anos" ? "service" : "package",
-          notes: `Convertido automaticamente a partir do Orçamento #${quote.id.slice(0, 8)}`,
-        } as any,
-        characterIds
-      );
+      // 3. Criar evento(s) baseado no cronograma
+      let schedule = quoteDetails?.schedule;
+      if (!Array.isArray(schedule) || schedule.length === 0) {
+        schedule = [{
+          date: quote.eventDate ? new Date(quote.eventDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+        }];
+      }
 
-      // 4. Sincronizar com Google Calendar
-      try {
-        if (await GoogleCalendarService.isConnected()) {
-          const details = await storage.getEventDetailsForSync(newEvent.id);
-          const description = [
-            `Cliente: ${details.clientName}`,
-            `Horário da festa: Não informado`,
-            `Horário de inicio da recreação: Não informado`,
-            `Duração do evento: ${quoteDetails?.scope?.estimatedDuration || "Não informado"}`,
-            `Pessoas: ${quoteDetails?.scope?.approximateAttendees || "?"} | Crianças: ${quoteDetails?.scope?.childrenCount || "?"}`,
-            `Aberto ao público: ${quoteDetails?.scope?.isPublicEvent ? "Sim" : "Não"}`,
-            `Valor do contrato: R$ ${details.contractValue}`,
-            `Personagens: ${details.characters.join(", ") || "Nenhum"}`,
-            `Observações: Convertido a partir do Orçamento #${quote.id.slice(0, 8)}`,
-          ].filter(Boolean).join("\n");
+      const createdEvents = [];
+      const pkgId = quoteDetails?.scope?.packageId;
+      const packageIds = pkgId && pkgId !== "none" && pkgId !== "" ? [pkgId] : undefined;
 
-          const googleEventId = await GoogleCalendarService.createEvent({
-            title: newEvent.title,
-            start: new Date(newEvent.date),
-            location: "",
-            description: description,
-          });
-          if (googleEventId) {
-            await storage.updateEvent(newEvent.id, { googleEventId });
+      for (let i = 0; i < schedule.length; i++) {
+        const item = schedule[i];
+        const isMultiple = schedule.length > 1;
+        const eventTitle = `Festa - ${quote.clientName}${isMultiple ? ` (Dia ${i + 1})` : ''}`;
+        
+        // Handle timezone correctly by creating Date at noon local time
+        const dateStr = item.date || new Date().toISOString().split('T')[0];
+        const [year, month, day] = dateStr.split('-');
+        const eventDate = new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0);
+
+        const newEvent = await storage.createEvent(
+          {
+            clientId: client.id,
+            title: eventTitle,
+            date: eventDate,
+            startTime: item.startTime || null,
+            endTime: item.endTime || null,
+            venueName: item.location || null,
+            contractValue: i === 0 ? quote.totalValue : "0",
+            status: "scheduled",
+            eventType: quote.eventType === "15anos" ? "service" : "package",
+            notes: `Convertido automaticamente a partir do Orçamento #${quote.id.slice(0, 8)}${isMultiple ? ` - Dia ${i + 1} de ${schedule.length}` : ''}`,
+          } as any,
+          characterIds,
+          undefined,
+          undefined,
+          undefined,
+          packageIds
+        );
+        createdEvents.push(newEvent);
+
+        // 4. Sincronizar com Google Calendar
+        try {
+          if (await GoogleCalendarService.isConnected()) {
+            const details = await storage.getEventDetailsForSync(newEvent.id);
+            const description = [
+              `Cliente: ${details.clientName}`,
+              `Local: ${item.location || "Não informado"}`,
+              `Horário: ${item.startTime || "?"} às ${item.endTime || "?"}`,
+              `Duração total (projeto): ${quoteDetails?.scope?.estimatedDuration || "Não informado"}`,
+              `Pessoas: ${quoteDetails?.scope?.approximateAttendees || "?"} | Crianças: ${quoteDetails?.scope?.childrenCount || "?"}`,
+              `Aberto ao público: ${quoteDetails?.scope?.isPublicEvent ? "Sim" : "Não"}`,
+              `Valor do contrato (neste dia): R$ ${i === 0 ? details.contractValue : "0"}`,
+              `Personagens: ${details.characters.join(", ") || "Nenhum"}`,
+              `Observações: Convertido a partir do Orçamento #${quote.id.slice(0, 8)}`,
+            ].filter(Boolean).join("\n");
+
+            let gcalStart = new Date(Number(year), Number(month) - 1, Number(day));
+            let gcalEnd = new Date(Number(year), Number(month) - 1, Number(day));
+
+            if (item.startTime) {
+              const [h, m] = item.startTime.split(':');
+              gcalStart.setHours(Number(h), Number(m));
+            } else {
+              gcalStart.setHours(12, 0);
+            }
+
+            if (item.endTime) {
+              const [h, m] = item.endTime.split(':');
+              gcalEnd.setHours(Number(h), Number(m));
+            } else {
+              gcalEnd.setHours(gcalStart.getHours() + 2, gcalStart.getMinutes());
+            }
+
+            const googleEventId = await GoogleCalendarService.createEvent({
+              title: newEvent.title,
+              start: gcalStart,
+              end: gcalEnd,
+              location: item.location || "",
+              description: description,
+            });
+            if (googleEventId) {
+              await storage.updateEvent(newEvent.id, { googleEventId });
+            }
           }
+        } catch (err) {
+          console.error("Erro ao sincronizar com Google Calendar na conversão:", err);
         }
-      } catch (err) {
-        console.error("Erro ao sincronizar com Google Calendar na conversão:", err);
       }
 
       // 5. Atualizar o status do orçamento para aprovado

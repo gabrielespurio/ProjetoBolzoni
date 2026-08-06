@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, DollarSign, Calendar, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Plus, Trash2, DollarSign, Calendar, CheckCircle2, AlertCircle, Clock, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -25,6 +26,8 @@ export interface EventPayment {
   amount: string;
   paymentDate: string;
   paymentMethod: string;
+  requiresInvoice?: boolean;
+  paymentTerm?: number | null;
 }
 
 interface EventPaymentsSectionProps {
@@ -60,6 +63,8 @@ export function EventPaymentsSection({ eventId, payments, onChange, contractValu
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [requiresInvoice, setRequiresInvoice] = useState(false);
+  const [paymentTerm, setPaymentTerm] = useState<string>("30");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -98,12 +103,16 @@ export function EventPaymentsSection({ eventId, payments, onChange, contractValu
           amount,
           paymentDate,
           paymentMethod,
+          requiresInvoice,
+          paymentTerm: requiresInvoice ? parseInt(paymentTerm) : null,
         });
         const newPayment: EventPayment = {
           id: savedPayment?.id,
           amount: savedPayment?.amount?.toString() || amount,
           paymentDate: savedPayment?.paymentDate ? new Date(savedPayment.paymentDate).toISOString().slice(0, 10) : paymentDate,
           paymentMethod: savedPayment?.paymentMethod || paymentMethod,
+          requiresInvoice: savedPayment?.requiresInvoice || requiresInvoice,
+          paymentTerm: savedPayment?.paymentTerm || (requiresInvoice ? parseInt(paymentTerm) : null),
         };
         onChange([...(payments || []), newPayment]);
         await queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}/payments`] });
@@ -131,6 +140,8 @@ export function EventPaymentsSection({ eventId, payments, onChange, contractValu
         amount,
         paymentDate,
         paymentMethod,
+        requiresInvoice,
+        paymentTerm: requiresInvoice ? parseInt(paymentTerm) : null,
       };
       onChange([...(payments || []), newPayment]);
     }
@@ -138,6 +149,8 @@ export function EventPaymentsSection({ eventId, payments, onChange, contractValu
     setAmount("");
     setPaymentDate(format(new Date(), "yyyy-MM-dd"));
     setPaymentMethod("");
+    setRequiresInvoice(false);
+    setPaymentTerm("30");
     setShowForm(false);
   };
 
@@ -281,8 +294,32 @@ export function EventPaymentsSection({ eventId, payments, onChange, contractValu
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5 flex flex-col justify-center">
+              <div className="flex items-center space-x-2 mt-2">
+                <Switch 
+                  id="requires-invoice" 
+                  checked={requiresInvoice}
+                  onCheckedChange={setRequiresInvoice}
+                />
+                <Label htmlFor="requires-invoice" className="text-xs cursor-pointer">Emitir NF</Label>
+              </div>
+            </div>
+            {requiresInvoice && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Prazo de Pagamento *</Label>
+                <Select value={paymentTerm} onValueChange={setPaymentTerm}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="Selecione o prazo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30 dias</SelectItem>
+                    <SelectItem value="60">60 dias</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
-          <div className="flex gap-2 justify-end">
+          <div className="flex gap-2 justify-end mt-4">
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)} className="text-xs">
               Cancelar
             </Button>
@@ -353,6 +390,12 @@ export function EventPaymentsSection({ eventId, payments, onChange, contractValu
                       return format(localDate, "dd/MM/yyyy", { locale: ptBR });
                     })()}
                   </div>
+                  {payment.requiresInvoice && (
+                    <div className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 mt-1">
+                      <Receipt className="h-3 w-3" />
+                      NF solicitada (Prazo: {payment.paymentTerm} dias)
+                    </div>
+                  )}
                 </div>
               </div>
               {!isReadOnly && (
@@ -387,10 +430,15 @@ export function EventPaymentsSection({ eventId, payments, onChange, contractValu
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={async () => {
+                setIsSaving(true);
+                await handleDelete();
+                setIsSaving(false);
+              }}
+              disabled={isSaving}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {isSaving ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

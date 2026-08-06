@@ -112,6 +112,40 @@ export function PurchaseDialog({ open, onClose, purchase }: PurchaseDialogProps)
     }
   }, [amount, installments, isInstallment, form]);
 
+  useEffect(() => {
+    if (open) {
+      if (purchase) {
+        form.reset({
+          supplier: purchase.supplier || "",
+          description: purchase.description || "",
+          amount: purchase.amount || "0",
+          itemId: purchase.itemId || "",
+          quantity: purchase.quantity || undefined,
+          purchaseDate: purchase.purchaseDate ? new Date(purchase.purchaseDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          notes: purchase.notes || "",
+          isInstallment: purchase.isInstallment || false,
+          installments: purchase.installments || undefined,
+          installmentAmount: purchase.installmentAmount || undefined,
+          firstInstallmentDate: purchase.firstInstallmentDate ? new Date(purchase.firstInstallmentDate).toISOString().slice(0, 10) : "",
+        });
+      } else {
+        form.reset({
+          supplier: "",
+          description: "",
+          amount: "0",
+          itemId: "",
+          quantity: undefined,
+          purchaseDate: new Date().toISOString().slice(0, 10),
+          notes: "",
+          isInstallment: false,
+          installments: undefined,
+          installmentAmount: undefined,
+          firstInstallmentDate: "",
+        });
+      }
+    }
+  }, [purchase, form, open]);
+
   const mutation = useMutation({
     mutationFn: async (data: PurchaseForm) => {
       if (isEdit) {

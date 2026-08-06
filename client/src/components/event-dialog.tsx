@@ -113,7 +113,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [installmentMethodPopoverOpen, setInstallmentMethodPopoverOpen] = useState(false);
   const [buffetPopoverOpen, setBuffetPopoverOpen] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const _userStr = localStorage.getItem("user"); const user = (_userStr && _userStr !== "undefined") ? JSON.parse(_userStr) : {};
   const userRole = user?.role || 'employee';
   const isAdmin = userRole === 'admin' || userRole === 'secretaria';
   const canViewFinancials = isAdmin;

@@ -88,7 +88,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
   const [activeTab, setActiveTab] = useState("dados");
   
   // Determine if user can edit based on role
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const _userStr = localStorage.getItem("user"); const user = (_userStr && _userStr !== "undefined") ? JSON.parse(_userStr) : {};
   const userRole = user?.role || "employee";
   const isReadOnly = readOnly || (userRole !== "admin" && isEdit);
 

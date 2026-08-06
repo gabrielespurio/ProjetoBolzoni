@@ -115,7 +115,7 @@ export function AppSidebar() {
   };
 
   const userStr = localStorage.getItem("user");
-  const user = userStr ? JSON.parse(userStr) : {};
+  const user = (userStr && userStr !== "undefined") ? JSON.parse(userStr) : {};
 
   // Normalização total: remove acentos e converte para minúsculo
   const userRole = user?.role || user?.function || 'employee';

@@ -652,6 +652,11 @@ export class DatabaseStorage implements IStorage {
     const event = await this.getEvent(eventId);
     if (!event) return;
 
+    if (event.status === "deleted") {
+      await db.delete(financialTransactions).where(eq(financialTransactions.eventId, eventId));
+      return;
+    }
+
     const allTxs = await this.getAllTransactions();
     const eventDate = (event as any).date instanceof Date ? (event as any).date : new Date((event as any).date);
     const paymentDate = (event as any).paymentDate ? ((event as any).paymentDate instanceof Date ? (event as any).paymentDate : new Date((event as any).paymentDate)) : eventDate;
@@ -689,24 +694,46 @@ export class DatabaseStorage implements IStorage {
     for (const inst of installments) {
       if (!inst.id) continue;
       const instTx = allTxs.find(t => t.notes && t.notes.includes(`[INSTALLMENT_REF:${inst.id}]`));
+      
       const instDate = inst.paymentDate instanceof Date ? inst.paymentDate : new Date(inst.paymentDate);
+      let dueDate = new Date(instDate);
+      let isPaid = true;
+      let paidDate: Date | null | undefined = instDate;
+      let description = `Pagamento Parcela - Evento: ${event.title} (${inst.paymentMethod})`;
+
+      if (inst.requiresInvoice && inst.paymentTerm) {
+        dueDate.setDate(dueDate.getDate() + inst.paymentTerm);
+        isPaid = false;
+        paidDate = null;
+        description = `NF Solicitada (${inst.paymentTerm}d) - Evento: ${event.title} (${inst.paymentMethod})`;
+      }
+
       if (instTx) {
+        let updateIsPaid = isPaid;
+        let updatePaidDate = paidDate;
+        
+        if (inst.requiresInvoice && inst.paymentTerm) {
+             // keep the user's manual change in the financial dashboard
+             updateIsPaid = instTx.isPaid;
+             updatePaidDate = instTx.paidDate;
+        }
+
         await this.updateTransaction(instTx.id, {
           amount: inst.amount.toString(),
-          dueDate: instDate,
-          paidDate: instDate,
-          isPaid: true,
-          description: `Pagamento Parcela - Evento: ${event.title} (${inst.paymentMethod})`,
+          dueDate: dueDate,
+          paidDate: updatePaidDate,
+          isPaid: updateIsPaid,
+          description: description,
         });
       } else {
         await this.createTransaction({
           type: 'receivable',
-          description: `Pagamento Parcela - Evento: ${event.title} (${inst.paymentMethod})`,
+          description: description,
           amount: inst.amount.toString(),
           eventId: event.id,
-          dueDate: instDate,
-          paidDate: instDate,
-          isPaid: true,
+          dueDate: dueDate,
+          paidDate: paidDate,
+          isPaid: isPaid,
           notes: `[INSTALLMENT_REF:${inst.id}] Pagamento cadastrado na aba Pagamentos do Evento`,
         });
       }
@@ -789,6 +816,9 @@ export class DatabaseStorage implements IStorage {
     await this.removeEventExpenses(id);
     await this.removeEventEmployees(id);
     await this.removeEventPackages(id);
+    await db.delete(eventInstallments).where(eq(eventInstallments.eventId, id));
+    await db.delete(financialTransactions).where(eq(financialTransactions.eventId, id));
+    await db.delete(stockMovements).where(eq(stockMovements.eventId, id));
     await db.delete(events).where(eq(events.id, id));
   }
 

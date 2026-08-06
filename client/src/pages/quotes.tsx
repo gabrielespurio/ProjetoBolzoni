@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, FileText, Pencil, Trash2, CalendarPlus } from "lucide-react";
+import { Plus, Search, FileText, Pencil, Trash2, CalendarPlus, Copy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,17 @@ export default function Quotes() {
 
   const handleOpenDialog = (quote?: any) => {
     setSelectedQuote(quote || null);
+    setIsDialogOpen(true);
+  };
+
+  const handleDuplicateQuote = (quote: any) => {
+    const duplicatedQuote = {
+      ...quote,
+      id: undefined, 
+      status: "draft",
+      clientName: `${quote.clientName} (Cópia)`,
+    };
+    setSelectedQuote(duplicatedQuote);
     setIsDialogOpen(true);
   };
 
@@ -236,6 +247,15 @@ export default function Quotes() {
                           <Button 
                             variant="outline" 
                             size="sm" 
+                            onClick={() => handleDuplicateQuote(quote)}
+                            className="h-8 border-blue-200 text-blue-600 hover:bg-blue-50"
+                            title="Duplicar Orçamento"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
                             onClick={() => handleOpenDialog(quote)}
                             className="h-8 hover:bg-gray-100"
                             title="Editar"
@@ -282,8 +302,9 @@ export default function Quotes() {
             <AlertDialogAction
               onClick={() => quoteToDelete && deleteMutation.mutate(quoteToDelete)}
               className="bg-red-500 hover:bg-red-600"
+              disabled={deleteMutation.isPending}
             >
-              Excluir
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

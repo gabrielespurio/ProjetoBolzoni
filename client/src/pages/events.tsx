@@ -70,7 +70,7 @@ export default function Events() {
   const { toast } = useToast();
 
   // Get user role from localStorage
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const _userStr = localStorage.getItem("user"); const user = (_userStr && _userStr !== "undefined") ? JSON.parse(_userStr) : {};
   const userRole = user?.role || "employee";
   const isAdmin = userRole === "admin" || userRole === "secretaria";
   const canEdit = isAdmin;
@@ -132,6 +132,7 @@ export default function Events() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/pending-payments"] });
       toast({
         title: "Status atualizado",
         description: "O status do evento foi atualizado com sucesso.",
@@ -557,8 +558,9 @@ export default function Events() {
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
+              disabled={updateStatusMutation.isPending}
             >
-              Excluir
+              {updateStatusMutation.isPending ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -19,7 +19,46 @@ if (pdfMake && pdfFonts) {
 export function generateQuotePDF(data: QuoteFormValues & { totalValue: number, totalCosts: number }) {
   const currentDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   
-  const eventDateStr = formatLocalDate(data.eventDate) || "Data a definir";
+  const calculateDuration = (start?: string, end?: string) => {
+    if (!start || !end) return 0;
+    const [h1, m1] = start.split(':').map(Number);
+    const [h2, m2] = end.split(':').map(Number);
+    let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (diff < 0) diff += 24 * 60; // crosses midnight
+    return parseFloat((diff / 60).toFixed(2));
+  };
+
+  const scheduleListBody = [
+    [
+      { text: 'Data', style: 'tableHeader' },
+      { text: 'Período', style: 'tableHeader' },
+      { text: 'Horário', style: 'tableHeader' },
+      { text: 'Local', style: 'tableHeader' },
+      { text: 'Duração', style: 'tableHeader', alignment: 'center' }
+    ]
+  ];
+
+  const validSchedule = (data.schedule || []).filter((s: any) => s.date || s.startTime || s.location);
+  if (validSchedule.length > 0) {
+    validSchedule.forEach((s: any) => {
+      const hours = calculateDuration(s.startTime, s.endTime);
+      scheduleListBody.push([
+        { text: formatLocalDate(s.date) || "A definir", margin: [0, 2, 0, 2] } as any,
+        { text: s.period.charAt(0).toUpperCase() + s.period.slice(1), margin: [0, 2, 0, 2] } as any,
+        { text: (s.startTime && s.endTime) ? `${s.startTime} às ${s.endTime}` : (s.startTime || "-"), margin: [0, 2, 0, 2] } as any,
+        { text: s.location || "-", margin: [0, 2, 0, 2] } as any,
+        { text: hours > 0 ? `${hours}h` : "-", alignment: 'center', margin: [0, 2, 0, 2] } as any
+      ]);
+    });
+  } else {
+    scheduleListBody.push([
+      { text: "Data a definir", margin: [0, 2, 0, 2] } as any,
+      { text: "-", margin: [0, 2, 0, 2] } as any,
+      { text: "-", margin: [0, 2, 0, 2] } as any,
+      { text: "-", margin: [0, 2, 0, 2] } as any,
+      { text: "-", alignment: 'center', margin: [0, 2, 0, 2] } as any
+    ]);
+  }
 
   const eventTypes: Record<string, string> = {
     aniversario: "Aniversário",
@@ -49,7 +88,7 @@ export function generateQuotePDF(data: QuoteFormValues & { totalValue: number, t
           margin: [0, 5, 0, 5]
         } as any,
         { 
-          text: "1", 
+          text: char.quantity ? char.quantity.toString() : "1", 
           alignment: 'center',
           margin: [0, 5, 0, 5]
         } as any
@@ -93,9 +132,6 @@ export function generateQuotePDF(data: QuoteFormValues & { totalValue: number, t
               { text: 'DADOS DO EVENTO\n', style: 'sectionTitle' },
               { text: 'Cliente: ', bold: true }, `${data.clientName}\n`,
               { text: 'Tipo de Evento: ', bold: true }, `${eventTypes[data.eventType] || 'Não informado'}\n`,
-              { text: 'Data do Evento: ', bold: true }, `${eventDateStr}\n`,
-              { text: 'Local: ', bold: true }, `${data.scope.location || 'A definir'}\n`,
-              { text: 'Duração Estimada: ', bold: true }, `${data.scope.estimatedDuration || 'A definir'}\n`,
             ]
           },
           {
@@ -105,6 +141,20 @@ export function generateQuotePDF(data: QuoteFormValues & { totalValue: number, t
             ]
           }
         ],
+        margin: [0, 0, 0, 20]
+      },
+      {
+        text: 'CRONOGRAMA DO EVENTO',
+        style: 'sectionTitle',
+        margin: [0, 10, 0, 10]
+      },
+      {
+        table: {
+          headerRows: 1,
+          widths: ['auto', 'auto', 'auto', '*', 'auto'],
+          body: scheduleListBody
+        },
+        layout: 'lightHorizontalLines',
         margin: [0, 0, 0, 20]
       },
       {
@@ -129,9 +179,19 @@ export function generateQuotePDF(data: QuoteFormValues & { totalValue: number, t
             table: {
               widths: ['*', '*'],
               body: [
+                ...(data.discountPercentage > 0 ? [
+                  [
+                    { text: 'SUBTOTAL:', fontSize: 11, border: [false, false, false, false], margin: [0, 2, 0, 2] },
+                    { text: formatCurrency(data.totalCosts + (data.totalCosts * (data.profitMargin / 100))), fontSize: 11, alignment: 'right', border: [false, false, false, false], margin: [0, 2, 0, 2] }
+                  ] as any,
+                  [
+                    { text: `DESCONTO (${data.discountPercentage}%):`, fontSize: 11, color: '#ef4444', border: [false, false, false, false], margin: [0, 2, 0, 5] },
+                    { text: `-${formatCurrency((data.totalCosts + (data.totalCosts * (data.profitMargin / 100))) * (data.discountPercentage / 100))}`, fontSize: 11, color: '#ef4444', alignment: 'right', border: [false, false, false, false], margin: [0, 2, 0, 5] }
+                  ] as any
+                ] : []),
                 [
-                  { text: 'VALOR DO PACOTE:', bold: true, fontSize: 14, border: [false, false, false, false], margin: [0, 5, 0, 5] },
-                  { text: formatCurrency(data.totalValue), bold: true, fontSize: 14, alignment: 'right', border: [false, false, false, false], margin: [0, 5, 0, 5] }
+                  { text: 'VALOR DO PACOTE:', bold: true, fontSize: 14, border: [false, data.discountPercentage > 0, false, false], margin: [0, 5, 0, 5] },
+                  { text: formatCurrency(data.totalValue), bold: true, fontSize: 14, alignment: 'right', border: [false, data.discountPercentage > 0, false, false], margin: [0, 5, 0, 5] }
                 ]
               ]
             },

@@ -348,6 +348,8 @@ export const eventInstallments = pgTable("event_installments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   paymentDate: timestamp("payment_date").notNull(),
   paymentMethod: text("payment_method").notNull(),
+  requiresInvoice: boolean("requires_invoice").default(false),
+  paymentTerm: integer("payment_term"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
