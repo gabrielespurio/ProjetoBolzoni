@@ -19,7 +19,17 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, User, Building2, Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, MapPin, User, Building2, Calendar, AlertCircle, CheckCircle2, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { maskCNPJ, maskCPF, maskRG, maskCEP, maskPhone } from "@/lib/masks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -86,6 +96,7 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
   const isEdit = !!client;
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
   const [activeTab, setActiveTab] = useState("dados");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   // Determine if user can edit based on role
   const _userStr = localStorage.getItem("user"); const user = (_userStr && _userStr !== "undefined") ? JSON.parse(_userStr) : {};
@@ -226,6 +237,31 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
         description: error.message || "Ocorreu um erro ao salvar o cliente.",
         variant: "destructive",
       });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (client?.id) {
+        return apiRequest("DELETE", `/api/clients/${client.id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({
+        title: "Cliente excluído",
+        description: "O cliente foi removido com sucesso.",
+      });
+      setIsDeleteDialogOpen(false);
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Não foi possível excluir",
+        description: error.message || "Ocorreu um erro ao excluir o cliente.",
+        variant: "destructive",
+      });
+      setIsDeleteDialogOpen(false);
     },
   });
 
@@ -701,16 +737,31 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-4 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
-                    {isReadOnly ? "Fechar" : "Cancelar"}
-                  </Button>
-                  {!isReadOnly && (
-                    <Button type="submit" disabled={mutation.isPending} data-testid="button-save-client">
-                      {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {isEdit ? "Atualizar" : "Cadastrar"}
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <div>
+                    {isEdit && !isReadOnly && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => setIsDeleteDialogOpen(true)}
+                        data-testid="button-delete-client"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir Cliente
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-4">
+                    <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
+                      {isReadOnly ? "Fechar" : "Cancelar"}
                     </Button>
-                  )}
+                    {!isReadOnly && (
+                      <Button type="submit" disabled={mutation.isPending} data-testid="button-save-client">
+                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isEdit ? "Atualizar" : "Cadastrar"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </form>
             </Form>
@@ -882,6 +933,29 @@ export function ClientDialog({ open, onClose, client, readOnly = false }: Client
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o cliente
+              <span className="font-semibold text-foreground"> {client?.name} </span>
+              do banco de dados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir Cliente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

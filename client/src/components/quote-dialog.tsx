@@ -59,6 +59,12 @@ export interface QuoteSchedule {
   location: string;
 }
 
+export interface QuoteMaterial {
+  name: string;
+  value: number;
+  quantity: number;
+}
+
 export interface QuoteFormValues {
   clientName: string;
   eventType: string;
@@ -75,15 +81,17 @@ export interface QuoteFormValues {
   costs: {
     producers: number;
     producersCount: number;
+    animators: number;
+    animatorsCount: number;
     drivers: number;
     fuel: number;
     lodging: number;
     food: number;
     tolls: number;
-    materials: number;
     extras: number;
   };
   characters: QuoteCharacter[];
+  materials: QuoteMaterial[];
   profitMargin: number;
   discountPercentage: number;
 }
@@ -187,15 +195,17 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
     costs: {
       producers: 0,
       producersCount: 1,
+      animators: 0,
+      animatorsCount: 1,
       drivers: 0,
       fuel: 0,
       lodging: 0,
       food: 0,
       tolls: 0,
-      materials: 0,
       extras: 0,
     },
     characters: [{ name: "", value: 0, quantity: 1 }],
+    materials: [{ name: "", value: 0, quantity: 1 }],
     profitMargin: 40, // 40% default
     discountPercentage: 0,
   };
@@ -245,6 +255,11 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
           value: c.value || 0,
           quantity: c.quantity || 1
         })) : [{ name: "", value: 0, quantity: 1 }],
+        materials: quote.details?.materials?.length > 0 ? quote.details.materials.map((m: any) => ({
+          name: m.name || "",
+          value: m.value || 0,
+          quantity: m.quantity || 1
+        })) : [{ name: "", value: 0, quantity: 1 }],
         profitMargin: parseFloat(quote.profitMargin) || 40,
         discountPercentage: quote.details?.discountPercentage || 0,
       });
@@ -258,6 +273,11 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
     name: "characters",
   });
 
+  const { fields: materialFields, append: appendMaterial, remove: removeMaterial } = useFieldArray({
+    control,
+    name: "materials",
+  });
+
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({
     control,
     name: "schedule",
@@ -269,6 +289,7 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
   const watchProfitMargin = watch("profitMargin");
   const watchDiscountPercentage = watch("discountPercentage");
   const watchCharacters = watch("characters");
+  const watchMaterials = watch("materials");
   const watchSchedule = watch("schedule");
 
   const charactersCost = (watchCharacters || []).reduce((acc, char) => {
@@ -276,10 +297,12 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
   }, 0);
 
   const producersCost = (Number(watchCosts?.producers) || 0) * (Number(watchCosts?.producersCount) || 1);
+  const animatorsCost = (Number(watchCosts?.animators) || 0) * (Number(watchCosts?.animatorsCount) || 1);
 
   const dailyOperationalCosts = 
     charactersCost +
     producersCost +
+    animatorsCost +
     (Number(watchCosts?.drivers) || 0) +
     (Number(watchCosts?.fuel) || 0) +
     (Number(watchCosts?.lodging) || 0) +
@@ -288,7 +311,12 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
 
   const uniqueDatesCount = new Set((watchSchedule || []).map(s => s.date).filter(Boolean)).size;
   const daysCount = uniqueDatesCount > 0 ? uniqueDatesCount : 1;
-  const fixedCosts = (Number(watchCosts?.materials) || 0) + (Number(watchCosts?.extras) || 0);
+
+  const materialsCost = (watchMaterials || []).reduce((acc, mat) => {
+    return acc + (Number(mat.value) * Number(mat.quantity) || 0);
+  }, 0);
+
+  const fixedCosts = materialsCost + (Number(watchCosts?.extras) || 0);
 
   const totalCosts = (dailyOperationalCosts * daysCount) + fixedCosts;
 
@@ -348,12 +376,13 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
         costs: {
           producers: Number(data.costs.producers) || 0,
           producersCount: Number(data.costs.producersCount) || 1,
+          animators: Number(data.costs.animators) || 0,
+          animatorsCount: Number(data.costs.animatorsCount) || 1,
           drivers: Number(data.costs.drivers) || 0,
           fuel: Number(data.costs.fuel) || 0,
           lodging: Number(data.costs.lodging) || 0,
           food: Number(data.costs.food) || 0,
           tolls: Number(data.costs.tolls) || 0,
-          materials: Number(data.costs.materials) || 0,
           extras: Number(data.costs.extras) || 0,
         },
         characters: data.characters
@@ -362,6 +391,13 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
             name: c.name,
             value: Number(c.value) || 0,
             quantity: Number(c.quantity) || 1
+          })),
+        materials: data.materials
+          .filter(m => m.name.trim() !== '')
+          .map(m => ({
+            name: m.name,
+            value: Number(m.value) || 0,
+            quantity: Number(m.quantity) || 1
           })),
       }
     };
@@ -668,6 +704,13 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                           <Input type="number" min="1" className="w-20" {...register("costs.producersCount")} placeholder="Qtd" />
                         </div>
                       </div>
+                      <div className="space-y-2 col-span-2 sm:col-span-1">
+                        <Label>Animador (Valor Un. R$)</Label>
+                        <div className="flex gap-2">
+                          <Input type="number" min="0" step="0.01" {...register("costs.animators")} />
+                          <Input type="number" min="1" className="w-20" {...register("costs.animatorsCount")} placeholder="Qtd" />
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <Label>Motorista (R$)</Label>
                         <Input type="number" min="0" step="0.01" {...register("costs.drivers")} />
@@ -694,20 +737,79 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
 
                 <Card className="border-border shadow-sm">
                   <CardHeader className="bg-muted/30 pb-3 py-4">
-                    <DialogTitle className="text-base text-primary">Custos Extras / Materiais</DialogTitle>
+                    <DialogTitle className="text-base text-primary">Custos Extras</DialogTitle>
                   </CardHeader>
                   <CardContent className="pt-4 space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Materiais (R$)</Label>
-                        <Input type="number" min="0" step="0.01" {...register("costs.materials")} placeholder="Bexigas, Pintura..." />
-                      </div>
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label>Atrações Extras (R$)</Label>
                         <Input type="number" min="0" step="0.01" {...register("costs.extras")} />
                       </div>
                     </div>
                   </CardContent>
+                </Card>
+
+                <Card className="border-border shadow-sm md:col-span-2">
+                    <CardHeader className="bg-muted/30 pb-3 py-4 flex flex-row items-center justify-between">
+                      <DialogTitle className="text-base text-primary">Materiais</DialogTitle>
+                      <Button type="button" onClick={() => appendMaterial({ name: "", value: 0, quantity: 1 })} variant="ghost" size="sm" className="h-8 gap-1">
+                        <Plus className="h-4 w-4" /> Adicionar
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-3 max-h-[40vh] overflow-y-auto">
+                      {materialFields.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">Nenhum material adicionado.</p>
+                      )}
+                      {materialFields.map((field, index) => (
+                        <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 border-b sm:border-0 pb-3 sm:pb-0">
+                          <div className="w-full sm:flex-1">
+                            <Label className="mb-1 block text-xs text-muted-foreground">Material</Label>
+                            <Input
+                              placeholder="Nome do material..."
+                              {...register(`materials.${index}.name`)}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="w-24">
+                              <Label className="mb-1 block text-xs text-muted-foreground">Valor (R$)</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                {...register(`materials.${index}.value`)}
+                              />
+                            </div>
+                            <div className="w-20">
+                              <Label className="mb-1 block text-xs text-muted-foreground">Qtd</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                {...register(`materials.${index}.quantity`)}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="mt-6 self-end"
+                              onClick={() => appendMaterial({ ...watchMaterials[index] })}
+                              title="Duplicar material"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="mt-6 text-destructive hover:text-destructive hover:bg-destructive/10 self-end"
+                              onClick={() => removeMaterial(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
                 </Card>
 
                 <Card className="border-border shadow-sm md:col-span-2">
@@ -724,7 +826,7 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                       {fields.map((field, index) => (
                         <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 border-b sm:border-0 pb-3 sm:pb-0">
                           <div className="w-full sm:flex-1">
-                            <Label className="sm:hidden mb-1 block text-xs">Personagem</Label>
+                            <Label className="mb-1 block text-xs text-muted-foreground">Personagem</Label>
                             <CharacterCombobox
                               value={watch(`characters.${index}.name`)}
                               onChange={(val) => setValue(`characters.${index}.name`, val)}
@@ -733,27 +835,27 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                           </div>
                           <div className="flex w-full sm:w-auto items-end gap-2">
                             <div className="flex-1 sm:w-28">
-                              <Label className="sm:hidden mb-1 block text-xs">Valor (R$)</Label>
+                              <Label className="mb-1 block text-xs text-muted-foreground">Valor (R$)</Label>
                               <Input type="number" min="0" step="0.01" placeholder="Cachê" {...register(`characters.${index}.value`)} />
                             </div>
                             <div className="w-20">
-                              <Label className="sm:hidden mb-1 block text-xs">Qtd</Label>
+                              <Label className="mb-1 block text-xs text-muted-foreground">Qtd</Label>
                               <Input type="number" min="1" placeholder="Qtd" {...register(`characters.${index}.quantity`)} />
                             </div>
                             <Button 
                               type="button" 
-                              variant="outline" 
+                              variant="ghost" 
                               size="icon" 
                               onClick={() => {
                                 const current = watchCharacters[index];
                                 append({ ...current });
                               }} 
-                              className="shrink-0"
+                              className="mt-6 self-end"
                               title="Duplicar personagem"
                             >
                               <Copy className="h-4 w-4" />
                             </Button>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-red-500 hover:bg-red-50 hover:text-red-600 shrink-0" title="Remover">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-6 text-red-500 hover:bg-red-50 hover:text-red-600 self-end" title="Remover">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

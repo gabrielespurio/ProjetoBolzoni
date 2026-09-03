@@ -262,6 +262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteClient(req.params.id);
       res.status(204).send();
     } catch (error: any) {
+      if (error.message?.includes("foreign key constraint") || error.code === "23503") {
+        return res.status(400).json({ message: "Este cliente não pode ser excluído pois possui orçamentos ou eventos atrelados a ele." });
+      }
       res.status(500).json({ message: error.message || "Erro ao deletar cliente" });
     }
   });
@@ -483,6 +486,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Events routes
+
+  // Check character conflicts before saving event
+  app.post("/api/events/check-character-conflicts", authenticateToken, async (req, res) => {
+    try {
+      const { characterIds, date, excludeEventId } = req.body;
+
+      if (!characterIds || characterIds.length === 0 || !date) {
+        return res.json({ conflicts: [] });
+      }
+
+      const allEvents = await storage.getAllEvents();
+      const eventDate = new Date(date);
+      const eventDateStr = typeof date === 'string' && date.length === 10 ? date : eventDate.toISOString().split('T')[0];
+
+      const conflicts: Array<{ characterName: string; eventTitle: string; eventDate: string; eventStartTime: string; eventEndTime: string }> = [];
+
+      for (const ev of allEvents as any[]) {
+        // Skip the event being edited
+        if (excludeEventId && ev.id === excludeEventId) continue;
+        // Skip cancelled/deleted events
+        if (ev.status === "cancelled" || ev.status === "deleted") continue;
+
+        // Check if same date
+        const evDate = new Date(ev.date);
+        const evDateStr = evDate.toISOString().split('T')[0];
+
+        if (evDateStr !== eventDateStr) continue;
+
+        // Check if this event has any of the same characters
+        const evCharacterIds: string[] = ev.characterIds || [];
+        const overlappingCharacterIds = characterIds.filter((cid: string) => evCharacterIds.includes(cid));
+
+        if (overlappingCharacterIds.length === 0) continue;
+
+        // Same day + same character = conflict (no time check needed)
+        for (const cid of overlappingCharacterIds) {
+          const inventory = await storage.getInventoryItem(cid);
+          conflicts.push({
+            characterName: inventory?.name || "Personagem desconhecido",
+            eventTitle: ev.title,
+            eventDate: evDateStr,
+            eventStartTime: ev.startTime || "",
+            eventEndTime: ev.endTime || "",
+          });
+        }
+      }
+
+      res.json({ conflicts });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Erro ao verificar conflitos" });
+    }
+  });
+
   app.get("/api/events", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const events = await storage.getAllEvents();

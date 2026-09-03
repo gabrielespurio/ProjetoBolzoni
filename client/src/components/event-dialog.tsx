@@ -20,7 +20,17 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X, Search, Plus, Check, ChevronsUpDown, User, MapPin, ClipboardList, Wallet, Users, Drama, Info, Receipt } from "lucide-react";
+import { Loader2, X, Search, Plus, Check, ChevronsUpDown, User, MapPin, ClipboardList, Wallet, Users, Drama, Info, Receipt, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -112,6 +122,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const [cardPopoverOpen, setCardPopoverOpen] = useState(false);
   const [installmentMethodPopoverOpen, setInstallmentMethodPopoverOpen] = useState(false);
   const [buffetPopoverOpen, setBuffetPopoverOpen] = useState(false);
+  const [characterConflicts, setCharacterConflicts] = useState<Array<{ characterName: string; eventTitle: string; eventDate: string; eventStartTime: string; eventEndTime: string }>>([]);
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
   const _userStr = localStorage.getItem("user"); const user = (_userStr && _userStr !== "undefined") ? JSON.parse(_userStr) : {};
   const userRole = user?.role || 'employee';
@@ -494,7 +508,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     },
   });
 
-  const onSubmit = (data: EventForm) => {
+  const buildEventData = (data: EventForm) => {
     const [year, month, day] = data.date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
 
@@ -505,7 +519,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       dateObj.setHours(0, 0, 0, 0);
     }
 
-    const eventData = {
+    return {
       ...data,
       date: dateObj,
       childrenCount: data.childrenCount ? parseInt(data.childrenCount) : null,
@@ -526,7 +540,51 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       venueName: data.venueName || null,
       venueNumber: data.venueNumber || null,
     };
+  };
+
+  const onSubmit = async (data: EventForm) => {
+    const eventData = buildEventData(data);
+
+    // Check for character conflicts if any characters are selected
+    if (selectedCharacters.length > 0) {
+      setCheckingConflicts(true);
+      try {
+        const result = await apiRequest("POST", "/api/events/check-character-conflicts", {
+          characterIds: selectedCharacters,
+          date: data.date,
+          excludeEventId: isEdit ? event?.id : undefined,
+        });
+
+        if (result.conflicts && result.conflicts.length > 0) {
+          setCharacterConflicts(result.conflicts);
+          setPendingSubmitData(eventData);
+          setConflictDialogOpen(true);
+          setCheckingConflicts(false);
+          return; // Don't submit yet, wait for user confirmation
+        }
+      } catch (error) {
+        console.error("Erro ao verificar conflitos:", error);
+        // If check fails, proceed anyway
+      }
+      setCheckingConflicts(false);
+    }
+
     mutation.mutate(eventData as any);
+  };
+
+  const confirmSubmitWithConflicts = () => {
+    if (pendingSubmitData) {
+      mutation.mutate(pendingSubmitData as any);
+    }
+    setConflictDialogOpen(false);
+    setPendingSubmitData(null);
+    setCharacterConflicts([]);
+  };
+
+  const cancelConflictSubmit = () => {
+    setConflictDialogOpen(false);
+    setPendingSubmitData(null);
+    setCharacterConflicts([]);
   };
 
   const handleClose = () => {
@@ -1844,17 +1902,64 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               {!isReadOnly && (
                 <Button
                   type="submit"
-                  disabled={mutation.isPending || calculatingFee}
+                  disabled={mutation.isPending || calculatingFee || checkingConflicts}
                   data-testid="button-save-event"
                 >
-                  {(mutation.isPending || calculatingFee) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEdit ? "Salvar Alterações" : "Criar Evento"}
+                  {(mutation.isPending || calculatingFee || checkingConflicts) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {checkingConflicts ? "Verificando..." : (isEdit ? "Salvar Alterações" : "Criar Evento")}
                 </Button>
               )}
             </div>
           </form>
         </Form>
       </DialogContent>
+
+      <AlertDialog open={conflictDialogOpen} onOpenChange={(open) => { if (!open) cancelConflictSubmit(); }}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Conflito de Personagens Detectado
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Os seguintes personagens já estão sendo utilizados em outros eventos no mesmo dia/horário:
+                </p>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {characterConflicts.map((conflict, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                      <div className="text-sm">
+                        <span className="font-semibold text-foreground">{conflict.characterName}</span>
+                        <span className="text-muted-foreground"> já será utilizado no evento </span>
+                        <span className="font-semibold text-foreground">"{conflict.eventTitle}"</span>
+                        {(conflict.eventStartTime || conflict.eventEndTime) && (
+                          <span className="text-muted-foreground">
+                            {" "}({conflict.eventStartTime}{conflict.eventEndTime ? ` - ${conflict.eventEndTime}` : ""})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  Tem certeza que deseja utilizá-lo(s) neste evento mesmo assim?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelConflictSubmit}>Não, cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmSubmitWithConflicts}
+              className="bg-amber-600 text-white hover:bg-amber-700"
+            >
+              Sim, utilizar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
