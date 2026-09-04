@@ -66,6 +66,8 @@ const eventFormSchema = insertEventSchema.extend({
   serviceId: z.string().optional(),
   eventType: z.enum(["package", "service", "both"]).default("package"),
   packageNotes: z.string().optional(),
+  birthdayPersonName: z.string().optional(),
+  birthdayPersonAge: z.string().optional(),
   childrenCount: z.string().optional(),
   buffetId: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
@@ -226,6 +228,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       eventType: "package",
       buffetId: "",
       packageNotes: "",
+      birthdayPersonName: "",
+      birthdayPersonAge: "",
       status: "scheduled",
       complementaryNotes: "",
       notes: "",
@@ -332,6 +336,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         })() : "",
         partyStartTime: (activeEventData as any).partyStartTime || "",
         eventDuration: (activeEventData as any).eventDuration || "",
+        birthdayPersonName: (activeEventData as any).birthdayPersonName || "",
+        birthdayPersonAge: (activeEventData as any).birthdayPersonAge || "",
         childrenCount: (activeEventData as any).childrenCount?.toString() || "",
         startTime: (activeEventData as any).startTime || (activeEventData.date ? (() => {
           const d = new Date(activeEventData.date);
@@ -416,6 +422,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         packageNotes: "",
         partyStartTime: "",
         eventDuration: "",
+        birthdayPersonName: "",
+        birthdayPersonAge: "",
         status: "scheduled" as const,
         complementaryNotes: "",
         notes: "",
@@ -915,6 +923,32 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       <FormLabel>Duração do Evento</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="Ex: 4 horas" data-testid="input-event-duration" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="birthdayPersonName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome do Aniversariante</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Nome (opcional)" data-testid="input-birthday-person-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="birthdayPersonAge"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Idade do Aniversariante</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex: 5 anos (opcional)" data-testid="input-birthday-person-age" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

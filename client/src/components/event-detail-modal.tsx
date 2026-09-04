@@ -21,6 +21,8 @@ import {
   FileText,
   User,
   Pencil,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
 interface EventEmployee {
@@ -54,6 +56,8 @@ interface EventData {
   rua: string | null;
   venueName: string | null;
   venueNumber: string | null;
+  birthdayPersonName?: string | null;
+  birthdayPersonAge?: string | null;
   characterNames: string[];
   eventEmployees: EventEmployee[];
 }
@@ -133,40 +137,81 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
   };
 
   const renderPaymentInfo = () => {
-    const hasEntry = ticketValue > 0;
+    const isFullyPaid = remainingValue <= 0.01;
+    const percentage = contractValue > 0 ? Math.min(100, Math.round((totalPaid / contractValue) * 100)) : 0;
+
     return (
-      <div className="space-y-2">
-        {hasEntry && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Entrada / Sinal (Contrato):</span>
-            <span className="font-medium">{formatCurrency(ticketValue)}</span>
+      <div className="space-y-4">
+        {/* Progress Bar Section */}
+        <div className="rounded-lg border bg-background/50 p-4 space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground font-medium">Progresso de Pagamento</span>
+            <div className="flex items-center gap-2">
+              {isFullyPaid ? (
+                <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none text-[10px]">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Quitado
+                </Badge>
+              ) : totalPaid > 0 ? (
+                <Badge variant="outline" className="text-amber-600 border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-[10px]">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Parcial
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-red-600 border-red-400 bg-red-50 dark:bg-red-900/20 text-[10px]">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Pendente
+                </Badge>
+              )}
+            </div>
           </div>
-        )}
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Total Recebido:</span>
-          <span className="font-semibold text-emerald-600">{formatCurrency(totalPaid)}</span>
+          <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                isFullyPaid
+                  ? "bg-emerald-500"
+                  : percentage > 50
+                  ? "bg-amber-500"
+                  : percentage > 0
+                  ? "bg-orange-500"
+                  : "bg-muted-foreground/20"
+              }`}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Contrato</p>
+              <p className="text-sm font-bold font-mono">{formatCurrency(contractValue)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Recebido</p>
+              <p className="text-sm font-bold font-mono text-emerald-600">{formatCurrency(totalPaid)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Restante</p>
+              <p className={`text-sm font-bold font-mono ${remainingValue > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                {formatCurrency(remainingValue)}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Valor Restante:</span>
-          <span className={`font-semibold ${remainingValue > 0.01 ? "text-red-600" : "text-emerald-600"}`}>
-            {remainingValue > 0.01 ? formatCurrency(remainingValue) : "R$ 0,00 (Quitado)"}
-          </span>
-        </div>
+
         {installmentsList && installmentsList.length > 0 && (
-          <div className="mt-3 pt-3 border-t text-xs space-y-1.5">
-            <span className="text-muted-foreground font-semibold block mb-1">Pagamentos Registrados:</span>
+          <div className="space-y-1.5 mt-2">
+            <span className="text-sm text-muted-foreground font-semibold block mb-2">Histórico de Pagamentos:</span>
             {installmentsList.map((p: any, idx: number) => (
-              <div key={p.id || idx} className="flex justify-between items-center text-muted-foreground bg-background/50 p-1.5 rounded border">
+              <div key={p.id || idx} className="flex justify-between items-center text-sm text-muted-foreground bg-background/50 p-2 rounded border">
                 <span>{idx + 1}. {p.paymentMethod ? p.paymentMethod.toUpperCase() : 'PAGAMENTO'} {p.paymentDate ? `(${format(new Date(p.paymentDate), "dd/MM/yyyy")})` : ''}</span>
                 <span className="font-mono text-foreground font-semibold">{formatCurrency(parseFloat(p.amount || "0"))}</span>
               </div>
             ))}
           </div>
         )}
-        {paymentDateObj && (
-          <div className="flex justify-between pt-2 border-t text-xs">
+        {paymentDateObj && remainingValue > 0 && (
+          <div className="flex justify-between pt-2 border-t text-sm mt-2">
             <span className="text-muted-foreground">Data Prevista do Saldo:</span>
-            <span className="font-medium">{format(paymentDateObj, "dd/MM/yyyy", { locale: ptBR })}</span>
+            <span className="font-medium text-foreground">{format(paymentDateObj, "dd/MM/yyyy", { locale: ptBR })}</span>
           </div>
         )}
       </div>
@@ -230,6 +275,18 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
                 <p className="font-medium" data-testid="text-client-name">{event.clientName}</p>
               </div>
             </div>
+
+            {(event.birthdayPersonName || event.birthdayPersonAge) && (
+              <div className="flex items-start gap-3">
+                <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Aniversariante</p>
+                  <p className="font-medium" data-testid="text-birthday-person">
+                    {event.birthdayPersonName || "Não informado"} {event.birthdayPersonAge ? `(${event.birthdayPersonAge})` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {event.packageName && (
               <div className="flex items-start gap-3">

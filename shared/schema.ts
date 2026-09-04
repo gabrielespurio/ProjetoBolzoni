@@ -194,6 +194,8 @@ export const events = pgTable("events", {
   complementaryNotes: text("complementary_notes"),
   notes: text("notes"),
   googleEventId: text("google_event_id"),
+  birthdayPersonName: text("birthday_person_name"),
+  birthdayPersonAge: text("birthday_person_age"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

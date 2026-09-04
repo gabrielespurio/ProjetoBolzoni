@@ -80,7 +80,7 @@ import {
   type InsertQuote,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, ne, like } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, ne, like, inArray } from "drizzle-orm";
 
 // Função para calcular a próxima data de pagamento (dia 15 ou 30)
 // Se o dia do evento for entre 1-15, paga no dia 15
@@ -397,6 +397,8 @@ export class DatabaseStorage implements IStorage {
         packageId: events.packageId,
         packageName: packages.name,
         packageNotes: events.packageNotes,
+        birthdayPersonName: events.birthdayPersonName,
+        birthdayPersonAge: events.birthdayPersonAge,
         childrenCount: events.childrenCount,
         buffetId: events.buffetId,
         buffetName: buffets.name,
@@ -413,12 +415,6 @@ export class DatabaseStorage implements IStorage {
         clientEmail: clients.email,
         clientRua: clients.rua,
         clientNumero: clients.numero,
-        clientBairro: clients.bairro,
-        clientCidade: clients.cidade,
-        clientEstado: clients.estado,
-        clientResponsibleName: clients.responsibleName,
-        clientCargo: clients.cargo,
-        clientProfession: clients.profession,
       })
       .from(events)
       .leftJoin(clients, eq(events.clientId, clients.id))
@@ -427,59 +423,76 @@ export class DatabaseStorage implements IStorage {
       .where(ne(events.status, "deleted"))
       .orderBy(desc(events.date));
 
-    const eventsWithDetails = await Promise.all(
-      allEvents.map(async (event) => {
-        const characters = await db
-          .select({
-            characterId: eventCharacters.characterId,
-            characterName: inventoryItems.name
-          })
-          .from(eventCharacters)
-          .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
-          .where(eq(eventCharacters.eventId, event.id));
+    if (allEvents.length === 0) return [];
 
-        const eventEmps = await db
-          .select({
-            employeeId: eventEmployees.employeeId,
-            employeeName: employees.name,
-            characterId: eventEmployees.characterId,
-            cacheValue: eventEmployees.cacheValue,
-          })
-          .from(eventEmployees)
-          .leftJoin(employees, eq(eventEmployees.employeeId, employees.id))
-          .where(eq(eventEmployees.eventId, event.id));
+    const eventIds = allEvents.map(e => e.id);
 
-        const eventEmpsWithCharacters = await Promise.all(
-          eventEmps.map(async (emp) => {
-            if (emp.characterId) {
-              const [character] = await db
-                .select({ name: inventoryItems.name })
-                .from(inventoryItems)
-                .where(eq(inventoryItems.id, emp.characterId));
-              return {
-                ...emp,
-                characterName: character?.name || null,
-              };
-            }
-            return { ...emp, characterName: null };
-          })
-        );
-
-        const expenses = await db.select().from(eventExpenses).where(eq(eventExpenses.eventId, event.id));
-        const installments = await db.select().from(eventInstallments).where(eq(eventInstallments.eventId, event.id));
-        const pkgs = await db.select({ packageId: eventPackages.packageId }).from(eventPackages).where(eq(eventPackages.eventId, event.id));
-
-        return {
-          ...event,
-          characterIds: characters.map(c => c.characterId),
-          characterNames: characters.map(c => c.characterName).filter(Boolean),
-          packageIds: pkgs.map(p => p.packageId),
-          eventEmployees: eventEmpsWithCharacters,
-          expenses: expenses,
-          eventInstallments: installments,
-        };
+    // Fetch characters
+    const allCharacters = await db
+      .select({
+        eventId: eventCharacters.eventId,
+        characterId: eventCharacters.characterId,
+        characterName: inventoryItems.name
       })
-    );
+      .from(eventCharacters)
+      .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
+      .where(inArray(eventCharacters.eventId, eventIds));
+
+    // Fetch employees
+    const allEventEmployees = await db
+      .select({
+        eventId: eventEmployees.eventId,
+        employeeId: eventEmployees.employeeId,
+        employeeName: employees.name,
+        characterId: eventEmployees.characterId,
+        cacheValue: eventEmployees.cacheValue,
+      })
+      .from(eventEmployees)
+      .leftJoin(employees, eq(eventEmployees.employeeId, employees.id))
+      .where(inArray(eventEmployees.eventId, eventIds));
+
+    // Fetch employee characters
+    const empCharacterIds = Array.from(new Set(allEventEmployees.map(e => e.characterId).filter(Boolean))) as string[];
+    const empCharacterMap = new Map();
+    if (empCharacterIds.length > 0) {
+      const items = await db
+        .select({ id: inventoryItems.id, name: inventoryItems.name })
+        .from(inventoryItems)
+        .where(inArray(inventoryItems.id, empCharacterIds));
+      items.forEach(item => empCharacterMap.set(item.id, item.name));
+    }
+
+    // Fetch expenses
+    const allExpenses = await db.select().from(eventExpenses).where(inArray(eventExpenses.eventId, eventIds));
+    
+    // Fetch installments
+    const allInstallments = await db.select().from(eventInstallments).where(inArray(eventInstallments.eventId, eventIds));
+    
+    // Fetch packages
+    const allEventPkgs = await db.select({ eventId: eventPackages.eventId, packageId: eventPackages.packageId }).from(eventPackages).where(inArray(eventPackages.eventId, eventIds));
+
+    const eventsWithDetails = allEvents.map(event => {
+      const eId = event.id;
+      
+      const characters = allCharacters.filter(c => c.eventId === eId);
+      const evEmps = allEventEmployees.filter(e => e.eventId === eId).map(emp => ({
+        ...emp,
+        characterName: emp.characterId ? empCharacterMap.get(emp.characterId) || null : null
+      }));
+      const expenses = allExpenses.filter(e => e.eventId === eId);
+      const installments = allInstallments.filter(e => e.eventId === eId);
+      const pkgs = allEventPkgs.filter(p => p.eventId === eId);
+
+      return {
+        ...event,
+        characterIds: characters.map(c => c.characterId),
+        characterNames: characters.map(c => c.characterName).filter(Boolean),
+        packageIds: pkgs.map(p => p.packageId),
+        eventEmployees: evEmps,
+        expenses,
+        eventInstallments: installments,
+      };
+    });
 
     return eventsWithDetails;
   }
