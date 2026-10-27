@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X, Search, Plus, Check, ChevronsUpDown, User, MapPin, ClipboardList, Wallet, Users, Drama, Info, Receipt, AlertTriangle } from "lucide-react";
+import { Loader2, X, Search, Plus, Check, ChevronsUpDown, User, MapPin, ClipboardList, Wallet, Users, Drama, Info, Receipt, AlertTriangle, UserCheck } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -733,7 +733,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-4 mb-4">
                   <TabsTrigger value="info" className="text-xs sm:text-sm">📋 Informações</TabsTrigger>
-                  <TabsTrigger value="characters" className="text-xs sm:text-sm">🎭 Personagens</TabsTrigger>
+                  <TabsTrigger value="characters" className="text-xs sm:text-sm">🎭 Personagens & Produtores</TabsTrigger>
                   <TabsTrigger value="cast" className="text-xs sm:text-sm">👥 Elenco</TabsTrigger>
                   <TabsTrigger value="payments" className="text-xs sm:text-sm">💰 Pagamentos</TabsTrigger>
                 </TabsList>
@@ -1446,21 +1446,63 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 </div>
               </TabsContent>
 
-              <TabsContent value="characters" className="space-y-8 mt-0">
-                <div className="space-y-4">
+              <TabsContent value="characters" className="space-y-6 mt-0">
+                <div className="space-y-5">
                   <div className="flex items-center gap-2 border-b pb-2 text-primary">
                     <Drama className="h-5 w-5" />
-                    <h3 className="font-semibold text-base">Personagens & Atrações</h3>
+                    <h3 className="font-semibold text-base">Personagens, Atrações & Produtores</h3>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Busque e selecione os personagens e atrações deste evento. Você pode ajustar a quantidade de cada um.
-                  </p>
 
+                  {/* CARD DESTACADO PARA PRODUTORES */}
+                  <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-muted/50 border-2 border-primary/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-primary font-bold text-base">
+                        <UserCheck className="h-5 w-5" />
+                        <span>Produtores do Evento</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Defina quantos produtores serão necessários para coordenar e dar suporte técnico a este evento.
+                      </p>
+                      <div className="pt-0.5">
+                        <span className={cn(
+                          "inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full",
+                          producersCount > 0 ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                        )}>
+                          {producersCount === 1 ? "1 produtor selecionado" : (producersCount > 1 ? `${producersCount} produtores selecionados` : "Nenhum produtor selecionado")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-background border border-border shadow-sm rounded-lg p-1.5 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setProducersCount(producersCount - 1)}
+                        disabled={producersCount <= 0}
+                        className="h-8 w-8 flex items-center justify-center rounded-md border border-input hover:bg-muted font-bold text-base disabled:opacity-30 transition-colors"
+                        title="Diminuir quantidade de produtores"
+                      >
+                        -
+                      </button>
+                      <span className="text-base font-bold text-primary px-3 min-w-[32px] text-center" data-testid="producers-count-display">
+                        {producersCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setProducersCount(producersCount + 1)}
+                        className="h-8 w-8 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-base transition-colors"
+                        title="Aumentar quantidade de produtores"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* RESUMO DOS ITENS SELECIONADOS */}
                   {selectedCharacters.length > 0 && (
-                    <div className="mb-4 space-y-2 p-3 bg-muted/40 border rounded-lg">
+                    <div className="space-y-2 p-3.5 bg-muted/40 border rounded-lg">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-foreground">
-                          Personagens Selecionados ({selectedCharacters.reduce((acc, sc) => acc + sc.quantity, 0)} itens):
+                          Itens Selecionados ({totalItemsCount} {totalItemsCount === 1 ? "item" : "itens"}):
                         </p>
                         <span className="text-xs font-bold text-primary">
                           Total: R$ {charactersTotal.toFixed(2)}
@@ -1468,18 +1510,25 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       </div>
                       <div className="flex flex-wrap gap-2 pt-1">
                         {selectedCharacters.map(item => {
-                          const character = characters.find(c => c.id === item.characterId);
+                          const charId = typeof item === 'object' && item?.characterId ? item.characterId : (item as any);
+                          const qty = typeof item === 'object' && item?.quantity ? Number(item.quantity) || 1 : 1;
+                          const character = characters.find(c => c.id === charId);
                           if (!character) return null;
+                          const isProd = producerItem && charId === producerItem.id;
                           const unitPrice = parseFloat(character.salePrice || "0");
+
                           return (
                             <div
-                              key={item.characterId}
-                              className="flex items-center gap-2 bg-background border border-primary/30 shadow-sm text-foreground px-3 py-1.5 rounded-lg text-sm"
-                              data-testid={`selected-character-${item.characterId}`}
+                              key={charId}
+                              className={cn(
+                                "flex items-center gap-2 border shadow-sm px-3 py-1.5 rounded-lg text-sm transition-all",
+                                isProd ? "bg-primary/15 border-primary/40 font-semibold" : "bg-background border-primary/25"
+                              )}
+                              data-testid={`selected-character-${charId}`}
                             >
-                              <span className="font-medium">{character.name}</span>
+                              <span>{isProd ? "👔 Produtor" : character.name}</span>
                               {unitPrice > 0 && (
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-foreground font-normal">
                                   R$ {unitPrice.toFixed(2)} un.
                                 </span>
                               )}
@@ -1487,18 +1536,18 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                               <div className="flex items-center bg-muted border rounded-md overflow-hidden ml-1">
                                 <button
                                   type="button"
-                                  onClick={() => updateCharacterQuantity(item.characterId, -1)}
+                                  onClick={() => updateCharacterQuantity(charId, -1)}
                                   className="h-6 w-6 flex items-center justify-center hover:bg-muted-foreground/10 text-foreground text-xs font-bold transition-colors"
                                   title="Diminuir quantidade"
                                 >
                                   -
                                 </button>
                                 <span className="text-xs font-bold px-2 min-w-[24px] text-center text-primary">
-                                  {item.quantity}
+                                  {qty}
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => updateCharacterQuantity(item.characterId, 1)}
+                                  onClick={() => updateCharacterQuantity(charId, 1)}
                                   className="h-6 w-6 flex items-center justify-center hover:bg-muted-foreground/10 text-foreground text-xs font-bold transition-colors"
                                   title="Aumentar quantidade"
                                 >
@@ -1507,10 +1556,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                               </div>
                               <button
                                 type="button"
-                                onClick={() => removeCharacter(item.characterId)}
+                                onClick={() => removeCharacter(charId)}
                                 className="hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-full p-1 transition-colors ml-1"
-                                data-testid={`remove-character-${item.characterId}`}
-                                title="Remover personagem"
+                                data-testid={`remove-character-${charId}`}
+                                title="Remover"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -1521,12 +1570,17 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     </div>
                   )}
 
-                  <div className="space-y-3">
+                  {/* BUSCA DE PERSONAGENS */}
+                  <div className="space-y-3 pt-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">Catálogo de Personagens & Atrações</p>
+                      <p className="text-xs text-muted-foreground">Clique para adicionar e regular a quantidade</p>
+                    </div>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="text"
-                        placeholder="Buscar personagens por nome..."
+                        placeholder="Buscar personagens por nome (ex: Duende, Mickey, Papai Noel)..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
@@ -1536,9 +1590,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[250px] overflow-y-auto p-1.5 border rounded-md bg-muted/30">
                       {filteredCharacters.map(character => {
-                        const selectedItem = selectedCharacters.find(sc => sc.characterId === character.id);
+                        const isProd = producerItem && character.id === producerItem.id;
+                        const selectedItem = selectedCharacters.find(sc =>
+                          (typeof sc === 'object' ? sc.characterId : sc) === character.id
+                        );
                         const isSelected = !!selectedItem;
-                        const currentQty = selectedItem?.quantity || 0;
+                        const currentQty = selectedItem && typeof selectedItem === 'object' ? (Number(selectedItem.quantity) || 0) : (selectedItem ? 1 : 0);
                         const unitPrice = parseFloat(character.salePrice || "0");
 
                         return (
@@ -1557,7 +1614,10 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                               onClick={() => toggleCharacter(character.id)}
                               className="w-full text-center flex flex-col items-center cursor-pointer"
                             >
-                              <span className="text-xs font-semibold truncate w-full text-foreground">{character.name}</span>
+                              <span className="text-xs font-semibold truncate w-full text-foreground flex items-center justify-center gap-1">
+                                {isProd && <span>👔</span>}
+                                {character.name}
+                              </span>
                               <span className="text-[11px] text-muted-foreground mt-0.5">
                                 {unitPrice > 0 ? `R$ ${unitPrice.toFixed(2)}` : "Sem preço"}
                                 {character.quantity && character.quantity > 1 ? ` • Estoque: ${character.quantity}` : ""}
@@ -1606,7 +1666,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       })}
                       {filteredCharacters.length === 0 && (
                         <div className="col-span-full py-6 text-center text-sm text-muted-foreground">
-                          {searchTerm ? "Nenhum personagem encontrado" : "Carregando personagens..."}
+                          {searchTerm ? "Nenhum personagem encontrado" : "Carregando catálogo..."}
                         </div>
                       )}
                     </div>
@@ -1615,15 +1675,15 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
               </TabsContent>
 
-              <TabsContent value="cast" className="space-y-8 mt-0">
+              <TabsContent value="cast" className="space-y-6 mt-0">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 border-b pb-2 text-primary">
                     <Users className="h-5 w-5" />
-                    <h3 className="font-semibold text-base">Colaboradores & Cachês</h3>
+                    <h3 className="font-semibold text-base">Escalação da Equipe & Elenco</h3>
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      Selecione a equipe de apoio e o elenco que participará deste evento.
+                      Vincule os colaboradores aos personagens e aos postos de produção deste evento.
                     </p>
                     <Button
                       type="button"
@@ -1632,21 +1692,85 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       onClick={() => setShowEmployeeForm(!showEmployeeForm)}
                       data-testid="button-add-employee"
                     >
-                      {showEmployeeForm ? "Cancelar" : "Adicionar Colaborador"}
+                      {showEmployeeForm ? "Cancelar" : "+ Escalar Colaborador"}
                     </Button>
                   </div>
 
+                  {/* Quadro resumo das vagas a preencher */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {producersCount > 0 && (() => {
+                      const assignedProd = selectedEmployees.filter(se =>
+                        se.characterId === "produtor" || (producerItem && se.characterId === producerItem.id)
+                      ).length;
+                      const isComplete = assignedProd >= producersCount;
+                      return (
+                        <div className={cn(
+                          "px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 font-medium shadow-xs",
+                          isComplete
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                            : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                        )}>
+                          <span>👔 Produtores:</span>
+                          <span className="font-bold">{assignedProd}/{producersCount} escalados</span>
+                          {isComplete && <span>✓</span>}
+                        </div>
+                      );
+                    })()}
+
+                    {selectedCharacters.filter(sc => {
+                      const charId = typeof sc === 'object' ? sc.characterId : sc;
+                      return !producerItem || charId !== producerItem.id;
+                    }).map(sc => {
+                      const charId = typeof sc === 'object' ? sc.characterId : sc;
+                      const qty = typeof sc === 'object' && sc.quantity ? Number(sc.quantity) : 1;
+                      const char = characters.find(c => c.id === charId);
+                      if (!char) return null;
+                      const assigned = selectedEmployees.filter(se => se.characterId === charId).length;
+                      const isComplete = assigned >= qty;
+                      return (
+                        <div
+                          key={charId}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 font-medium shadow-xs",
+                            isComplete
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                              : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                          )}
+                        >
+                          <span>🎭 {char.name}:</span>
+                          <span className="font-bold">{assigned}/{qty} escalados</span>
+                          {isComplete && <span>✓</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Lista de colaboradores já escalados */}
                   {selectedEmployees.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 mt-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Equipe Escalada ({selectedEmployees.length}):
+                      </p>
                       {selectedEmployees.map((emp, index) => {
                         const employee = employees?.find(e => e.id === emp.employeeId);
                         const character = characters.find(c => c.id === emp.characterId);
+                        const isProducer = emp.characterId === "produtor" || (character && character.name.toLowerCase().trim() === "produtor");
+                        const roleLabel = isProducer ? "👔 Produtor" : (character ? `🎭 Personagem: ${character.name}` : "Geral (Apoio)");
+
                         return (
-                          <div key={index} className="flex items-center justify-between p-3 border rounded-md bg-background">
+                          <div key={index} className="flex items-center justify-between p-3 border rounded-lg bg-background shadow-xs">
                             <div className="space-y-1">
-                              <p className="text-sm font-medium">{employee?.name}</p>
+                              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <span>{employee?.name || "Colaborador"}</span>
+                                <span className={cn(
+                                  "text-xs px-2 py-0.5 rounded-full font-medium",
+                                  isProducer ? "bg-primary/15 text-primary" : (character ? "bg-purple-500/10 text-purple-700 dark:text-purple-300" : "bg-muted text-muted-foreground")
+                                )}>
+                                  {roleLabel}
+                                </span>
+                              </p>
                               <p className="text-xs text-muted-foreground">
-                                {character ? `Personagem: ${character.name}` : "Geral"} • Cachê: R$ {parseFloat(emp.cacheValue || "0").toFixed(2)}
+                                Cachê: <span className="font-semibold text-foreground">R$ {parseFloat(emp.cacheValue || "0").toFixed(2)}</span>
                               </p>
                             </div>
                             <Button
@@ -1655,6 +1779,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                               size="icon"
                               onClick={() => removeEmployee(index)}
                               data-testid={`remove-employee-${index}`}
+                              className="text-muted-foreground hover:text-destructive"
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -1664,8 +1789,9 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                     </div>
                   )}
 
+                  {/* Formulário para adicionar colaborador */}
                   {showEmployeeForm && (
-                    <div className="grid gap-4 p-4 border rounded-md bg-muted/50">
+                    <div className="grid gap-4 p-4 border rounded-xl bg-muted/40 shadow-xs mt-3">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <FormLabel>Colaborador</FormLabel>
@@ -1688,25 +1814,46 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <FormLabel>Personagem (Opcional)</FormLabel>
+                          <FormLabel>Papel / Atribuição no Evento</FormLabel>
                           <Select
                             value={newEmployee.characterId}
                             onValueChange={(val) => setNewEmployee({ ...newEmployee, characterId: val })}
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-employee-character">
-                                <SelectValue placeholder="Selecione o personagem" />
+                                <SelectValue placeholder="Selecione o papel" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="none">Geral (Sem personagem)</SelectItem>
-                              {selectedCharacters.map(characterId => {
-                                const character = characters.find(c => c.id === characterId);
-                                return character ? (
-                                  <SelectItem key={characterId} value={characterId}>
-                                    {character.name}
+                              <SelectItem value="none">Geral (Apoio diverso)</SelectItem>
+                              
+                              {/* Opção de Produtor */}
+                              {(() => {
+                                const assignedProd = selectedEmployees.filter(se =>
+                                  se.characterId === "produtor" || (producerItem && se.characterId === producerItem.id)
+                                ).length;
+                                return (
+                                  <SelectItem value="produtor">
+                                    👔 Produtor {producersCount > 0 ? `(${assignedProd}/${producersCount} escalados)` : ""}
                                   </SelectItem>
-                                ) : null;
+                                );
+                              })()}
+
+                              {/* Personagens Contratados */}
+                              {selectedCharacters.filter(sc => {
+                                const charId = typeof sc === 'object' ? sc.characterId : sc;
+                                return !producerItem || charId !== producerItem.id;
+                              }).map(sc => {
+                                const charId = typeof sc === 'object' ? sc.characterId : sc;
+                                const qty = typeof sc === 'object' && sc.quantity ? Number(sc.quantity) : 1;
+                                const character = characters.find(c => c.id === charId);
+                                if (!character) return null;
+                                const assignedCount = selectedEmployees.filter(se => se.characterId === charId).length;
+                                return (
+                                  <SelectItem key={charId} value={charId}>
+                                    🎭 {character.name} {qty > 1 ? `(${assignedCount}/${qty} escalados)` : ""}
+                                  </SelectItem>
+                                );
                               })}
                             </SelectContent>
                           </Select>
@@ -1727,13 +1874,22 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                           />
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        onClick={addEmployee}
-                        data-testid="button-confirm-employee"
-                      >
-                        Confirmar Colaborador
-                      </Button>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setShowEmployeeForm(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={addEmployee}
+                          data-testid="button-confirm-employee"
+                        >
+                          Confirmar Escalação
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
