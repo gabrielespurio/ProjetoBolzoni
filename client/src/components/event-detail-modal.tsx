@@ -23,6 +23,7 @@ import {
   Pencil,
   CheckCircle2,
   AlertCircle,
+  Drama,
 } from "lucide-react";
 
 interface EventEmployee {

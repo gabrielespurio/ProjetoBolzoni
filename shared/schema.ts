@@ -267,6 +267,7 @@ export const eventCharacters = pgTable("event_characters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   eventId: varchar("event_id").notNull().references(() => events.id),
   characterId: varchar("character_id").notNull().references(() => inventoryItems.id),
+  quantity: integer("quantity").notNull().default(1),
 });
 
 export const eventCategories = pgTable("event_categories", {

@@ -133,8 +133,8 @@ export interface IStorage {
   // Events
   getAllEvents(): Promise<any[]>;
   getEvent(id: string): Promise<Event | undefined>;
-  createEvent(event: InsertEvent & { googleEventId?: string | null }, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
-  updateEvent(id: string, event: Partial<InsertEvent & { googleEventId?: string | null }>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
+  createEvent(event: InsertEvent & { googleEventId?: string | null }, characterIds?: Array<string | { characterId: string; quantity?: number }>, expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
+  updateEvent(id: string, event: Partial<InsertEvent & { googleEventId?: string | null }>, characterIds?: Array<string | { characterId: string; quantity?: number }>, expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event>;
   deleteEvent(id: string): Promise<void>;
   getUpcomingEvents(limit?: number): Promise<any[]>;
   getEventDetailsForSync(eventId: string): Promise<{
@@ -152,7 +152,7 @@ export interface IStorage {
   }>;
 
   // Event Characters
-  addEventCharacters(eventId: string, characterIds: string[]): Promise<void>;
+  addEventCharacters(eventId: string, characterIds: Array<string | { characterId: string; quantity?: number }>): Promise<void>;
   removeEventCharacters(eventId: string): Promise<void>;
 
   // Event Expenses
@@ -432,6 +432,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         eventId: eventCharacters.eventId,
         characterId: eventCharacters.characterId,
+        quantity: eventCharacters.quantity,
         characterName: inventoryItems.name
       })
       .from(eventCharacters)
@@ -486,7 +487,16 @@ export class DatabaseStorage implements IStorage {
       return {
         ...event,
         characterIds: characters.map(c => c.characterId),
-        characterNames: characters.map(c => c.characterName).filter(Boolean),
+        characters: characters.map(c => ({
+          characterId: c.characterId,
+          characterName: c.characterName,
+          quantity: c.quantity || 1,
+        })),
+        characterNames: characters.map(c => {
+          if (!c.characterName) return null;
+          const qty = c.quantity || 1;
+          return qty > 1 ? `${c.characterName.trim()} (${qty}x)` : c.characterName.trim();
+        }).filter(Boolean),
         packageIds: pkgs.map(p => p.packageId),
         eventEmployees: evEmps,
         expenses,
@@ -502,8 +512,13 @@ export class DatabaseStorage implements IStorage {
     if (!event) return undefined;
 
     const characters = await db
-      .select({ characterId: eventCharacters.characterId })
+      .select({
+        characterId: eventCharacters.characterId,
+        quantity: eventCharacters.quantity,
+        characterName: inventoryItems.name,
+      })
       .from(eventCharacters)
+      .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
       .where(eq(eventCharacters.eventId, id));
 
     // Explicitly fetching expenses and installments for this event
@@ -527,6 +542,16 @@ export class DatabaseStorage implements IStorage {
     return {
       ...event,
       characterIds: characters.map(c => c.characterId),
+      characters: characters.map(c => ({
+        characterId: c.characterId,
+        characterName: c.characterName,
+        quantity: c.quantity || 1,
+      })),
+      characterNames: characters.map(c => {
+        if (!c.characterName) return null;
+        const qty = c.quantity || 1;
+        return qty > 1 ? `${c.characterName.trim()} (${qty}x)` : c.characterName.trim();
+      }).filter(Boolean),
       packageIds: eventPkgs.map(p => p.packageId),
       expenses,
       eventInstallments: installments,
@@ -534,7 +559,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createEvent(event: InsertEvent & { googleEventId?: string | null }, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
+  async createEvent(event: InsertEvent & { googleEventId?: string | null }, characterIds?: Array<string | { characterId: string; quantity?: number }>, expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
 
     if (characterIds && characterIds.length > 0) {
@@ -568,7 +593,7 @@ export class DatabaseStorage implements IStorage {
     return newEvent;
   }
 
-  async updateEvent(id: string, event: Partial<InsertEvent & { googleEventId?: string | null }>, characterIds?: string[], expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
+  async updateEvent(id: string, event: Partial<InsertEvent & { googleEventId?: string | null }>, characterIds?: Array<string | { characterId: string; quantity?: number }>, expenses?: Array<Omit<InsertEventExpense, 'eventId'>>, eventEmployees?: Array<{ employeeId: string, characterId?: string | null, cacheValue: string }>, installments?: Array<Omit<InsertEventInstallment, 'eventId'>>, packageIds?: string[]): Promise<Event> {
     const [updated] = await db.update(events).set(event).where(eq(events.id, id)).returning();
 
     if (characterIds !== undefined) {
@@ -835,11 +860,22 @@ export class DatabaseStorage implements IStorage {
     await db.delete(events).where(eq(events.id, id));
   }
 
-  async addEventCharacters(eventId: string, characterIds: string[]): Promise<void> {
-    const values = characterIds.map(characterId => ({
-      eventId,
-      characterId,
-    }));
+  async addEventCharacters(eventId: string, characterIds: Array<string | { characterId: string; quantity?: number }>): Promise<void> {
+    if (!characterIds || characterIds.length === 0) return;
+    const values = characterIds.map(item => {
+      if (typeof item === 'string') {
+        return {
+          eventId,
+          characterId: item,
+          quantity: 1,
+        };
+      }
+      return {
+        eventId,
+        characterId: item.characterId,
+        quantity: item.quantity && Number(item.quantity) > 0 ? Number(item.quantity) : 1,
+      };
+    });
     await db.insert(eventCharacters).values(values);
   }
 
@@ -897,7 +933,7 @@ export class DatabaseStorage implements IStorage {
 
     const [client] = await db.select().from(clients).where(eq(clients.id, event.clientId));
     const hiredCharacters = await db
-      .select({ name: inventoryItems.name })
+      .select({ name: inventoryItems.name, quantity: eventCharacters.quantity })
       .from(eventCharacters)
       .leftJoin(inventoryItems, eq(eventCharacters.characterId, inventoryItems.id))
       .where(eq(eventCharacters.eventId, eventId));
@@ -930,7 +966,11 @@ export class DatabaseStorage implements IStorage {
     return {
       clientName: client?.name || "Cliente não encontrado",
       partyStartTime: event.partyStartTime,
-      characters: hiredCharacters.map(c => c.name).filter(Boolean) as string[],
+      characters: hiredCharacters.map(c => {
+        if (!c.name) return null;
+        const qty = c.quantity || 1;
+        return qty > 1 ? `${c.name.trim()} (${qty}x)` : c.name.trim();
+      }).filter(Boolean) as string[],
       packageName: Array.from(packageNames).join(", ") || null,
       serviceName,
       eventType: event.eventType,

@@ -490,9 +490,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check character conflicts before saving event
   app.post("/api/events/check-character-conflicts", authenticateToken, async (req, res) => {
     try {
-      const { characterIds, date, excludeEventId } = req.body;
+      const { characterIds, characters, date, excludeEventId } = req.body;
 
-      if (!characterIds || characterIds.length === 0 || !date) {
+      // Normalize characters to check: Array<{ characterId: string, quantity: number }>
+      const itemsToCheck = [];
+      if (Array.isArray(characters) && characters.length > 0) {
+        characters.forEach((c) => {
+          if (typeof c === 'string') {
+            itemsToCheck.push({ characterId: c, quantity: 1 });
+          } else if (c && c.characterId) {
+            itemsToCheck.push({ characterId: c.characterId, quantity: Math.max(1, Number(c.quantity) || 1) });
+          }
+        });
+      } else if (Array.isArray(characterIds) && characterIds.length > 0) {
+        characterIds.forEach((c) => {
+          if (typeof c === 'string') {
+            itemsToCheck.push({ characterId: c, quantity: 1 });
+          } else if (c && c.characterId) {
+            itemsToCheck.push({ characterId: c.characterId, quantity: Math.max(1, Number(c.quantity) || 1) });
+          }
+        });
+      }
+
+      if (itemsToCheck.length === 0 || !date) {
         return res.json({ conflicts: [] });
       }
 
@@ -500,35 +520,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const eventDate = new Date(date);
       const eventDateStr = typeof date === 'string' && date.length === 10 ? date : eventDate.toISOString().split('T')[0];
 
-      const conflicts: Array<{ characterName: string; eventTitle: string; eventDate: string; eventStartTime: string; eventEndTime: string }> = [];
+      const conflicts = [];
 
-      for (const ev of allEvents as any[]) {
-        // Skip the event being edited
-        if (excludeEventId && ev.id === excludeEventId) continue;
-        // Skip cancelled/deleted events
-        if (ev.status === "cancelled" || ev.status === "deleted") continue;
+      for (const item of itemsToCheck) {
+        const inventory = await storage.getInventoryItem(item.characterId);
+        const characterName = inventory?.name?.trim() || "Personagem";
+        const maxStock = inventory?.quantity && inventory.quantity > 0 ? inventory.quantity : 1;
 
-        // Check if same date
-        const evDate = new Date(ev.date);
-        const evDateStr = evDate.toISOString().split('T')[0];
+        let usedQuantity = 0;
+        const conflictingEventTitles = [];
 
-        if (evDateStr !== eventDateStr) continue;
+        for (const ev of allEvents) {
+          if (excludeEventId && ev.id === excludeEventId) continue;
+          if (ev.status === "cancelled" || ev.status === "deleted") continue;
 
-        // Check if this event has any of the same characters
-        const evCharacterIds: string[] = ev.characterIds || [];
-        const overlappingCharacterIds = characterIds.filter((cid: string) => evCharacterIds.includes(cid));
+          const evDate = new Date(ev.date);
+          const evDateStr = evDate.toISOString().split('T')[0];
+          if (evDateStr !== eventDateStr) continue;
 
-        if (overlappingCharacterIds.length === 0) continue;
+          // Check if this other event uses this character
+          let eventCharUsage = 0;
+          if (Array.isArray(ev.characters) && ev.characters.length > 0) {
+            const match = ev.characters.find((c) => c.characterId === item.characterId);
+            if (match) {
+              eventCharUsage = Math.max(1, Number(match.quantity) || 1);
+            }
+          } else if (Array.isArray(ev.characterIds) && ev.characterIds.includes(item.characterId)) {
+            eventCharUsage = 1;
+          }
 
-        // Same day + same character = conflict (no time check needed)
-        for (const cid of overlappingCharacterIds) {
-          const inventory = await storage.getInventoryItem(cid);
+          if (eventCharUsage > 0) {
+            usedQuantity += eventCharUsage;
+            conflictingEventTitles.push(`${ev.title} (${eventCharUsage}x)`);
+          }
+        }
+
+        // If total needed exceeds total available in stock, it's a conflict!
+        if ((item.quantity + usedQuantity) > maxStock) {
           conflicts.push({
-            characterName: inventory?.name || "Personagem desconhecido",
-            eventTitle: ev.title,
-            eventDate: evDateStr,
-            eventStartTime: ev.startTime || "",
-            eventEndTime: ev.endTime || "",
+            characterName: maxStock > 1 ? `${characterName} (Solicitado: ${item.quantity}, Em uso na data: ${usedQuantity}, Estoque total: ${maxStock})` : characterName,
+            eventTitle: conflictingEventTitles.length > 0 ? conflictingEventTitles.join(", ") : "Estoque insuficiente",
+            eventDate: eventDateStr,
+            eventStartTime: "",
+            eventEndTime: "",
           });
         }
       }
@@ -611,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/events", authenticateToken, requireEventEdit, async (req, res) => {
     try {
-      const { characterIds, expenses, eventEmployees, eventInstallments, packageIds, ...eventData } = req.body;
+      const { characterIds, characters, expenses, eventEmployees, eventInstallments, packageIds, ...eventData } = req.body;
 
       // Validate date is not more than 1 year in the past
       const eventDate = new Date(eventData.date);
@@ -629,7 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: eventDate,
         paymentDate: eventData.paymentDate ? new Date(eventData.paymentDate) : null,
       });
-      const event = await storage.createEvent(parsedData, characterIds, expenses, eventEmployees, eventInstallments, packageIds);
+      const event = await storage.createEvent(parsedData, characters || characterIds, expenses, eventEmployees, eventInstallments, packageIds);
 
       // Sincronizar com Google Calendar
       try {
@@ -671,7 +705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/events/:id", authenticateToken, requireEventEdit, async (req, res) => {
     try {
-      const { characterIds, expenses, eventEmployees, eventInstallments, packageIds, ...eventData } = req.body;
+      const { characterIds, characters, expenses, eventEmployees, eventInstallments, packageIds, ...eventData } = req.body;
 
       // Buscar o evento atual antes de atualizar para verificar mudança de status
       const currentEvent = await storage.getEvent(req.params.id);
@@ -694,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bodyData.paymentDate = bodyData.paymentDate ? new Date(bodyData.paymentDate) : null;
       }
       const data = insertEventSchema.partial().parse(bodyData);
-      const event = await storage.updateEvent(req.params.id, data, characterIds, expenses, eventEmployees, eventInstallments, packageIds);
+      const event = await storage.updateEvent(req.params.id, data, characters !== undefined ? characters : characterIds, expenses, eventEmployees, eventInstallments, packageIds);
 
       // Sincronizar com Google Calendar
       try {
@@ -983,7 +1017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 2. Mapear personagens do orçamento para IDs do estoque (se existirem)
       const allInventory = await storage.getAllInventoryItems();
-      const characterIds: string[] = [];
+      const eventCharactersList: Array<{ characterId: string; quantity: number }> = [];
       const quoteDetails = quote.details as any;
       const quoteCharacters = quoteDetails?.characters || [];
       if (Array.isArray(quoteCharacters)) {
@@ -993,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             item.name.toLowerCase().trim() === char.name.toLowerCase().trim()
           );
           if (foundItem) {
-            characterIds.push(foundItem.id);
+            eventCharactersList.push({ characterId: foundItem.id, quantity: char.quantity && Number(char.quantity) > 0 ? Number(char.quantity) : 1 });
           }
         }
       }
@@ -1033,7 +1067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             eventType: quote.eventType === "15anos" ? "service" : "package",
             notes: `Convertido automaticamente a partir do Orçamento #${quote.id.slice(0, 8)}${isMultiple ? ` - Dia ${i + 1} de ${schedule.length}` : ''}`,
           } as any,
-          characterIds,
+          eventCharactersList,
           undefined,
           undefined,
           undefined,

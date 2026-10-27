@@ -98,7 +98,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   const { toast } = useToast();
   const isEdit = !!event;
   const [activeTab, setActiveTab] = useState("info");
-  const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
+  const [selectedCharacters, setSelectedCharacters] = useState<Array<{ characterId: string; quantity: number }>>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [expenses, setExpenses] = useState<EventExpense[]>([]);
   const [newExpense, setNewExpense] = useState<EventExpense>({ title: "", amount: "", description: "" });
@@ -373,7 +373,19 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         notes: activeEventData.notes || "",
         characterIds: [],
       });
-      setSelectedCharacters((activeEventData as any).characterIds || []);
+      if ((activeEventData as any).characters && Array.isArray((activeEventData as any).characters)) {
+        setSelectedCharacters((activeEventData as any).characters.map((c: any) => ({
+          characterId: c.characterId || c.id,
+          quantity: Math.max(1, Number(c.quantity) || 1),
+        })));
+      } else if ((activeEventData as any).characterIds && Array.isArray((activeEventData as any).characterIds)) {
+        const ids = (activeEventData as any).characterIds as string[];
+        const map = new Map<string, number>();
+        ids.forEach(id => map.set(id, (map.get(id) || 0) + 1));
+        setSelectedCharacters(Array.from(map.entries()).map(([characterId, quantity]) => ({ characterId, quantity })));
+      } else {
+        setSelectedCharacters([]);
+      }
       const loadedExpenses = (activeEventData as any).expenses || [];
       setExpenses(loadedExpenses.map((exp: any) => ({
         title: exp.title || "",
@@ -476,7 +488,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     mutationFn: async (data: EventForm) => {
       const payload = {
         ...data,
-        characterIds: selectedCharacters,
+        characterIds: selectedCharacters.map(sc => sc.characterId),
+        characters: selectedCharacters,
         expenses: expenses,
         eventInstallments: eventInstallments,
         eventEmployees: selectedEmployees.map(emp => ({
@@ -558,7 +571,8 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       setCheckingConflicts(true);
       try {
         const result = await apiRequest("POST", "/api/events/check-character-conflicts", {
-          characterIds: selectedCharacters,
+          characterIds: selectedCharacters.map(sc => sc.characterId),
+          characters: selectedCharacters,
           date: data.date,
           excludeEventId: isEdit ? event?.id : undefined,
         });
@@ -1436,40 +1450,72 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 border-b pb-2 text-primary">
                     <Drama className="h-5 w-5" />
-                    <h3 className="font-semibold text-base">Personagens</h3>
+                    <h3 className="font-semibold text-base">Personagens & Atrações</h3>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Busque e selecione os personagens que serão utilizados neste evento
+                    Busque e selecione os personagens e atrações deste evento. Você pode ajustar a quantidade de cada um.
                   </p>
 
                   {selectedCharacters.length > 0 && (
-                    <div className="mb-4 space-y-2">
-                      <p className="text-sm font-medium">
-                        Personagens selecionados ({selectedCharacters.length}):
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedCharacters.map(characterId => {
-                          const character = characters.find(c => c.id === characterId);
-                          return character ? (
+                    <div className="mb-4 space-y-2 p-3 bg-muted/40 border rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-foreground">
+                          Personagens Selecionados ({selectedCharacters.reduce((acc, sc) => acc + sc.quantity, 0)} itens):
+                        </p>
+                        <span className="text-xs font-bold text-primary">
+                          Total: R$ {charactersTotal.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {selectedCharacters.map(item => {
+                          const character = characters.find(c => c.id === item.characterId);
+                          if (!character) return null;
+                          const unitPrice = parseFloat(character.salePrice || "0");
+                          return (
                             <div
-                              key={characterId}
-                              className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm"
-                              data-testid={`selected-character-${characterId}`}
+                              key={item.characterId}
+                              className="flex items-center gap-2 bg-background border border-primary/30 shadow-sm text-foreground px-3 py-1.5 rounded-lg text-sm"
+                              data-testid={`selected-character-${item.characterId}`}
                             >
-                              <span>{character.name}</span>
-                              <span className="text-xs opacity-75">
-                                R$ {parseFloat(character.salePrice || "0").toFixed(2)}
-                              </span>
+                              <span className="font-medium">{character.name}</span>
+                              {unitPrice > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  R$ {unitPrice.toFixed(2)} un.
+                                </span>
+                              )}
+                              {/* Quantity Stepper */}
+                              <div className="flex items-center bg-muted border rounded-md overflow-hidden ml-1">
+                                <button
+                                  type="button"
+                                  onClick={() => updateCharacterQuantity(item.characterId, -1)}
+                                  className="h-6 w-6 flex items-center justify-center hover:bg-muted-foreground/10 text-foreground text-xs font-bold transition-colors"
+                                  title="Diminuir quantidade"
+                                >
+                                  -
+                                </button>
+                                <span className="text-xs font-bold px-2 min-w-[24px] text-center text-primary">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateCharacterQuantity(item.characterId, 1)}
+                                  className="h-6 w-6 flex items-center justify-center hover:bg-muted-foreground/10 text-foreground text-xs font-bold transition-colors"
+                                  title="Aumentar quantidade"
+                                >
+                                  +
+                                </button>
+                              </div>
                               <button
                                 type="button"
-                                onClick={() => removeCharacter(characterId)}
-                                className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
-                                data-testid={`remove-character-${characterId}`}
+                                onClick={() => removeCharacter(item.characterId)}
+                                className="hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-full p-1 transition-colors ml-1"
+                                data-testid={`remove-character-${item.characterId}`}
+                                title="Remover personagem"
                               >
-                                <X className="h-3 w-3" />
+                                <X className="h-3.5 w-3.5" />
                               </button>
                             </div>
-                          ) : null;
+                          );
                         })}
                       </div>
                     </div>
@@ -1488,30 +1534,74 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[200px] overflow-y-auto p-1 border rounded-md bg-muted/50">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[250px] overflow-y-auto p-1.5 border rounded-md bg-muted/30">
                       {filteredCharacters.map(character => {
-                        const isSelected = selectedCharacters.includes(character.id);
+                        const selectedItem = selectedCharacters.find(sc => sc.characterId === character.id);
+                        const isSelected = !!selectedItem;
+                        const currentQty = selectedItem?.quantity || 0;
+                        const unitPrice = parseFloat(character.salePrice || "0");
+
                         return (
-                          <button
+                          <div
                             key={character.id}
-                            type="button"
-                            onClick={() => toggleCharacter(character.id)}
                             className={cn(
-                              "flex flex-col items-center justify-center p-2 rounded-md border text-center transition-all",
+                              "flex flex-col items-center justify-between p-2.5 rounded-md border text-center transition-all relative select-none",
                               isSelected
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background hover:bg-muted border-transparent"
+                                ? "bg-primary/10 border-primary shadow-sm"
+                                : "bg-background hover:bg-muted/80 border-border"
                             )}
                             data-testid={`character-option-${character.id}`}
                           >
-                            <span className="text-xs font-medium truncate w-full">{character.name}</span>
-                            <span className={cn(
-                              "text-[10px] opacity-75",
-                              isSelected ? "text-primary-foreground" : "text-muted-foreground"
-                            )}>
-                              R$ {parseFloat(character.salePrice || "0").toFixed(2)}
-                            </span>
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleCharacter(character.id)}
+                              className="w-full text-center flex flex-col items-center cursor-pointer"
+                            >
+                              <span className="text-xs font-semibold truncate w-full text-foreground">{character.name}</span>
+                              <span className="text-[11px] text-muted-foreground mt-0.5">
+                                {unitPrice > 0 ? `R$ ${unitPrice.toFixed(2)}` : "Sem preço"}
+                                {character.quantity && character.quantity > 1 ? ` • Estoque: ${character.quantity}` : ""}
+                              </span>
+                            </button>
+
+                            {isSelected ? (
+                              <div className="flex items-center justify-center gap-1.5 mt-2 bg-background border border-primary/40 rounded-md py-0.5 px-1 w-full max-w-[120px]">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateCharacterQuantity(character.id, -1);
+                                  }}
+                                  className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted text-xs font-bold text-foreground"
+                                  title="Diminuir"
+                                >
+                                  -
+                                </button>
+                                <span className="text-xs font-bold text-primary min-w-[20px] text-center">
+                                  {currentQty}x
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateCharacterQuantity(character.id, 1);
+                                  }}
+                                  className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted text-xs font-bold text-foreground"
+                                  title="Aumentar"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => toggleCharacter(character.id)}
+                                className="text-[11px] text-primary hover:underline font-medium mt-2"
+                              >
+                                + Selecionar
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
                       {filteredCharacters.length === 0 && (
@@ -1589,7 +1679,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {employees?.filter(e => !selectedEmployees.some(se => se.employeeId === e.id && !se.characterId)).map((employee) => (
+                              {employees?.filter(e => !selectedEmployees.some(se => se.employeeId === e.id)).map((employee) => (
                                 <SelectItem key={employee.id} value={employee.id}>
                                   {employee.name}
                                 </SelectItem>
