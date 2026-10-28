@@ -149,6 +149,9 @@ export interface IStorage {
     contractValue: string | null;
     eventDuration: string | null;
     notes: string | null;
+    birthdayPersonName: string | null;
+    birthdayPersonAge: string | null;
+    allowPhotos: boolean;
   }>;
 
   // Event Characters
@@ -927,6 +930,9 @@ export class DatabaseStorage implements IStorage {
     contractValue: string | null;
     eventDuration: string | null;
     notes: string | null;
+    birthdayPersonName: string | null;
+    birthdayPersonAge: string | null;
+    allowPhotos: boolean;
   }> {
     const [event] = await db.select().from(events).where(eq(events.id, eventId));
     if (!event) throw new Error("Evento não encontrado");
@@ -979,6 +985,9 @@ export class DatabaseStorage implements IStorage {
       contractValue: event.contractValue ? event.contractValue.toString() : null,
       eventDuration: event.eventDuration,
       notes: event.notes,
+      birthdayPersonName: event.birthdayPersonName,
+      birthdayPersonAge: event.birthdayPersonAge,
+      allowPhotos: event.allowPhotos ?? true,
     };
   }
 

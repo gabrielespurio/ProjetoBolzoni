@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Drama,
+  Camera,
 } from "lucide-react";
 
 interface EventEmployee {
@@ -59,6 +60,7 @@ interface EventData {
   venueNumber: string | null;
   birthdayPersonName?: string | null;
   birthdayPersonAge?: string | null;
+  allowPhotos?: boolean;
   characterNames: string[];
   eventEmployees: EventEmployee[];
 }
@@ -288,6 +290,24 @@ export function EventDetailModal({ event, open, onOpenChange, onEdit }: EventDet
                 </div>
               </div>
             )}
+
+            <div className="flex items-start gap-3">
+              <Camera className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <p className="text-sm text-muted-foreground">Fotos e Redes Sociais</p>
+                <div className="mt-1">
+                  {event.allowPhotos !== false ? (
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 font-medium">
+                      📸 Fotos: Permitido postar
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-300 font-medium">
+                      🚫 Fotos: NÃO postar nas redes
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {event.packageName && (
               <div className="flex items-start gap-3">

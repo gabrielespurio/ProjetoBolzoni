@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Phone, Mail, Briefcase, MapPin, CreditCard } from "lucide-react";
+import { Plus, Search, Phone, Mail, Briefcase, MapPin, CreditCard, FileText } from "lucide-react";
+import { generateEmployeeContract } from "@/lib/employeeContractGenerator";
 import { EmployeeDialog } from "@/components/employee-dialog";
 import { DateFilter, type DateFilterValue } from "@/components/date-filter";
 import { filterByDateRange } from "@/lib/date-utils";
@@ -112,9 +113,24 @@ export default function Employees() {
                           <span className="text-xs md:text-sm text-muted-foreground truncate">{employee.role}</span>
                         </div>
                       </div>
-                      <Badge variant={employee.isAvailable ? "default" : "secondary"} className="flex-shrink-0">
-                        {employee.isAvailable ? "Disponível" : "Indisponível"}
-                      </Badge>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            generateEmployeeContract(employee);
+                          }}
+                          title="Emitir Contrato de Prestação de Serviços"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Contrato</span>
+                        </Button>
+                        <Badge variant={employee.isAvailable ? "default" : "secondary"} className="flex-shrink-0">
+                          {employee.isAvailable ? "Disponível" : "Indisponível"}
+                        </Badge>
+                      </div>
                     </div>
                     <div className="grid gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground grid-cols-1 sm:grid-cols-2">
                       {employee.phone && (
@@ -143,6 +159,15 @@ export default function Employees() {
                               ? `${employee.cidade} - ${employee.estado}`
                               : employee.cidade || employee.estado}
                           </span>
+                        </div>
+                      )}
+                      {employee.pixKey && (
+                        <div className="flex items-center gap-1.5 col-span-1 sm:col-span-2 text-xs">
+                          <span className="font-semibold text-primary">Chave PIX:</span>
+                          <span className="truncate font-mono">{employee.pixKey}</span>
+                          {employee.pixType && (
+                            <span className="text-muted-foreground text-[10px] uppercase">({employee.pixType})</span>
+                          )}
                         </div>
                       )}
                     </div>

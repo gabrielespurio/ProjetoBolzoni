@@ -671,6 +671,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const details = await storage.getEventDetailsForSync(event.id);
           const description = [
             `Cliente: ${details.clientName}`,
+            details.birthdayPersonName
+              ? `🎂 Aniversariante: ${details.birthdayPersonName}${details.birthdayPersonAge ? ` (${details.birthdayPersonAge} anos)` : ""}`
+              : null,
+            details.allowPhotos
+              ? `📸 Fotos nas Redes Sociais: PERMITIDO POSTAR`
+              : `🚫 Fotos nas Redes Sociais: NÃO POSTAR FOTOS/VÍDEOS (Cliente não autorizou)`,
             `Horário da festa: ${details.partyStartTime || "Não informado"}`,
             `Horário de inicio da recreação: ${details.startTime || "Não informado"}`,
             `Duração do evento: ${details.eventDuration ? details.eventDuration + " horas" : "Não informado"}`,
@@ -738,6 +744,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const details = await storage.getEventDetailsForSync(eventToSync.id);
             const description = [
               `Cliente: ${details.clientName}`,
+              details.birthdayPersonName
+                ? `🎂 Aniversariante: ${details.birthdayPersonName}${details.birthdayPersonAge ? ` (${details.birthdayPersonAge} anos)` : ""}`
+                : null,
+              details.allowPhotos
+                ? `📸 Fotos nas Redes Sociais: PERMITIDO POSTAR`
+                : `🚫 Fotos nas Redes Sociais: NÃO POSTAR FOTOS/VÍDEOS (Cliente não autorizou)`,
               `Horário da festa: ${details.partyStartTime || "Não informado"}`,
               `Horário de inicio da recreação: ${details.startTime || "Não informado"}`,
               `Duração do evento: ${details.eventDuration ? details.eventDuration + " horas" : "Não informado"}`,
@@ -1081,6 +1093,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const details = await storage.getEventDetailsForSync(newEvent.id);
             const description = [
               `Cliente: ${details.clientName}`,
+              details.birthdayPersonName
+                ? `🎂 Aniversariante: ${details.birthdayPersonName}${details.birthdayPersonAge ? ` (${details.birthdayPersonAge} anos)` : ""}`
+                : null,
+              details.allowPhotos
+                ? `📸 Fotos nas Redes Sociais: PERMITIDO POSTAR`
+                : `🚫 Fotos nas Redes Sociais: NÃO POSTAR FOTOS/VÍDEOS (Cliente não autorizou)`,
               `Local: ${item.location || "Não informado"}`,
               `Horário: ${item.startTime || "?"} às ${item.endTime || "?"}`,
               `Duração total (projeto): ${quoteDetails?.scope?.estimatedDuration || "Não informado"}`,

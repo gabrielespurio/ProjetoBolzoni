@@ -68,6 +68,7 @@ const eventFormSchema = insertEventSchema.extend({
   packageNotes: z.string().optional(),
   birthdayPersonName: z.string().optional(),
   birthdayPersonAge: z.string().optional(),
+  allowPhotos: z.boolean().default(true),
   childrenCount: z.string().optional(),
   buffetId: z.string().optional(),
   characterIds: z.array(z.string()).optional(),
@@ -247,6 +248,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       packageNotes: "",
       birthdayPersonName: "",
       birthdayPersonAge: "",
+      allowPhotos: true,
       status: "scheduled",
       complementaryNotes: "",
       notes: "",
@@ -355,6 +357,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         eventDuration: (activeEventData as any).eventDuration || "",
         birthdayPersonName: (activeEventData as any).birthdayPersonName || "",
         birthdayPersonAge: (activeEventData as any).birthdayPersonAge || "",
+        allowPhotos: (activeEventData as any).allowPhotos !== undefined ? Boolean((activeEventData as any).allowPhotos) : true,
         childrenCount: (activeEventData as any).childrenCount?.toString() || "",
         startTime: (activeEventData as any).startTime || (activeEventData.date ? (() => {
           const d = new Date(activeEventData.date);
@@ -453,6 +456,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
         eventDuration: "",
         birthdayPersonName: "",
         birthdayPersonAge: "",
+        allowPhotos: true,
         status: "scheduled" as const,
         complementaryNotes: "",
         notes: "",
@@ -563,6 +567,7 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
       ...data,
       date: dateObj,
       childrenCount: data.childrenCount ? parseInt(data.childrenCount) : null,
+      allowPhotos: data.allowPhotos !== undefined ? data.allowPhotos : true,
       partyStartTime: data.partyStartTime || null,
       eventDuration: data.eventDuration || null,
       startTime: data.startTime || null,
@@ -1037,6 +1042,32 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
                         <Input {...field} placeholder="Ex: 5 anos (opcional)" data-testid="input-birthday-person-age" />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="allowPhotos"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1 md:col-span-2 flex flex-row items-center justify-between rounded-lg border p-3.5 shadow-xs bg-muted/20">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-semibold flex items-center gap-2">
+                          {field.value ? "📸 Fotos nas Redes Sociais: PERMITIDO" : "🚫 Fotos nas Redes Sociais: NÃO PERMITIDO"}
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          {field.value
+                            ? "O cliente autorizou a publicação de fotos e vídeos da equipe no evento."
+                            : "O cliente NÃO autorizou publicação de fotos ou vídeos deste evento."}
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="h-5 w-5"
+                          data-testid="checkbox-allow-photos"
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />

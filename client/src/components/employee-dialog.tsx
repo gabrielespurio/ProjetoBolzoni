@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { generateEmployeeContract } from "@/lib/employeeContractGenerator";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useViaCep } from "@/hooks/use-viacep";
-import { Loader2, Plus, Trash2, X, Check } from "lucide-react";
+import { Loader2, Plus, Trash2, X, Check, FileText } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -44,6 +46,9 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   numero: z.string().optional(),
   userEmail: z.string().email("Email inválido").optional().or(z.literal("")),
   userPassword: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional().or(z.literal("")),
+  pixKey: z.string().optional(),
+  pixType: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 type EmployeeForm = z.infer<typeof employeeFormSchema>;
@@ -83,6 +88,9 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
       workloadHours: employee?.workloadHours ?? 0,
       userEmail: "",
       userPassword: "",
+      pixKey: employee?.pixKey || "",
+      pixType: employee?.pixType || "cpf",
+      notes: employee?.notes || "",
     },
   });
 
@@ -137,6 +145,9 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         workloadHours: employee.workloadHours ?? 0,
         userEmail: "",
         userPassword: "",
+        pixKey: employee.pixKey || "",
+        pixType: employee.pixType || "cpf",
+        notes: employee.notes || "",
       });
     } else if (open && !employee) {
       form.reset({
@@ -157,6 +168,9 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
         workloadHours: 0,
         userEmail: "",
         userPassword: "",
+        pixKey: "",
+        pixType: "cpf",
+        notes: "",
       });
     }
     if (open) {
@@ -646,6 +660,74 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                     </div>
                   </div>
 
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground">Dados Bancários / PIX</h3>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <FormField
+                        control={form.control}
+                        name="pixType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipo de Chave PIX</FormLabel>
+                            <Select value={field.value || "cpf"} onValueChange={field.onChange}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-pix-type">
+                                  <SelectValue placeholder="Selecione o tipo" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="cpf">CPF</SelectItem>
+                                <SelectItem value="email">E-mail</SelectItem>
+                                <SelectItem value="telefone">Telefone (Celular)</SelectItem>
+                                <SelectItem value="aleatoria">Chave Aleatória</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="pixKey"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Chave PIX</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Digite a chave PIX para pagamentos de cachê"
+                                data-testid="input-employee-pix-key"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground">Observações do Colaborador</h3>
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Observações Gerais</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              placeholder="Observações internas, preferências de papéis, restrições de horários, medidas de figurino, etc."
+                              rows={3}
+                              data-testid="textarea-employee-notes"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="isAvailable"
@@ -775,14 +857,28 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
                   </div>
                 </TabsContent>
 
-                <div className="flex justify-end gap-4 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={mutation.isPending} data-testid="button-save-employee">
-                    {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEdit ? "Atualizar" : "Cadastrar"}
-                  </Button>
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t">
+                  {isEdit && employee ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="gap-2 text-primary border-primary/30 hover:bg-primary/5 w-full sm:w-auto"
+                      onClick={() => generateEmployeeContract(employee)}
+                      data-testid="button-generate-employee-contract"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Emitir Contrato de Prestador
+                    </Button>
+                  ) : <div />}
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <Button type="button" variant="outline" onClick={handleClose} data-testid="button-cancel">
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={mutation.isPending} data-testid="button-save-employee">
+                      {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isEdit ? "Atualizar" : "Cadastrar"}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>

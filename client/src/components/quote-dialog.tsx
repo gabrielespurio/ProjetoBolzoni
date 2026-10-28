@@ -65,6 +65,12 @@ export interface QuoteMaterial {
   quantity: number;
 }
 
+export interface QuoteExtraItem {
+  name: string;
+  value: number;
+  quantity: number;
+}
+
 export interface QuoteFormValues {
   clientName: string;
   eventType: string;
@@ -92,6 +98,7 @@ export interface QuoteFormValues {
   };
   characters: QuoteCharacter[];
   materials: QuoteMaterial[];
+  extraItems?: QuoteExtraItem[];
   profitMargin: number;
   discountPercentage: number;
 }
@@ -206,6 +213,7 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
     },
     characters: [{ name: "", value: 0, quantity: 1 }],
     materials: [{ name: "", value: 0, quantity: 1 }],
+    extraItems: [],
     profitMargin: 40, // 40% default
     discountPercentage: 0,
   };
@@ -260,6 +268,11 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
           value: m.value || 0,
           quantity: m.quantity || 1
         })) : [{ name: "", value: 0, quantity: 1 }],
+        extraItems: quote.details?.extraItems?.length > 0 ? quote.details.extraItems.map((e: any) => ({
+          name: e.name || "",
+          value: e.value || 0,
+          quantity: e.quantity || 1
+        })) : (quote.details?.costs?.extras ? [{ name: "Atrações Extras Diversas", value: Number(quote.details.costs.extras) || 0, quantity: 1 }] : []),
         profitMargin: parseFloat(quote.profitMargin) || 40,
         discountPercentage: quote.details?.discountPercentage || 0,
       });
@@ -278,6 +291,11 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
     name: "materials",
   });
 
+  const { fields: extraFields, append: appendExtra, remove: removeExtra } = useFieldArray({
+    control,
+    name: "extraItems",
+  });
+
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({
     control,
     name: "schedule",
@@ -290,10 +308,15 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
   const watchDiscountPercentage = watch("discountPercentage");
   const watchCharacters = watch("characters");
   const watchMaterials = watch("materials");
+  const watchExtraItems = watch("extraItems");
   const watchSchedule = watch("schedule");
 
+  const totalCharactersCount = (watchCharacters || []).reduce((acc, char) => {
+    return acc + (Number(char.quantity) || 1);
+  }, 0);
+
   const charactersCost = (watchCharacters || []).reduce((acc, char) => {
-    return acc + (Number(char.value) * Number(char.quantity) || 0);
+    return acc + ((Number(char.value) || 0) * (Number(char.quantity) || 1));
   }, 0);
 
   const producersCost = (Number(watchCosts?.producers) || 0) * (Number(watchCosts?.producersCount) || 1);
@@ -313,10 +336,14 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
   const daysCount = uniqueDatesCount > 0 ? uniqueDatesCount : 1;
 
   const materialsCost = (watchMaterials || []).reduce((acc, mat) => {
-    return acc + (Number(mat.value) * Number(mat.quantity) || 0);
+    return acc + ((Number(mat.value) || 0) * (Number(mat.quantity) || 1));
   }, 0);
 
-  const fixedCosts = materialsCost + (Number(watchCosts?.extras) || 0);
+  const extraItemsCost = (watchExtraItems || []).reduce((acc, item) => {
+    return acc + ((Number(item.value) || 0) * (Number(item.quantity) || 1));
+  }, 0);
+
+  const fixedCosts = materialsCost + extraItemsCost + (Number(watchCosts?.extras) || 0);
 
   const totalCosts = (dailyOperationalCosts * daysCount) + fixedCosts;
 
@@ -398,6 +425,13 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
             name: m.name,
             value: Number(m.value) || 0,
             quantity: Number(m.quantity) || 1
+          })),
+        extraItems: (data.extraItems || [])
+          .filter(e => e.name && e.name.trim() !== '')
+          .map(e => ({
+            name: e.name,
+            value: Number(e.value) || 0,
+            quantity: Number(e.quantity) || 1
           })),
       }
     };
@@ -735,38 +769,44 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border shadow-sm">
-                  <CardHeader className="bg-muted/30 pb-3 py-4">
-                    <DialogTitle className="text-base text-primary">Custos Extras</DialogTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4 space-y-3">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label>Atrações Extras (R$)</Label>
-                        <Input type="number" min="0" step="0.01" {...register("costs.extras")} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
                 <Card className="border-border shadow-sm md:col-span-2">
-                    <CardHeader className="bg-muted/30 pb-3 py-4 flex flex-row items-center justify-between">
-                      <DialogTitle className="text-base text-primary">Materiais</DialogTitle>
-                      <Button type="button" onClick={() => appendMaterial({ name: "", value: 0, quantity: 1 })} variant="ghost" size="sm" className="h-8 gap-1">
-                        <Plus className="h-4 w-4" /> Adicionar
-                      </Button>
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-3 max-h-[40vh] overflow-y-auto">
-                      {materialFields.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-2">Nenhum material adicionado.</p>
+                  <CardHeader className="bg-muted/30 pb-3 py-4 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <DialogTitle className="text-base text-primary">Atrações Extras</DialogTitle>
+                      {extraFields.length > 0 && (
+                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          Total: R$ {extraItemsCost.toFixed(2)}
+                        </span>
                       )}
-                      {materialFields.map((field, index) => (
+                    </div>
+                    <Button type="button" onClick={() => appendExtra({ name: "", value: 0, quantity: 1 })} variant="ghost" size="sm" className="h-8 gap-1">
+                      <Plus className="h-4 w-4" /> Adicionar Atração Extra
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-3 max-h-[30vh] overflow-y-auto">
+                    {extraFields.length === 0 && (
+                      <div className="text-center py-2">
+                        <p className="text-sm text-muted-foreground">Nenhuma atração extra adicionada.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 text-xs"
+                          onClick={() => appendExtra({ name: "", value: 0, quantity: 1 })}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" /> + Incluir Atração Extra (ex: Pintura Facial, Perna de Pau, Máquina de Bolhas)
+                        </Button>
+                      </div>
+                    )}
+                    {extraFields.map((field, index) => {
+                      const itemTotal = (Number(watchExtraItems?.[index]?.value) || 0) * (Number(watchExtraItems?.[index]?.quantity) || 1);
+                      return (
                         <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 border-b sm:border-0 pb-3 sm:pb-0">
                           <div className="w-full sm:flex-1">
-                            <Label className="mb-1 block text-xs text-muted-foreground">Material</Label>
+                            <Label className="mb-1 block text-xs text-muted-foreground">Nome da Atração Extra</Label>
                             <Input
-                              placeholder="Nome do material..."
-                              {...register(`materials.${index}.name`)}
+                              placeholder="Ex: Pintura facial, Perna de pau, Bolha de sabão..."
+                              {...register(`extraItems.${index}.name`)}
                             />
                           </div>
                           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -776,7 +816,7 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                {...register(`materials.${index}.value`)}
+                                {...register(`extraItems.${index}.value`)}
                               />
                             </div>
                             <div className="w-20">
@@ -784,16 +824,22 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                               <Input
                                 type="number"
                                 min="1"
-                                {...register(`materials.${index}.quantity`)}
+                                {...register(`extraItems.${index}.quantity`)}
                               />
+                            </div>
+                            <div className="w-28 text-right">
+                              <Label className="mb-1 block text-xs text-muted-foreground">Total Item</Label>
+                              <div className="h-9 flex items-center justify-end font-semibold text-xs text-foreground bg-muted/40 px-2 rounded-md border">
+                                R$ {itemTotal.toFixed(2)}
+                              </div>
                             </div>
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
                               className="mt-6 self-end"
-                              onClick={() => appendMaterial({ ...watchMaterials[index] })}
-                              title="Duplicar material"
+                              onClick={() => appendExtra({ ...(watchExtraItems?.[index] || { name: "", value: 0, quantity: 1 }) })}
+                              title="Duplicar atração"
                             >
                               <Copy className="h-4 w-4" />
                             </Button>
@@ -802,19 +848,107 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                               variant="ghost"
                               size="icon"
                               className="mt-6 text-destructive hover:text-destructive hover:bg-destructive/10 self-end"
-                              onClick={() => removeMaterial(index)}
+                              onClick={() => removeExtra(index)}
+                              title="Remover"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border shadow-sm md:col-span-2">
+                    <CardHeader className="bg-muted/30 pb-3 py-4 flex flex-row items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <DialogTitle className="text-base text-primary">Materiais</DialogTitle>
+                        {materialFields.length > 0 && (
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            Total: R$ {materialsCost.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <Button type="button" onClick={() => appendMaterial({ name: "", value: 0, quantity: 1 })} variant="ghost" size="sm" className="h-8 gap-1">
+                        <Plus className="h-4 w-4" /> Adicionar
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="pt-4 space-y-3 max-h-[40vh] overflow-y-auto">
+                      {materialFields.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">Nenhum material adicionado.</p>
+                      )}
+                      {materialFields.map((field, index) => {
+                        const itemTotal = (Number(watchMaterials?.[index]?.value) || 0) * (Number(watchMaterials?.[index]?.quantity) || 1);
+                        return (
+                          <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 border-b sm:border-0 pb-3 sm:pb-0">
+                            <div className="w-full sm:flex-1">
+                              <Label className="mb-1 block text-xs text-muted-foreground">Material</Label>
+                              <Input
+                                placeholder="Nome do material..."
+                                {...register(`materials.${index}.name`)}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <div className="w-24">
+                                <Label className="mb-1 block text-xs text-muted-foreground">Valor (R$)</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  {...register(`materials.${index}.value`)}
+                                />
+                              </div>
+                              <div className="w-20">
+                                <Label className="mb-1 block text-xs text-muted-foreground">Qtd</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  {...register(`materials.${index}.quantity`)}
+                                />
+                              </div>
+                              <div className="w-28 text-right">
+                                <Label className="mb-1 block text-xs text-muted-foreground">Total Item</Label>
+                                <div className="h-9 flex items-center justify-end font-semibold text-xs text-foreground bg-muted/40 px-2 rounded-md border">
+                                  R$ {itemTotal.toFixed(2)}
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="mt-6 self-end"
+                                onClick={() => appendMaterial({ ...watchMaterials[index] })}
+                                title="Duplicar material"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="mt-6 text-destructive hover:text-destructive hover:bg-destructive/10 self-end"
+                                onClick={() => removeMaterial(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </CardContent>
                 </Card>
 
                 <Card className="border-border shadow-sm md:col-span-2">
                     <CardHeader className="bg-muted/30 pb-3 py-4 flex flex-row items-center justify-between">
-                      <DialogTitle className="text-base text-primary">Personagens</DialogTitle>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <DialogTitle className="text-base text-primary">Personagens</DialogTitle>
+                        {fields.length > 0 && (
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            Total: {totalCharactersCount} {totalCharactersCount === 1 ? "personagem" : "personagens"} (R$ {charactersCost.toFixed(2)})
+                          </span>
+                        )}
+                      </div>
                       <Button type="button" onClick={() => append({ name: "", value: 0, quantity: 1 })} variant="ghost" size="sm" className="h-8 gap-1">
                         <Plus className="h-4 w-4" /> Adicionar
                       </Button>
@@ -823,44 +957,53 @@ export function QuoteDialog({ open, onOpenChange, quote }: QuoteDialogProps) {
                       {fields.length === 0 && (
                         <p className="text-sm text-muted-foreground text-center py-2">Nenhum personagem adicionado.</p>
                       )}
-                      {fields.map((field, index) => (
-                        <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 border-b sm:border-0 pb-3 sm:pb-0">
-                          <div className="w-full sm:flex-1">
-                            <Label className="mb-1 block text-xs text-muted-foreground">Personagem</Label>
-                            <CharacterCombobox
-                              value={watch(`characters.${index}.name`)}
-                              onChange={(val) => setValue(`characters.${index}.name`, val)}
-                              characters={inventoryCharacters}
-                            />
-                          </div>
-                          <div className="flex w-full sm:w-auto items-end gap-2">
-                            <div className="flex-1 sm:w-28">
-                              <Label className="mb-1 block text-xs text-muted-foreground">Valor (R$)</Label>
-                              <Input type="number" min="0" step="0.01" placeholder="Cachê" {...register(`characters.${index}.value`)} />
+                      {fields.map((field, index) => {
+                        const itemTotal = (Number(watchCharacters?.[index]?.value) || 0) * (Number(watchCharacters?.[index]?.quantity) || 1);
+                        return (
+                          <div key={field.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 border-b sm:border-0 pb-3 sm:pb-0">
+                            <div className="w-full sm:flex-1">
+                              <Label className="mb-1 block text-xs text-muted-foreground">Personagem</Label>
+                              <CharacterCombobox
+                                value={watch(`characters.${index}.name`)}
+                                onChange={(val) => setValue(`characters.${index}.name`, val)}
+                                characters={inventoryCharacters}
+                              />
                             </div>
-                            <div className="w-20">
-                              <Label className="mb-1 block text-xs text-muted-foreground">Qtd</Label>
-                              <Input type="number" min="1" placeholder="Qtd" {...register(`characters.${index}.quantity`)} />
+                            <div className="flex w-full sm:w-auto items-end gap-2">
+                              <div className="flex-1 sm:w-28">
+                                <Label className="mb-1 block text-xs text-muted-foreground">Valor (R$)</Label>
+                                <Input type="number" min="0" step="0.01" placeholder="Cachê" {...register(`characters.${index}.value`)} />
+                              </div>
+                              <div className="w-20">
+                                <Label className="mb-1 block text-xs text-muted-foreground">Qtd</Label>
+                                <Input type="number" min="1" placeholder="Qtd" {...register(`characters.${index}.quantity`)} />
+                              </div>
+                              <div className="w-28 text-right">
+                                <Label className="mb-1 block text-xs text-muted-foreground">Total Item</Label>
+                                <div className="h-9 flex items-center justify-end font-semibold text-xs text-foreground bg-muted/40 px-2 rounded-md border">
+                                  R$ {itemTotal.toFixed(2)}
+                                </div>
+                              </div>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => {
+                                  const current = watchCharacters[index];
+                                  append({ ...current });
+                                }} 
+                                className="mt-6 self-end"
+                                title="Duplicar personagem"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-6 text-red-500 hover:bg-red-50 hover:text-red-600 self-end" title="Remover">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => {
-                                const current = watchCharacters[index];
-                                append({ ...current });
-                              }} 
-                              className="mt-6 self-end"
-                              title="Duplicar personagem"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-6 text-red-500 hover:bg-red-50 hover:text-red-600 self-end" title="Remover">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </CardContent>
                   </Card>
               </div>

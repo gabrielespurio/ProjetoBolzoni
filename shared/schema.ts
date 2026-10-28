@@ -148,6 +148,9 @@ export const employees = pgTable("employees", {
   isAvailable: boolean("is_available").notNull().default(true),
   clocksIn: boolean("clocks_in").default(false),
   workloadHours: integer("workload_hours").default(0),
+  pixKey: text("pix_key"),
+  pixType: text("pix_type"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -196,6 +199,7 @@ export const events = pgTable("events", {
   googleEventId: text("google_event_id"),
   birthdayPersonName: text("birthday_person_name"),
   birthdayPersonAge: text("birthday_person_age"),
+  allowPhotos: boolean("allow_photos").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
