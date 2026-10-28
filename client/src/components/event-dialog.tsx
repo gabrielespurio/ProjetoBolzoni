@@ -203,6 +203,23 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
     [characters, searchTerm]
   );
 
+  const producerItem = useMemo(() => {
+    return characters.find(c => {
+      const name = c.name?.toLowerCase().trim() || "";
+      return name === "produtor" || name.includes("produtor");
+    });
+  }, [characters]);
+
+  const producersCount = useMemo(() => {
+    if (!producerItem) return 0;
+    const found = selectedCharacters.find(sc => (typeof sc === "object" ? sc.characterId : sc) === producerItem.id);
+    return found ? (typeof found === "object" ? Number(found.quantity) || 1 : 1) : 0;
+  }, [selectedCharacters, producerItem]);
+
+  const totalItemsCount = useMemo(() => {
+    return selectedCharacters.reduce((sum, item) => sum + (typeof item === "object" && item.quantity ? Number(item.quantity) || 1 : 1), 0);
+  }, [selectedCharacters]);
+
   const form = useForm<EventForm>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
@@ -450,10 +467,12 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
   }, [open, event, activeEventData]);
 
   const charactersTotal = useMemo(() => {
-    return selectedCharacters.reduce((sum, characterId) => {
-      const character = characters.find(c => c.id === characterId);
+    return selectedCharacters.reduce((sum, item) => {
+      const charId = typeof item === "object" ? item.characterId : item;
+      const qty = typeof item === "object" && item.quantity ? Number(item.quantity) || 1 : 1;
+      const character = characters.find(c => c.id === charId);
       const price = character?.salePrice ? parseFloat(character.salePrice) : 0;
-      return sum + price;
+      return sum + (price * qty);
     }, 0);
   }, [selectedCharacters, characters]);
 
@@ -625,17 +644,70 @@ export function EventDialog({ open, onClose, event }: EventDialogProps) {
 
   const toggleCharacter = useCallback((characterId: string) => {
     setSelectedCharacters(prev => {
-      if (prev.includes(characterId)) {
-        return prev.filter(id => id !== characterId);
+      const existing = prev.find(sc => (typeof sc === "object" ? sc.characterId : sc) === characterId);
+      if (existing) {
+        return prev.filter(sc => (typeof sc === "object" ? sc.characterId : sc) !== characterId);
       } else {
-        return [...prev, characterId];
+        return [...prev, { characterId, quantity: 1 }];
       }
     });
   }, []);
 
   const removeCharacter = useCallback((characterId: string) => {
-    setSelectedCharacters(prev => prev.filter(id => id !== characterId));
+    setSelectedCharacters(prev => prev.filter(sc => (typeof sc === "object" ? sc.characterId : sc) !== characterId));
   }, []);
+
+  const updateCharacterQuantity = useCallback((characterId: string, delta: number) => {
+    setSelectedCharacters(prev => {
+      const existing = prev.find(sc => (typeof sc === "object" ? sc.characterId : sc) === characterId);
+      if (!existing) {
+        if (delta > 0) {
+          return [...prev, { characterId, quantity: delta }];
+        }
+        return prev;
+      }
+      const currentQty = typeof existing === "object" && existing.quantity ? Number(existing.quantity) || 1 : 1;
+      const newQty = currentQty + delta;
+      if (newQty <= 0) {
+        return prev.filter(sc => (typeof sc === "object" ? sc.characterId : sc) !== characterId);
+      }
+      return prev.map(sc => {
+        const id = typeof sc === "object" ? sc.characterId : sc;
+        if (id === characterId) {
+          return { characterId, quantity: newQty };
+        }
+        return sc;
+      });
+    });
+  }, []);
+
+  const setProducersCount = useCallback((count: number) => {
+    if (!producerItem) {
+      toast({
+        title: "Atenção",
+        description: "Item \"Produtor\" não encontrado no catálogo de personagens.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newCount = Math.max(0, count);
+    setSelectedCharacters(prev => {
+      const exists = prev.find(sc => (typeof sc === "object" ? sc.characterId : sc) === producerItem.id);
+      if (newCount === 0) {
+        return prev.filter(sc => (typeof sc === "object" ? sc.characterId : sc) !== producerItem.id);
+      }
+      if (exists) {
+        return prev.map(sc => {
+          const id = typeof sc === "object" ? sc.characterId : sc;
+          if (id === producerItem.id) {
+            return { characterId: producerItem.id, quantity: newCount };
+          }
+          return sc;
+        });
+      }
+      return [...prev, { characterId: producerItem.id, quantity: newCount }];
+    });
+  }, [producerItem, toast]);
 
   const addExpense = useCallback(() => {
     if (!newExpense.title || !newExpense.amount) {

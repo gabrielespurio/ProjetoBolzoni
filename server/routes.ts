@@ -493,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { characterIds, characters, date, excludeEventId } = req.body;
 
       // Normalize characters to check: Array<{ characterId: string, quantity: number }>
-      const itemsToCheck = [];
+      const itemsToCheck: Array<{ characterId: string; quantity: number }> = [];
       if (Array.isArray(characters) && characters.length > 0) {
         characters.forEach((c) => {
           if (typeof c === 'string') {
@@ -541,7 +541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Check if this other event uses this character
           let eventCharUsage = 0;
           if (Array.isArray(ev.characters) && ev.characters.length > 0) {
-            const match = ev.characters.find((c) => c.characterId === item.characterId);
+            const match = ev.characters.find((c: any) => c.characterId === item.characterId);
             if (match) {
               eventCharUsage = Math.max(1, Number(match.quantity) || 1);
             }
@@ -1127,7 +1127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 5. Atualizar o status do orçamento para aprovado
       await storage.updateQuote(quote.id, { status: "approved" });
 
-      res.status(201).json({ message: "Orçamento convertido em evento com sucesso!", eventId: newEvent.id });
+      res.status(201).json({ message: "Orçamento convertido em evento com sucesso!", eventId: createdEvents[0]?.id });
     } catch (error: any) {
       console.error("Erro ao converter orçamento:", error);
       res.status(400).json({ message: error.message || "Erro ao converter orçamento" });
